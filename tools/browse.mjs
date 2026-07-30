@@ -49,10 +49,10 @@ const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'
 const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 
 const entry = join(HERE, 'sdk-entry.mjs')
-await writeFile(entry, `import { inspect } from '${join(REPO, 'packages/agent/src/index.js')}'
-import { agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+await writeFile(entry, `import { observe, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
-window.__agentInspect = inspect
+window.__agentObserve = observe
+window.__agentBuildUi = buildUi
 window.__agentOracle = agentOracle
 window.__snapdom = snapdom
 `)
@@ -79,8 +79,11 @@ context.on('page', (p) => {
 })
 
 // ── In-page protocol (same shapes the realloop experiments validated) ────────────────
-const observe = async (previous) => {
-  const ui = await window.__agentInspect(document.body, previous ? { previous } : {})
+const observe = (previous) => {
+  // Walk-only (§lite): an agent with a mission needs semantics every turn but pixels
+  // almost never — the full capture cost per look was Codex's top complaint (20s on
+  // wikipedia). Pixels are requested explicitly and SCOPED via `snap <id>`.
+  const ui = window.__agentBuildUi(window.__agentObserve(document.body, previous ? { previous } : {}), {})
   window.__lastUi = ui
   window.__lastCp = ui.checkpoint()
   return {
@@ -111,11 +114,14 @@ const inFind = (query) => {
   return out
 }
 const inLocate = (id) => {
-  const el = window.__lastUi && window.__lastUi.__snapshot.elements.get(id)
+  const ui = window.__lastUi
+  const el = ui && ui.__snapshot.elements.get(id)
   if (!el) return null
   let r = el.getBoundingClientRect()
   if (r.bottom < 0 || r.top > window.innerHeight) { el.scrollIntoView({ block: 'center' }); r = el.getBoundingClientRect() }
-  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }
+  const n = ui.__snapshot.nodes.get(id)
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
+    role: n && n.role, name: n && (n.name || (n.text || '').slice(0, 40)) }
 }
 
 // ── Rendering for a model reader: compact text, ids inline ───────────────────────────
@@ -171,9 +177,10 @@ const HANDLERS = {
     if (/^\d+,\d+$/.test(target)) { const [x, y] = target.split(',').map(Number); point = { x, y } }
     else point = await page.evaluate(inLocate, target)
     if (!point) return `no pude resolver "${target}" — usá un id del mapa/find o x,y`
+    const what = point.role ? ` sobre ${point.role}${point.name ? ` "${point.name}"` : ''}` : ''
     await page.mouse.click(point.x, point.y)
     await settle()
-    return `click en (${point.x},${point.y}) · URL: ${page.url()} — corré look para ver qué cambió`
+    return `click en (${point.x},${point.y})${what} · URL: ${page.url()} — corré look para ver qué cambió`
   },
   async type(args) {
     await page.keyboard.insertText(args.join(' '))
@@ -197,14 +204,32 @@ const HANDLERS = {
     await page.screenshot({ type: 'jpeg', quality: 80, path })
     return `screenshot nativo → ${path}`
   },
-  async snap([file]) {
+  async snap(args) {
+    // snap [id] [file] — with an id, capture ONLY that element, expanded to an ancestor
+    // until the crop carries enough context to read (the mission-driven capture: the
+    // agent asks for the region it cares about, never the whole page).
+    let [target, file] = args
+    if (target && /\.(png|jpg)$/.test(target)) { file = target; target = null }
     const path = file || '/tmp/agent-browse-snap.png'
-    const src = await page.evaluate(async () => {
-      const r = await window.__snapdom(document.body, { plugins: [window.__agentOracle({})], clip: 'viewport' })
-      return (await r.toPng()).src
-    })
+    const src = await page.evaluate(async (nid) => {
+      if (nid) {
+        const el = window.__lastUi && window.__lastUi.__snapshot.elements.get(nid)
+        if (!el) return null
+        // Mission-driven pixels: scroll the element to the CENTER, then capture the
+        // viewport around it. (A tight rect clip would be nicer, but rect-clip over
+        // deep lazy/content-visibility regions renders partially blank — real product
+        // bug, documented in FIELD.md; clip:'viewport' is the 10/10-proven path.)
+        el.scrollIntoView({ block: 'center' })
+        await new Promise((r) => setTimeout(r, 400))
+        const result = await window.__snapdom(document.body, { clip: 'viewport' })
+        return (await result.toPng()).src
+      }
+      const result = await window.__snapdom(document.body, { clip: 'viewport' })
+      return (await result.toPng()).src
+    }, target || null)
+    if (!src) return `id desconocido: ${target}`
     await writeFile(path, Buffer.from(src.split(',')[1], 'base64'))
-    return `render snapdom (misma captura que la semántica) → ${path}`
+    return `render snapdom de ${target ? `${target} + ancestro de contexto` : 'viewport'} → ${path}`
   },
   async status() {
     return `daemon ok · URL: ${page.url()}`

@@ -256,3 +256,23 @@ scroll-hunting) — and the native semantic search tool literally cannot process
 the oracle's in-page `find` handles for free. Steady state ≈ 4× fewer context tokens.
 Two harness gaps surfaced and fixed mid-run: follow `_blank` popups; `text <id>` reader
 for data extraction.
+
+## Codex replication + the mission-driven capture round (2026-07-31)
+
+Codex replicated the 5-task self-comparison blind (results/codex-self.md): totals nearly
+identical (native 31 acts/12 images vs my 32/17; agent 28 vs 24, 0 images both), same
+split verdict — pixels for compact glanceable pages, oracle for exact search and deep
+navigation (its T5: 4 vs 15). Its fresh eyes found three frictions, all now fixed in the
+harness: (1) click echoes the resolved role/name (a typoed id had clicked HN's upvote);
+(2) open/look/find are walk-only — no capture per observation (wikipedia open 20s → 6s,
+walk ~2.3s + settle); (3) `snap <id>` = mission-driven pixels: scroll element to center,
+capture the viewport around it — never the whole page.
+
+**Product bug found while building (3): region clip on lazy pages renders partial
+blanks.** Repro: es.wikipedia.org/wiki/Argentina (cv:auto sections), rect clip centered
+at y≈40k → sidebar renders, text column blank; y≈73k → almost fully blank. Even
+clip:'viewport' after scrollIntoView shows a blank band for a neighboring cv section not
+yet painted. Cause direction: prepare.js #281 skips forceContentVisibility in clip mode
+("on-screen is already rendered") — true for the element, false for cv placeholders
+intersecting the clip window. Core fix (main, later): force cv:visible ONLY for nodes
+intersecting the clip window. Harness meanwhile uses scroll+viewport-clip, the 10/10 path.
