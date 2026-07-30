@@ -10,6 +10,24 @@ No CDP, no browser launching: in-page JavaScript is all they have.
 
 It answers ***what* changed**, not "did anything change".
 
+It is a **private plugin layer on snapdom**, not a parallel library: the semantic visitor
+is a lifecycle hook on snapdom's own capture walk, so semantics and pixels come out of one
+capture, at one instant (ADR 0004).
+
+```js
+import { snapdom } from '@zumer/snapdom'
+import { agentOracle } from '@zumer/snapdom-agent/plugin'
+
+const result = await snapdom(el, { plugins: [agentOracle({ previous: checkpoint })] })
+await result.toChanges()       // changed · changes · actionabilityDelta · unobservable
+await result.toAgentMap()      // Set-of-Mark
+await result.toAgentContext()  // outline
+await result.toCheckpoint()
+await result.toPng()           // …and the image, from the same instant
+```
+
+`agent.inspect()` is the ergonomic wrapper around exactly that capture:
+
 ```js
 import { agent } from '@zumer/snapdom-agent'
 
@@ -28,15 +46,16 @@ ui.capabilities         // { inlineStyles, dataUrls, blobUrls, crossOriginFonts 
 
 ui.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Save' })
 agent.resolve(match)    // → live Element | null  (the ONLY bridge; actions are out of scope)
-await ui.rasterize()    // optional render visitor on the same walk
+await ui.rasterize()    // the capture that already happened; with a match, that region only
 ```
 
 ## Layout
 
 ```
-src/          snapshot (the semantic visitor) · aria · noise · match · diff · checkpoint · query
+src/          plugin (the integration point) · snapshot (the visitor) · aria · noise ·
+              match · diff · checkpoint · query
 corpus/       18 mutation fixtures: page.html + mutate.js + expected.json (hand-written truth)
-test/         corpus runner · API acceptance · benchmarks
+test/         corpus runner · API acceptance · plugin contract · benchmarks
 experiment/   Phase 5: signal.test.js (model-free) · harness.mjs (one observation) ·
               loop.mjs (end-to-end act-observe-act) · verdict.mjs (shared scoring)
 docs/adr/     architecture decisions; deviations require an ADR + review

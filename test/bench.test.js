@@ -1,9 +1,17 @@
 /**
- * Benchmarks (§Phase 3/4): report, don't gate. inspect() p50/p95 vs snapdom.capture()
- * on the same pages, and checkpoint size vs the serialized DOM of the same page.
+ * Benchmarks (§Phase 3/4): report, don't gate. Three costs on the same pages, because
+ * `inspect()` now runs a real snapdom capture with the oracle plugin attached and the
+ * only interesting question is how that splits:
+ *
+ *   walk_*     the semantic visitor alone (what the plugin hook does)
+ *   inspect_*  walk + capture — what a caller actually pays for one observation
+ *   capture_*  a bare capture with cache and memoization off (the cold-path reference)
+ *
+ * Plus checkpoint size vs the serialized DOM of the same page.
  */
 import { describe, it, expect } from 'vitest'
 import { inspect } from '../src/index.js'
+import { observe } from '../src/plugin.js'
 import { snapdom } from '../../../src/api/snapdom.js'
 
 function scene(cards) {
@@ -35,7 +43,13 @@ describe('agent benchmarks (report only)', () => {
       try {
         const iT = []
         const cT = []
+        const wT = []
         let ui
+        for (let i = 0; i < 12; i++) {
+          const t0 = performance.now()
+          observe(el)
+          wT.push(performance.now() - t0)
+        }
         for (let i = 0; i < 12; i++) {
           const t0 = performance.now()
           ui = await inspect(el)
@@ -60,6 +74,7 @@ describe('agent benchmarks (report only)', () => {
         const nodes = Object.keys(cp.nodes).length
         report.push({
           cards, nodes,
+          walk_p50: pct(wT, 0.5), walk_p95: pct(wT, 0.95),
           inspect_p50: pct(iT, 0.5), inspect_p95: pct(iT, 0.95),
           diff_p50: pct(dT, 0.5), diff_p95: pct(dT, 0.95),
           capture_p50: pct(cT, 0.5), capture_p95: pct(cT, 0.95),

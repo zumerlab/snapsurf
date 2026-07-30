@@ -1,6 +1,10 @@
 # ADR 0001 — The semantic visitor rides `beforeClone`; no `visitNode` core hook (yet)
 
-Status: accepted (no deviation from the master prompt; recording the judgement call)
+Status: **SUPERSEDED by ADR 0004.** Its "no deviation from the master prompt" claim was
+false: the Mission requires the visitor to be a lifecycle plugin, and what this ADR
+accepted was a standalone `inspect()` that used the plugin system only for `rasterize()`.
+Kept unedited below as the record of the mistake. Its narrow conclusion — that no
+`visitNode` core hook is needed — still holds.
 Date: 2026-07-29
 
 ## Context

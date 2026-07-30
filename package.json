@@ -6,6 +6,13 @@
   "description": "Post-layout change oracle for in-page AI agents (working name). NOT FOR PUBLICATION.",
   "type": "module",
   "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./plugin": "./src/plugin.js"
+  },
+  "peerDependencies": {
+    "@zumer/snapdom": "^3.0.0"
+  },
   "files": [],
   "publishConfig": { "access": "restricted" },
   "scripts": {

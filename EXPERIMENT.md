@@ -34,13 +34,13 @@ This isolates the information claim from model variance entirely.
 
 | stratum | question | B answers | C answers | B bytes | C bytes |
 |---|---|---|---|---|---|
-| occlusion — modal covers actionable elements | are those buttons now unclickable? | ✅ | ❌ | 275 | 234 |
-| pure noise — CSS-in-JS class churn, identical computed style | did anything change? | ✅ | ❌ | 104 | 291 |
-| pure noise — scroll only | did anything change? | ✅ | ✅ | 104 | 30 |
-| replaced node — React-style remount, same UI | is this the same UI? | ✅ | ❌ | 104 | 287 |
-| replaced node — card swapped at the same slot | edited or replaced? | ✅ | ✅ | 268 | 294 |
-| semantically small — disabled → enabled | can I click it now? | ✅ | ✅ | 568 | 117 |
-| live noise — a clock ticks | did anything change? | ✅ | ❌ | 104 | 229 |
+| occlusion — modal covers actionable elements | are those buttons now unclickable? | ✅ | ❌ | 557 | 234 |
+| pure noise — CSS-in-JS class churn, identical computed style | did anything change? | ✅ | ❌ | 122 | 291 |
+| pure noise — scroll only | did anything change? | ✅ | ✅ | 122 | 30 |
+| replaced node — React-style remount, same UI | is this the same UI? | ✅ | ❌ | 122 | 287 |
+| replaced node — card swapped at the same slot | edited or replaced? | ✅ | ✅ | 286 | 294 |
+| semantically small — disabled → enabled | can I click it now? | ✅ | ✅ | 586 | 117 |
+| live noise — a clock ticks | did anything change? | ✅ | ❌ | 122 | 229 |
 
 Where C ties, it ties honestly and the reason is instructive: a scroll produces no
 mutation records (C is right by silence), a swapped element genuinely is add+remove in the
