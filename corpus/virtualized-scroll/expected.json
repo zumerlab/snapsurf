@@ -4,11 +4,12 @@
     { "kind": "added", "minCount": 6 },
     { "kind": "added", "name": "Row 18" },
     { "kind": "removed", "minCount": 6 },
-    { "kind": "removed", "name": "Row 3" }
+    { "kind": "removed", "name": "Row 3" },
+    { "kind": "resized", "minCount": 2 }
   ],
   "forbidKinds": ["content", "state", "style", "possible-replacement"],
   "allowKindsOnly": ["added", "removed", "moved", "resized"],
-  "maxChanges": 17,
+  "maxChanges": 15,
   "stableIdQueries": [{ "role": "generic", "name": "Row 12 · lima" }],
   "_note": "Surviving rows must keep their ids and report NOTHING (their geometry moved only inside the scroll frame, which the scroll-relative reference frame absorbs). The recycled window is genuinely added/removed. Identity here comes from own-text fingerprints outranking a contradicted slot position — see docs/adr/0002."
 }

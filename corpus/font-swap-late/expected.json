@@ -2,12 +2,13 @@
   "changed": true,
   "mustInclude": [
     { "kind": "style", "role": "region", "name": "Lectura" },
+    { "kind": "style", "role": "heading", "name": "Tipografía tardía" },
     { "kind": "style", "role": "button", "name": "Seguir leyendo" },
     { "kind": "resized", "role": "button", "name": "Seguir leyendo" }
   ],
   "forbidKinds": ["content", "added", "removed", "possible-replacement"],
   "allowKindsOnly": ["style", "moved", "resized"],
-  "maxChanges": 12,
+  "maxChanges": 9,
   "stableIdQueries": [
     { "role": "button", "name": "Seguir leyendo" },
     { "role": "heading", "name": "Tipografía tardía" }

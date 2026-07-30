@@ -1,10 +1,12 @@
 {
   "changed": true,
   "mustInclude": [
-    { "kind": "possible-replacement", "name": "Gamma" }
+    { "kind": "possible-replacement", "role": "heading", "name": "Gamma" },
+    { "kind": "possible-replacement", "role": "button", "name": "Open Gamma" }
   ],
   "forbidKinds": ["content"],
   "allowKindsOnly": ["possible-replacement"],
+  "maxChanges": 4,
   "stableIdQueries": [
     { "role": "button", "name": "Open Alpha" },
     { "role": "button", "name": "Open Beta" }

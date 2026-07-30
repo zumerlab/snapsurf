@@ -7,11 +7,12 @@
   ],
   "forbidKinds": ["content", "added", "removed", "state", "style", "possible-replacement"],
   "allowKindsOnly": ["moved"],
+  "maxChanges": 6,
   "stableIdQueries": [
     { "role": "listitem", "name": "Enviados" },
     { "role": "listitem", "name": "Spam" }
   ],
   "matchClassFor": [
-    { "role": "listitem", "name": "Borradores", "expect": ["exact", "strong"] }
+    { "role": "listitem", "name": "Borradores", "expect": ["exact"] }
   ]
 }

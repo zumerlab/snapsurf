@@ -6,6 +6,7 @@
   ],
   "forbidKinds": ["removed", "content", "state", "style", "possible-replacement"],
   "allowKindsOnly": ["added", "moved", "resized"],
+  "maxChanges": 6,
   "stableIdQueries": [
     { "role": "listitem", "name": "Charlie" },
     { "role": "listitem", "name": "Echo" }

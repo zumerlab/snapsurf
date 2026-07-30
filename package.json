@@ -6,5 +6,10 @@
   "description": "Post-layout change oracle for in-page AI agents (working name). NOT FOR PUBLICATION.",
   "type": "module",
   "main": "./src/index.js",
-  "publishConfig": { "access": "restricted" }
+  "files": [],
+  "publishConfig": { "access": "restricted" },
+  "scripts": {
+    "prepack": "node -e \"throw new Error('@zumer/snapdom-agent is PRIVATE and must never be packed or published. See LICENSE.')\"",
+    "prepublishOnly": "node -e \"throw new Error('@zumer/snapdom-agent is PRIVATE and must never be published. See LICENSE.')\""
+  }
 }
