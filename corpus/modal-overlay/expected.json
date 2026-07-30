@@ -1,6 +1,18 @@
 {
   "changed": true,
-  "mustInclude": [{ "kind": "added", "role": "dialog", "name": "Confirmation" }],
-  "forbidKinds": ["removed", "content"],
-  "actionability": { "becameCoveredMin": 2 }
+  "mustInclude": [
+    {
+      "kind": "added",
+      "role": "dialog",
+      "name": "Confirmation"
+    }
+  ],
+  "forbidKinds": [
+    "removed",
+    "content"
+  ],
+  "actionability": {
+    "becameCoveredMin": 2,
+    "coveredByIncludes": "Confirmation"
+  }
 }

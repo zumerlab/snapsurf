@@ -37,9 +37,10 @@ await ui.rasterize()    // optional render visitor on the same walk
 src/          snapshot (the semantic visitor) · aria · noise · match · diff · checkpoint · query
 corpus/       18 mutation fixtures: page.html + mutate.js + expected.json (hand-written truth)
 test/         corpus runner · API acceptance · benchmarks
-experiment/   Phase 5: signal.test.js (model-free) + harness.mjs (model in the loop)
+experiment/   Phase 5: signal.test.js (model-free) · harness.mjs (one observation) ·
+              loop.mjs (end-to-end act-observe-act) · verdict.mjs (shared scoring)
 docs/adr/     architecture decisions; deviations require an ADR + review
-EXPERIMENT.md the gate's results
+EXPERIMENT.md the gate's results — all three layers run, gate passes
 ```
 
 ## Run it
@@ -47,7 +48,9 @@ EXPERIMENT.md the gate's results
 ```bash
 npx vitest run packages/agent/test --browser.headless            # corpus + API + bench
 npx vitest run packages/agent/experiment/signal.test.js --browser.headless
-node packages/agent/experiment/harness.mjs --reps 5               # needs ANTHROPIC_API_KEY
+node packages/agent/experiment/loop.mjs --dry                     # validate the loop fixture, no spend
+ANTHROPIC_API_KEY=… node packages/agent/experiment/harness.mjs --reps 5   # ≈ $0.90 on claude-opus-5
+ANTHROPIC_API_KEY=… node packages/agent/experiment/loop.mjs --reps 10     # ≈ $0.82
 ```
 
 ## Settled architecture (see the master prompt + ADRs)

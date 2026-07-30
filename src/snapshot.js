@@ -117,16 +117,23 @@ function styleSubset(el, cs, animatedProps) {
   return parts.join(';')
 }
 
-function coveredAt(el, rect) {
+/**
+ * The element that would receive a click aimed at `el`'s centre, when that is something
+ * other than `el` itself — i.e. the occluder. Returning the element rather than a boolean
+ * is what lets the report say *what* is in the way: an agent told only that a button is
+ * covered has to clear every candidate overlay, which costs it an action per candidate.
+ * @returns {Element|null}
+ */
+function occluderAt(el, rect) {
   const cx = rect[0] + rect[2] / 2
   const cy = rect[1] + rect[3] / 2
-  if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) return false
+  if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) return null
   try {
     const doc = el.ownerDocument
     const top = (el.getRootNode()?.elementFromPoint || doc.elementFromPoint).call(el.getRootNode?.() || doc, cx, cy)
-    if (!top) return false
-    return !(top === el || el.contains(top) || top.contains(el))
-  } catch { return false }
+    if (!top) return null
+    return (top === el || el.contains(top) || top.contains(el)) ? null : top
+  } catch { return null }
 }
 
 /**
@@ -145,6 +152,8 @@ export function takeSnapshot(root, noise) {
   const order = []
   const byElement = new Map()
   const elements = new Map()
+  // node id → occluding Element, resolved to a node reference once the walk has seen it.
+  const occluders = new Map()
   let seq = 0
 
   /** @returns {string|null} node id */
@@ -175,7 +184,9 @@ export function takeSnapshot(root, noise) {
       bbox.viewport[2] > 0 && bbox.viewport[3] > 0
     const interactive = INTERACTIVE_ROLES.has(role) ||
       el.hasAttribute('onclick') || el.tabIndex >= 0
-    const covered = interactive && visible ? coveredAt(el, bbox.viewport) : false
+    const occluder = interactive && visible ? occluderAt(el, bbox.viewport) : null
+    const covered = !!occluder
+    if (occluder) occluders.set(id, occluder)
 
     // Own text only — subtree text belongs to the children (Merkle locality).
     let ownText = ''
@@ -257,5 +268,24 @@ export function takeSnapshot(root, noise) {
   }
 
   const rootId = visit(root, null, '', {}, 0)
+  // Occluders are resolved only now, after every element has been walked and AFTER all
+  // hashes are computed: `coveredBy` describes another node, so letting it into a
+  // signature would propagate that node's geometry into this one's identity (§1).
+  for (const [id, el] of occluders) {
+    let hit = el
+    let hitId = byElement.get(el)
+    while (!hitId && hit.parentElement) { hit = hit.parentElement; hitId = byElement.get(hit) }
+    const n = hitId ? nodes.get(hitId) : null
+    // The occluding element's full text is the label an agent can act on ("the bar that
+    // says Usamos cookies…"); a bare overlay div has no role and no accessible name.
+    const label = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)
+    const name = n && n.name ? n.name : ''
+    nodes.get(id).coveredBy = {
+      ...(hitId ? { id: hitId } : {}),
+      role: n ? n.role : computeRole(el),
+      ...(name ? { name } : {}),
+      ...(label && label !== name ? { label } : {}),
+    }
+  }
   return { nodes, order, rootId, byElement, elements, rootHash: rootId ? nodes.get(rootId).subtreeHash : hash('empty') }
 }

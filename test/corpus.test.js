@@ -10,7 +10,7 @@
  *   forbidKinds:      [kind] — none of these may appear
  *   allowKindsOnly:   [kind] — every change's kind must be in this list
  *   maxChanges:       number
- *   actionability:    {becameCoveredMin?, becameVisibleMin?}
+ *   actionability:    {becameCoveredMin?, becameVisibleMin?, coveredByIncludes?}
  *   stableIdQueries:  [{role, name?}] — the id found before the mutation must survive it
  *   matchClassFor:    [{role, name?, expect: [classes]}] — match class of that node's change entries
  */
@@ -71,6 +71,16 @@ function assertExpected(fx, ui, before) {
     }
     if (e.actionability.becameVisibleMin !== undefined) {
       expect(d.becameVisible.length, `${fx.name}: becameVisible`).toBeGreaterThanOrEqual(e.actionability.becameVisibleMin)
+    }
+    if (e.actionability.coveredByIncludes !== undefined) {
+      // Every newly covered element must name what covers it. An end-to-end agent run
+      // showed a bare `covered: true` costs one wasted action per candidate overlay.
+      for (const entry of d.becameCovered) {
+        const by = entry.coveredBy
+        expect(by, `${fx.name}: becameCovered entry ${entry.name || entry.id} has no coveredBy`).toBeTruthy()
+        expect(`${by.name || ''} ${by.label || ''} ${by.role || ''}`,
+          `${fx.name}: coveredBy must identify the occluder`).toContain(e.actionability.coveredByIncludes)
+      }
     }
   }
   for (const q of e.stableIdQueries || []) {

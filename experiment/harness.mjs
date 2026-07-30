@@ -5,7 +5,7 @@
  * via an in-page MutationObserver + a11y diff (no post-render signals), arm A ships
  * before/after PNGs. Same model, equivalent prompts, same tasks.
  *
- *   node packages/agent/experiment/harness.mjs [--reps 5] [--model claude-sonnet-4-5]
+ *   node packages/agent/experiment/harness.mjs [--reps 5] [--model claude-opus-5]
  *
  * Without a key it runs in --dry mode: every arm still executes and every mechanical
  * metric (payload bytes, invalid-click detection, change-detection FP/FN, latency) is
@@ -16,9 +16,10 @@
  * NOT FOR PUBLICATION — part of the private packages/agent workspace.
  */
 import { chromium } from 'playwright'
-import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { writeFile, mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { scoreVerdict } from './verdict.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = join(HERE, '..', '..', '..')
@@ -30,10 +31,15 @@ const flag = (name, def) => {
   return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : def
 }
 const REPS = Number(flag('reps', 5))
-const MODEL = String(flag('model', 'claude-sonnet-4-5'))
+const MODEL = String(flag('model', 'claude-opus-5'))
 const KEY = process.env.ANTHROPIC_API_KEY
 const DRY = !KEY || flag('dry', false) === true
 const DUMP = flag('dump', false) === true
+/** Anthropic first-party rates, USD per million tokens: [input, output]. */
+const PRICES = {
+  'claude-opus-5': [5, 25], 'claude-fable-5': [10, 50], 'claude-sonnet-5': [2, 10],
+  'claude-sonnet-4-6': [3, 15], 'claude-haiku-4-5': [1, 5],
+}
 
 /* ── Apps: corpus-derived, one per failure mode the strata care about ─────────── */
 const APPS = {
@@ -121,30 +127,60 @@ const TASKS = [
     truth: { userVisibleChange: true }, stratum: 'semantic-small' },
 ]
 
+/**
+ * The verdict shape, enforced server-side. With structured outputs the answer always
+ * parses, so a malformed reply can never be miscounted as a wrong answer.
+ */
+const VERDICT_SCHEMA = {
+  type: 'object',
+  properties: {
+    userVisibleChange: { type: 'boolean' },
+    nowUnclickable: { type: 'array', items: { type: 'string' } },
+    understandable: { type: 'boolean' },
+    summary: { type: 'string' },
+  },
+  required: ['userVisibleChange', 'nowUnclickable', 'understandable', 'summary'],
+  additionalProperties: false,
+}
+
+/** Set false once if the account rejects the server-side-fallback beta (see run()). */
+let FALLBACKS = true
+
 async function callModel(prompt, imageParts) {
   const body = {
-    model: MODEL, max_tokens: 400,
+    model: MODEL,
+    // Thinking is ON by default on Claude Opus 5 and shares this budget with the answer:
+    // the old 400 truncated every reply mid-thought. `effort: low` keeps it short.
+    max_tokens: 2000,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: VERDICT_SCHEMA } },
     messages: [{ role: 'user', content: [...(imageParts || []), { type: 'text', text: prompt }] }],
+    ...(FALLBACKS ? { fallbacks: 'default' } : {}),
+  }
+  const headers = {
+    'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01',
+    ...(FALLBACKS ? { 'anthropic-beta': 'server-side-fallback-2026-07-01' } : {}),
   }
   const t0 = Date.now()
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify(body),
-  })
+  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) })
   if (!res.ok) throw new Error(`model ${res.status}: ${(await res.text()).slice(0, 300)}`)
   const json = await res.json()
+  const text = (json.content || []).map((c) => c.text || '').join('\n')
   return {
-    text: (json.content || []).map((c) => c.text || '').join('\n'),
+    text,
+    // A safety decline is not a wrong answer — it is a missing answer, counted separately.
+    refused: json.stop_reason === 'refusal',
+    servedBy: json.model,
     inputTokens: json.usage?.input_tokens ?? null,
     outputTokens: json.usage?.output_tokens ?? null,
     latencyMs: Date.now() - t0,
   }
 }
 
-const QUESTION = `You are an in-page UI agent. Based ONLY on the evidence below, answer strictly as JSON:
-{"userVisibleChange": true|false, "coveredNowUnclickable": ["<ids or names>"], "summary": "<one sentence>"}
-"userVisibleChange" must be false when nothing changed that a user would care about (class-name churn, a ticking clock, a scroll, a re-render of identical UI).`
+const QUESTION = `You are a UI agent observing a web page across one user action. Using ONLY the evidence below, answer:
+- userVisibleChange: did anything change that a user would care about? It is false for class-name churn, a ticking clock, scrolling, or a re-render that produces identical UI.
+- nowUnclickable: elements a user could click before the action and cannot click now (for example, because something is covering them). Identify them as specifically as the evidence allows; [] if none.
+- understandable: true if this evidence lets you interpret everything that changed. false if any region that may have changed is opaque to you — content you cannot read from this evidence.
+- summary: one sentence.`
 
 async function run() {
   await mkdir(OUT, { recursive: true })
@@ -211,11 +247,10 @@ async function run() {
         row.model.C = await callModel(`${QUESTION}\n\nEvidence (mutation log + accessibility-tree diff):\n${JSON.stringify(payloads.C.payload, null, 1)}`)
         for (const arm of ['A', 'B', 'C']) {
           const m = row.model[arm]
-          try {
-            const parsed = JSON.parse((m.text.match(/\{[\s\S]*\}/) || ['{}'])[0])
-            m.parsed = parsed
-            m.correct = parsed.userVisibleChange === task.truth.userVisibleChange
-          } catch { m.parsed = null; m.correct = false }
+          // Structured outputs guarantee the shape; a refusal is the only empty case.
+          m.parsed = m.refused ? null : JSON.parse(m.text)
+          m.score = m.parsed ? scoreVerdict(m.parsed, task.truth) : null
+          m.correct = m.score ? m.score.changeCorrect : false
         }
       }
       // --dump: write each arm's evidence to disk, blinded, so an external judge (any
@@ -266,20 +301,47 @@ function summarize(rows) {
       byArm.A.mechanicalAccuracy = null // pixels carry no structured answer
     }
     if (rows[0].model) {
-      const ms = rows.map((r) => r.model[arm]).filter(Boolean)
-      byArm[arm].modelAccuracy = +(ms.filter((m) => m.correct).length / ms.length).toFixed(2)
-      byArm[arm].meanInputTokens = Math.round(ms.reduce((a, m) => a + (m.inputTokens || 0), 0) / ms.length)
-      byArm[arm].meanLatencyMs = Math.round(ms.reduce((a, m) => a + m.latencyMs, 0) / ms.length)
+      const ms = rows.map((r) => r.model[arm])
+      // Pair each verdict with its own row: a refusal drops out, so positional indexing
+      // into `rows` would silently misalign the false-positive/negative split.
+      const scored = rows.map((r) => ({ v: r.model[arm], truth: r.truth })).filter((p) => p.v.score)
+      const occl = scored.filter((p) => p.v.score.occlusionCorrect !== undefined)
+      const canv = scored.filter((p) => p.v.score.canvasHonest !== undefined)
+      const pct = (n, d) => (d ? +(n / d).toFixed(2) : null)
+      const [pIn, pOut] = PRICES[MODEL] || [0, 0]
+      const tIn = ms.reduce((a, m) => a + (m.inputTokens || 0), 0)
+      const tOut = ms.reduce((a, m) => a + (m.outputTokens || 0), 0)
+      byArm[arm].model = {
+        n: ms.length,
+        refusals: ms.filter((m) => m.refused).length,
+        changeAccuracy: pct(scored.filter((p) => p.v.score.changeCorrect).length, scored.length),
+        falsePositives: scored.filter((p) => !p.v.score.changeCorrect && p.truth.userVisibleChange === false).length,
+        falseNegatives: scored.filter((p) => !p.v.score.changeCorrect && p.truth.userVisibleChange === true).length,
+        occlusionIdentified: pct(occl.filter((p) => p.v.score.occlusionCorrect).length, occl.length),
+        occlusionNamed: pct(occl.filter((p) => p.v.score.namedThem).length, occl.length),
+        canvasHonesty: pct(canv.filter((p) => p.v.score.canvasHonest).length, canv.length),
+        meanInputTokens: Math.round(tIn / ms.length),
+        meanOutputTokens: Math.round(tOut / ms.length),
+        meanLatencyMs: Math.round(ms.reduce((a, m) => a + m.latencyMs, 0) / ms.length),
+        usd: +((tIn / 1e6) * pIn + (tOut / 1e6) * pOut).toFixed(4),
+      }
     }
   }
+  // Per stratum, on the stratum's own question — mechanically for B/C, and with the model
+  // in the loop for all three arms when a key was present.
   const strata = {}
   for (const r of rows) {
-    const s = (strata[r.stratum] ||= { B: 0, C: 0, n: 0 })
+    const s = (strata[r.stratum] ||= { mechanical: { B: 0, C: 0 }, n: 0 })
     s.n++
-    if (r.mechanical.B.correct) s.B++
-    if (r.mechanical.C.correct) s.C++
+    if (r.mechanical.B.correct) s.mechanical.B++
+    if (r.mechanical.C.correct) s.mechanical.C++
+    if (r.model) {
+      const m = (s.model ||= { A: 0, B: 0, C: 0 })
+      for (const arm of ['A', 'B', 'C']) if (r.model[arm].score?.stratumCorrect) m[arm]++
+    }
   }
-  return { dry: DRY, byArm, strata }
+  const totalUsd = +['A', 'B', 'C'].reduce((a, arm) => a + (byArm[arm].model?.usd || 0), 0).toFixed(4)
+  return { dry: DRY, model: MODEL, totalUsd, byArm, strata }
 }
 
 /** Bundle the SDK + arms into one page script (esbuild is already a repo dep). */

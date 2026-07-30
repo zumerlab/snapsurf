@@ -36,7 +36,10 @@ export function diffSnapshots(before, after) {
   const becameCovered = []
   const becameVisible = []
   const idMap = new Map()
-  const ref = (id, node) => ({ id, role: node.role, name: node.name || undefined })
+  // `coveredBy` names the occluder for the same reason: an end-to-end loop showed an agent
+  // that knows only THAT a button is covered clearing every candidate overlay in turn,
+  // spending one wasted action per candidate.
+  const ref = (id, node) => ({ id, role: node.role, name: node.name || undefined, coveredBy: node.coveredBy })
 
   const inReplacement = new Set()
   for (const r of replacements) {

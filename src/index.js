@@ -28,6 +28,9 @@ function applyStableIds(snapshot, idMap) {
     n.id = nid
     n.parentId = n.parentId ? rename(n.parentId) : null
     n.childIds = n.childIds.map(rename)
+    // coveredBy points at another node: it has to follow the relabeling too, or a report
+    // would name an id the caller cannot look up.
+    if (n.coveredBy && n.coveredBy.id) n.coveredBy = { ...n.coveredBy, id: rename(n.coveredBy.id) }
     nodes.set(nid, n)
   }
   const elements = new Map()
@@ -59,7 +62,7 @@ function renderContext(snapshot) {
       const bits = Object.entries(n.state).map(([k, v]) => (v === true ? k : `${k}=${v}`))
       line += ` {${bits.join(' ')}}`
     }
-    if (n.covered) line += ' ⊘covered'
+    if (n.covered) line += ` ⊘covered${n.coveredBy ? ' by ' + (n.coveredBy.name || n.coveredBy.label || n.coveredBy.role) : ''}`
     if (n.sourceType) line += ` ⟨${n.sourceType}: no semantics⟩`
     lines.push(line)
     for (const c of n.childIds) walk(c, depth + 1)
@@ -78,7 +81,7 @@ function renderAgentMap(snapshot) {
     const entry = { i: i++, id: n.id, r: n.role, b: n.bbox }
     if (n.name) entry.n = n.name
     if (n.state) entry.s = n.state
-    if (n.covered) entry.covered = true
+    if (n.covered) { entry.covered = true; if (n.coveredBy) entry.coveredBy = n.coveredBy }
     if (n.sourceType) { entry.sourceType = n.sourceType; entry.semanticsAvailable = false }
     map.push(entry)
   }
