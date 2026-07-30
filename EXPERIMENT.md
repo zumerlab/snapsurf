@@ -199,3 +199,112 @@ The methodological point is the one worth keeping: each layer found something th
 below it could not. Model-free scoring proved the data is there; blind judges proved a
 model can read it, and found two defects; the action loop proved a model can *act* on it,
 and found a third that both earlier layers scored 1.00 on.
+
+---
+
+# Real-site loop — the fixture's verdict does NOT generalize (2026-07-30)
+
+`experiment/realloop.mjs`, claude-sonnet-5, 5 real-site tasks × 3 arms × 2 reps.
+Credit ran out after 3 tasks (18/30 runs, $0.82 spent) — pydocs + npm never ran with a
+model. What did run is unambiguous:
+
+| task | A screenshot | B oracle | C both |
+|---|---|---|---|
+| wikipedia-borges (buscar) | 2/2 · 3.0 pasos · 5.9k tok | 2/2 · 3.0 · 22.8k | 2/2 · 3.0 · 26.7k |
+| wikipedia-nav (link en artículo gigante) | **2/2 · 1.0 · 1.9k** | 0/2 | 0/2 |
+| ebay-guitar (buscar) | 2/2 · 3.0 · 5.9k | 2/2 · 3.0 · 35.0k | 2/2 · 3.0 · 38.3k |
+| **total** | **6/6 · $0.061** | 4/6 · $0.383 | 4/6 · $0.374 |
+
+## Honest reading
+
+1. **On tasks whose deciding fact is VISIBLE, pixels win.** All three tasks are
+   see-target-click-target; a screenshot is 1 365 tokens of exactly the right
+   information. The oracle's first-turn outline is 5–30× that, and on the 19 215-node
+   article the 24k-char truncation CUT OFF the target link: arm B could not see it,
+   clicked wrong or declared done blind, 0/2.
+2. **The oracle made the combined arm WORSE.** C failed wikipedia-nav 0/2 while A alone
+   went 2/2 in one step — with the truncated outline present, the model anchored on the
+   (incomplete) text channel over the image it also had. An assist that can override a
+   correct signal is a liability, not an add-on.
+3. **The Phase-5 gate stands, narrowed.** The fixture task was built around a fact with
+   no pixel representation (occlusion); there B beat pixels 1.00 vs 0.90 at 2.4× lower
+   cost. Both results are real: **the oracle is not a screenshot replacement for
+   see-and-click tasks — it is the channel for what pixels cannot say** (occlusion,
+   state, "what changed", unobservable regions) **and the cheap per-turn diff in long
+   sessions** (sweep: 19 tokens/turn vs 1 365). This harness resent the full agentMap
+   every turn, so the diff economics never got to play; the crossover analysis is free
+   to do and still pending.
+4. **Product consequences, in priority order:** (a) outline scoping is not a perf
+   nicety, it is a correctness feature — a truncated outline is actively dangerous;
+   (b) the per-turn protocol should be outline-once (scoped), diffs after — never
+   full-map-every-turn; (c) in mixed-channel prompts the image must be declared
+   authoritative for geometry; the oracle authoritative for occlusion/state/changes.
+
+Remaining: 12 runs (pydocs, npm) need ~$0.40 of credit; the crossover analysis
+(turns × tokens, A vs diff-protocol B) is free and unblocks the honest pricing pitch.
+
+## Re-run with the fixed protocol (same day, v2) — the combination wins
+
+Same 5 tasks × 3 arms × 2 reps, sonnet-5, $0.90, 30/30 runs completed. Protocol fixes
+between v1 and v2: interactive-preserving outline trim (never a silent cut), free
+in-page `find` over the whole page, click-by-id with auto-scroll, navigation resets to
+a fresh first turn, and channel-authority rules for arm C.
+
+| task | A screenshot | B oracle | C both |
+|---|---|---|---|
+| wikipedia-borges | 2/2 · 3.0 | 2/2 · 4.0 | 2/2 · 3.5 |
+| wikipedia-nav | 1/2 · 2.5 | **2/2 · 1.0** | **2/2 · 1.0** |
+| ebay-guitar | 2/2 · 3.5 | 2/2 · 3.0 | 2/2 · 4.0 |
+| pydocs-tutorial | 2/2 · 3.0 | 2/2 · 3.0 | 2/2 · 3.0 |
+| npm-snapdom | 2/2 · 4.0 | 0/2 · 5.0 | 2/2 · 4.0 |
+| **total** | 9/10 · 3.2 pasos · $0.151 | 8/10 · 3.2 · $0.341 | **10/10 · 3.1 · $0.412** |
+
+1. **C is the only perfect arm.** v1's "the oracle makes the combined arm worse" was a
+   protocol defect, not a product property: with a truthful outline and channel
+   authority, screenshot+oracle beats either alone.
+2. **The oracle now WINS the task it lost.** wikipedia-nav: B/C solve it in ONE step
+   (find → click-by-id → auto-scroll to a below-the-fold link) vs 2.5 for pixels alone —
+   and A's one failure was on exactly this task (hallucinated an element id, then
+   declared done blind).
+3. **B's remaining failure mode is verification blindness.** npm-snapdom B 0/2: the
+   model typed, pressed enter, then burned its last two steps calling `find` to *verify*
+   instead of acting — without pixels it wanted confirmation the page had changed.
+   Worth a free investigation: the diff after typing should have shown the input's
+   state change; if it did not, that is a product bug, and if it did, it is a prompt
+   protocol gap ("trust the diff").
+4. Harness debt found: RULES mentioned ids/find to arm A too, which has neither — A's
+   only failure started with a hallucinated id. Split RULES per arm before the next run.
+
+**Verdict across both runs:** the honest pitch survived contact with real sites in its
+narrowed form — the oracle is not a screenshot replacement; it is (a) the channel for
+what pixels cannot say, (b) a step-saver via find/click-by-id for off-screen targets,
+and (c) with pixels, the only configuration that went 10/10. v1+v2 together cost $1.72.
+
+## Arm D — snapdom pixels + oracle from ONE capture (the embedded configuration)
+
+Same day, same 5 tasks × 2 reps, sonnet-5, $0.40. Arm D replaces the native
+(CDP/Playwright) screenshot with snapdom's own render — `snapdom(body, { plugins:
+[agentOracle], clip: 'viewport' })` → `toPng()` + the ui, pixels and semantics from the
+same walk, same task, same instant. No native capture API anywhere in the path.
+
+| task | D snapdom+oracle |
+|---|---|
+| wikipedia-borges | 2/2 · 4.0 |
+| wikipedia-nav | 2/2 · 1.0 |
+| ebay-guitar | 2/2 · 3.0 |
+| pydocs-tutorial | 2/2 · 3.0 |
+| npm-snapdom | 2/2 · 3.5 |
+| **total** | **10/10 · 2.9 pasos (best of all arms) · $0.398** |
+
+**The snapdom render is model-grade.** D matches C's 10/10 and edges it on steps
+(2.9 vs 3.1) at the same cost — the model operated real sites off snapdom's
+reconstruction exactly as well as off the browser's own pixels (ebay render fidelity
+also eyeballed: indistinguishable). npm-snapdom, which arm B lost 0/2 to verification
+blindness, D solves 2/2 — the pixels it lacked come from the same call.
+
+**Final pitch, now fully measured:** for agents WITH native capture, the oracle adds
+what pixels cannot say (C: 10/10 vs A: 9/10). For embedded agents WITHOUT capture —
+the niche no one else serves — snapdom alone delivers the winning configuration in one
+call: pixels + semantics + diffs of the same instant, no CDP, no permissions, CSP-proof
+(MV3 harness). Four arms, two days' spend, $2.12 total: A 9/10 · B 8/10 · C 10/10 ·
+**D 10/10 with the fewest steps**.

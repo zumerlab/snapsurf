@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "agent-oracle-harness",
+  "version": "0.0.1",
+  "description": "Private harness: the change oracle as a real MV3 content script",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["sdk.js", "driver.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

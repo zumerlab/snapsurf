@@ -123,3 +123,108 @@ None of this is fatal, and none of it was visible from inside the corpus. The ne
 step is fixing inherited geometry freezing and collapsing SVG internals — both cheap, both
 attack the largest measured failure — and then re-running this exact pass to see the
 numbers move.
+
+---
+
+# Visual field pass — three real sites, screenshots judged against the oracle's report
+
+Date: 2026-07-30 · Chromium 1280×800 · `scratchpad/field-visual.mjs` (Playwright, same
+page instance produces both the semantic report and the pixels; a model then judged the
+screenshots against the report — the first time the two channels were compared by eye).
+
+Also the first field run of the privacy layer (`privacy.redact`), same day it was fixed
+to cover the diff surface.
+
+| site | nodes | inspect p50* | rest-noise FPs | privacy leaks | interaction verdict |
+|---|---|---|---|---|---|
+| es.wikipedia.org/wiki/Buenos_Aires | 11 351 | 6 796 ms | **0** | 0 (1 879 redactions) | ✅ typing in search: 119 `added` = the suggestion dropdown; `becameCovered` names exactly the links the dropdown occludes |
+| lanacion.com.ar | 3 135 | 1 400 ms | **0** | 0 | ✅ opening SECCIONES: `becameVisible` = drawer links + "Cerrar", `becameCovered` = the header strip behind the overlay — 1:1 with the screenshot |
+| mercadolibre.com.ar | 1 916 | 1 102 ms | **0** | 0 | ✅ honest negative: programmatic fill fired no dropdown and the oracle invented no `added`; the 28 `moved` are the carousel genuinely advancing (visible in before/after) |
+
+\* `inspect()` = walk + full snapdom capture, unlike the walk-only numbers of the first
+field pass. Wikipedia confirms the known ceiling: big documents need scoping.
+
+Rest-noise went 3-of-5-failing (first pass) → 0-of-3 here; mercadolibre's intermittent
+carousel noise did not reproduce at rest, only across the interaction window, where it is
+a true positive.
+
+## New finding — the hidden-input proxy pattern is invisible to the map
+
+Set-of-Mark overlays (agentMap drawn onto the live page) showed near-complete coverage on
+all three sites, with one systematic hole: **Wikipedia's hamburger menu and every
+"Apariencia" radio are missing**. Probed cause: Wikimedia Codex (like most design
+systems) renders the native `<input>` at `opacity: 0` with a styled `<label>` on top —
+the walk drops the input as invisible, and a label is not classified interactive. Any
+custom checkbox/radio/toggle built this way vanishes from the agent map. Fix direction:
+a hidden enabled input with an associated visible label should surface as interactive at
+the label's box.
+
+Evidence: `field-visual/<site>/{1-before,2-marks,3-after}.png` + `report.json` in the
+session scratchpad.
+
+## Re-run after the two fixes (same day)
+
+Both fixes landed (`snapshot.js`) with regression tests (`test/field-fixes.test.js`, suite
+46/46), and the pass was re-run with github and stripe added:
+
+- **Hidden-input proxy: fixed.** A control at `opacity:0` whose associated label is
+  visible is kept (labels also stopped counting as their own control's occluder;
+  `visibility:hidden`/`display:none` controls are still dropped). On the live page the
+  map gained exactly the missing controls: `button "Menú principal"` and all 8
+  Apariencia radios, confirmed on the overlay screenshot.
+- **Geometry freeze now inherits.** `frozenGeo` propagates from an animating ancestor
+  through the walk. **github at-rest false positives: 162 → 0.**
+- Stripe stays noisy at rest (276) — the first pass's honest verdict stands: the page
+  genuinely keeps settling via JS-driven animation `getAnimations()` cannot see. This is
+  the documented limit of zero-config noise, not a walker bug.
+- Everything else held: 0 rest noise on wikipedia/lanacion/mercadolibre, 0 privacy leaks
+  on all five sites, unobservable regions honestly reported (4/6/3 on the iframe-heavy
+  pages).
+
+---
+
+# Free validation round — wide sweep, real MV3, and the priced model experiment
+
+Date: 2026-07-30 · everything below cost $0.
+
+## Wide sweep — 35 sites (`experiment/sweep.mjs`, results in `results/sweep.json`)
+
+The zero-config noise claim, measured beyond hand-picked pages: **18/35 sites report
+ZERO changes at rest; the other 17 are almost entirely decorative motion** (marquees,
+carousels, settling heros: slack 575, stripe 292, cloudflare 282, react.dev 219,
+figma "Marquesina con logotipo" 104). No site failed the walk; 1/36 (zalando) failed to
+load at all. Perf on real homepages: inspect p50 958 ms, worst 17 s (wikipedia
+Argentina, 19 215 nodes — the known scoping ceiling).
+
+The number that reframes the product's economics: per-turn payload to a model,
+**incremental turn p50 = 19 tokens vs 1 365 for a 1280×800 screenshot** (~70× cheaper).
+The FIRST turn (full outline) costs MORE than a screenshot on 31/35 sites (p50 13.8 k
+tokens, wikipedia 394 k). Conclusion: the outline is a once-per-page cost that needs
+scoping/truncation; the diff turns are where the product wins. This also settles the §7
+checkpoint-size complaint: the checkpoint is *stored*, never sent — the wire the model
+pays for is the diff, and the diff is tiny.
+
+Noise implication: `moved`/`resized` from decorative motion is the dominant FP class in
+the wild. A first-class suppression (`noise.ignore` selectors, or scoped inspect roots)
+is justified by data, not just by the stripe anecdote.
+
+## Real MV3 extension (`experiment/mv3/`, results in `results/mv3.json`)
+
+The product's actual environment, previously only simulated with `bypassCSP`: a real
+MV3 content script in the isolated world, page CSP fully enforced. github + stripe +
+wikipedia all pass: walk, capture, checkpoint and rest-gate all work, and
+`probeCapabilities` reports `inlineStyles/dataUrls/blobUrls = true` under github's
+strict CSP — the isolated-world hypothesis from the first field pass is now measured
+fact. (github showed 86 rest FPs here vs 0 in the Playwright pass: it served a
+different homepage variant with a JS/video hero — the stripe class of genuinely-moving
+page, not an environment difference.)
+
+## Priced model experiment, validated dry (`experiment/realloop.mjs --dry`)
+
+Five real-site tasks (wikipedia search + link-nav, ebay search, python-docs search,
+npm search), each proven completable by a scripted golden path before any model pays
+for it; success is a URL predicate, never the model's claim. Three arms: screenshot /
+oracle / both. Discarded during validation: mercadolibre (captcha wall on results
+navigation), lanacion (google vignette interstitial), MDN (A/B-served homepage without
+a search input). Budget for the full run (2 reps × ≤5 steps × 3 arms × 5 tasks):
+**$1.21 sonnet-5 · $1.81 sonnet-4.6 · $3.02 opus-5 · $6.04 fable-5 · $0.60 haiku-4.5.**
