@@ -36,7 +36,11 @@ const checkpoint = before.checkpoint()
 
 await doSomething()                                  // the agent acts
 
-const ui = await agent.inspect(root, { previous: checkpoint, noise: 'agent' })
+const ui = await agent.inspect(root, {
+  previous: checkpoint,
+  noise: 'agent',
+  privacy: { redact: ['password', 'email', 'delete account'] },
+})
 ui.changed              // true
 ui.changes              // [{ id, kind: 'state', before: {disabled:true}, after: {disabled:false}, match: 'exact' }, …]
 ui.actionabilityDelta   // { becameCovered: ['n_11','n_12'], becameVisible: [] }

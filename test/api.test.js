@@ -1,3 +1,5 @@
+/* global document */
+
 /**
  * Phase 4 acceptance: the query API (§6) over the snapshot, resolve() as the only
  * bridge to the live DOM, and the surface guarantees the master prompt fixes —
@@ -78,6 +80,20 @@ describe('query API + resolve', () => {
       expect(['exact', 'strong', 'ambiguous', 'new', 'removed']).toContain(c.match)
       expect(JSON.stringify(c)).not.toMatch(/0\.\d{2,}/)
     }
+  })
+
+  it('privacy rules redact configured labels and text before the semantic output leaves the page', async () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<button>Delete account</button><input type="text" name="email" value="agent@example.com">'
+    document.body.appendChild(root)
+
+    const ui = await inspect(root, { privacy: { redact: ['delete account', 'email'] } })
+    const json = JSON.stringify(ui.checkpoint())
+
+    expect(ui.context).not.toContain('Delete account')
+    expect(ui.context).toContain('[redacted]')
+    expect(json).not.toContain('agent@example.com')
+    expect(json).not.toContain('Delete account')
   })
 
   it('checkpoint is compact, versioned, image-free, DOM-free and secret-free', async () => {

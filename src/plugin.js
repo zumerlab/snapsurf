@@ -1,3 +1,5 @@
+/* global document, Image, Blob, URL, clearTimeout, setTimeout */
+
 /**
  * The semantic visitor, as a snapDOM lifecycle plugin.
  * PRIVATE, PROPRIETARY, NEVER PUBLISHED. See package.json / LICENSE.
@@ -22,6 +24,77 @@ import { makeCheckpoint, inflateCheckpoint } from './checkpoint.js'
 import { makeQueryApi } from './query.js'
 
 let runCounter = 0
+
+// ── Privacy (§9): rule-based redaction of every string that leaves the page ──────────
+// Rules only — no sensitive-looking heuristics. Input VALUES never need one: snapshot.js
+// hashes the raw value and stores only a mask, so the only strings that can leak are
+// names/labels/text, and those the caller names explicitly.
+function normalizePrivacyRules(privacy) {
+  const redact = []
+  if (privacy && Array.isArray(privacy.redact)) {
+    for (const item of privacy.redact) {
+      const value = String(item || '').trim().toLowerCase()
+      if (value) redact.push(value)
+    }
+  }
+  return redact
+}
+
+function redactText(value, rules) {
+  if (typeof value !== 'string' || !value.trim()) return value
+  const lower = value.toLowerCase()
+  for (const rule of rules) {
+    if (lower.includes(rule)) return '[redacted]'
+  }
+  return value
+}
+
+/** Redact the readable fields of a node/ref/change entry ({name?, label?, coveredBy?}). */
+function redactRef(ref, rules) {
+  const next = { ...ref }
+  if (next.name) next.name = redactText(next.name, rules)
+  if (next.label) next.label = redactText(next.label, rules)
+  if (next.coveredBy) next.coveredBy = redactRef(next.coveredBy, rules)
+  return next
+}
+
+function redactState(state, rules) {
+  const out = {}
+  for (const [k, v] of Object.entries(state)) out[k] = typeof v === 'string' ? redactText(v, rules) : v
+  return out
+}
+
+export function applyPrivacy(snapshot, privacy) {
+  const rules = normalizePrivacyRules(privacy)
+  if (!snapshot || !rules.length) return snapshot
+  const nodes = new Map()
+  for (const [id, n] of snapshot.nodes) {
+    const next = redactRef(n, rules)
+    if (next.text) next.text = redactText(next.text, rules)
+    if (next.state) next.state = redactState(next.state, rules)
+    nodes.set(id, next)
+  }
+  return { ...snapshot, nodes }
+}
+
+/** The diff is the product's main output — it must honor the same rules as the views.
+ *  Matching is untouched: it rides fingerprints/hashes, never the readable strings. */
+export function applyDiffPrivacy(diff, privacy) {
+  const rules = normalizePrivacyRules(privacy)
+  if (!diff || !rules.length) return diff
+  const changes = diff.changes.map((c) => {
+    const next = redactRef(c, rules)
+    if (next.beforeName) next.beforeName = redactText(next.beforeName, rules)
+    if (next.before) next.before = redactState(next.before, rules)
+    if (next.after) next.after = redactState(next.after, rules)
+    return next
+  })
+  const delta = diff.actionabilityDelta && {
+    becameCovered: diff.actionabilityDelta.becameCovered.map((r) => redactRef(r, rules)),
+    becameVisible: diff.actionabilityDelta.becameVisible.map((r) => redactRef(r, rules)),
+  }
+  return { ...diff, changes, actionabilityDelta: delta }
+}
 
 /** Relabel matched after-nodes to their stable before ids (§2: identity persists). */
 export function applyStableIds(snapshot, idMap) {
@@ -106,7 +179,9 @@ export function probeCapabilities() {
       document.head.appendChild(st)
       caps.inlineStyles = !!(st.sheet && st.sheet.cssRules.length)
       st.remove()
-    } catch { }
+    } catch {
+      // Capability probing is best-effort; failures simply leave the flag off.
+    }
     const tryImg = (src) => new Promise((resolve) => {
       const img = new Image()
       const done = (ok) => { clearTimeout(t); resolve(ok) }
@@ -121,7 +196,9 @@ export function probeCapabilities() {
       const u = URL.createObjectURL(blob)
       caps.blobUrls = await tryImg(u)
       URL.revokeObjectURL(u)
-    } catch { }
+    } catch {
+      // Blob URL probing is best-effort and should not break the inspection flow.
+    }
     return caps
   })()
   return capsPromise
@@ -171,8 +248,11 @@ export const getLastSnapshot = () => LAST_SNAPSHOT
  */
 export function buildUi(observation, options = {}) {
   const { snapshot, diff } = observation
-  const query = makeQueryApi(snapshot)
-  LAST_SNAPSHOT = snapshot
+  const viewSnapshot = applyPrivacy(snapshot, options.privacy)
+  const viewDiff = applyDiffPrivacy(diff, options.privacy)
+  const querySnapshot = snapshot
+  const query = makeQueryApi(querySnapshot)
+  LAST_SNAPSHOT = querySnapshot
 
   // Regions whose semantics this walk cannot read (canvas pixels, blocked iframes).
   // This must travel WITH the change report: "nothing changed in the DOM" is a
@@ -180,31 +260,31 @@ export function buildUi(observation, options = {}) {
   // showed a model concluding "nothing happened" on a canvas redraw. The honest report
   // says: nothing changed that I can see, AND here is what I cannot see.
   const unobservable = []
-  for (const id of snapshot.order) {
-    const n = snapshot.nodes.get(id)
+  for (const id of viewSnapshot.order) {
+    const n = viewSnapshot.nodes.get(id)
     if (n.semanticsAvailable === false) {
       unobservable.push({ id: n.id, role: n.role, sourceType: n.sourceType, bbox: n.bbox, rasterAvailable: !!n.rasterAvailable })
     }
   }
 
   return {
-    rootHash: snapshot.rootHash,
+    rootHash: viewSnapshot.rootHash,
     unobservable,
-    context: renderContext(snapshot),
-    agentMap: renderAgentMap(snapshot),
+    context: renderContext(viewSnapshot),
+    agentMap: renderAgentMap(viewSnapshot),
 
-    changed: diff ? diff.changed : undefined,
-    changes: diff ? diff.changes : undefined,
-    actionabilityDelta: diff ? diff.actionabilityDelta : undefined,
+    changed: viewDiff ? viewDiff.changed : undefined,
+    changes: viewDiff ? viewDiff.changes : undefined,
+    actionabilityDelta: viewDiff ? viewDiff.actionabilityDelta : undefined,
 
-    checkpoint: (opts) => makeCheckpoint(snapshot, { excludeText: options.excludeText, ...(opts || {}) }),
+    checkpoint: (opts) => makeCheckpoint(viewSnapshot, { excludeText: options.excludeText, ...(opts || {}) }),
 
     getByRole: query.getByRole,
     getByText: query.getByText,
     getByLabel: query.getByLabel,
     getByTestId: query.getByTestId,
 
-    __snapshot: snapshot,
+    __snapshot: querySnapshot,
   }
 }
 
@@ -217,7 +297,8 @@ export function buildUi(observation, options = {}) {
  * never have. Suspending the fast paths is the correct trade for a plugin whose whole
  * job is to read fresh state.
  *
- * @param {{previous?: object, noise?: any, excludeText?: boolean}} [options]
+ * @param {{previous?: object, noise?: any, excludeText?: boolean,
+ *          privacy?: { redact?: string[] }}} [options]
  */
 export function agentOracle(options = {}) {
   const state = { observation: null, ui: null }

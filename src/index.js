@@ -35,7 +35,7 @@ export { agentOracle }
  *
  * @param {Element} root
  * @param {{previous?: object, noise?: 'agent'|'none'|object, excludeText?: boolean,
- *          capture?: object}} [options]
+ *          privacy?: { redact?: string[] }, capture?: object}} [options]
  */
 export async function inspect(root, options = {}) {
   if (!root || root.nodeType !== 1) throw new Error('[agent.inspect] element required')
