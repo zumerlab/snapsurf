@@ -1,0 +1,17 @@
+{
+  "changed": true,
+  "mustInclude": [
+    { "kind": "moved", "role": "listitem", "name": "Bandeja de entrada" },
+    { "kind": "moved", "role": "listitem", "name": "Papelera" },
+    { "kind": "moved", "role": "listitem", "minCount": 6 }
+  ],
+  "forbidKinds": ["content", "added", "removed", "state", "style", "possible-replacement"],
+  "allowKindsOnly": ["moved"],
+  "stableIdQueries": [
+    { "role": "listitem", "name": "Enviados" },
+    { "role": "listitem", "name": "Spam" }
+  ],
+  "matchClassFor": [
+    { "role": "listitem", "name": "Borradores", "expect": ["exact", "strong"] }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "changed": true,
+  "mustInclude": [{ "kind": "content", "role": "status", "name": "enviado" }],
+  "allowKindsOnly": ["content"],
+  "maxChanges": 1,
+  "stableIdQueries": [
+    { "role": "button", "name": "Copiar" },
+    { "role": "button", "name": "Cerrar" }
+  ]
+}

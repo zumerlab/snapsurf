@@ -1,0 +1,13 @@
+{
+  "changed": false,
+  "expectEmpty": true,
+  "stableIdQueries": [
+    { "role": "button", "name": "Refresh" },
+    { "role": "button", "name": "Archive" },
+    { "role": "heading", "name": "Inbox" }
+  ],
+  "matchClassFor": [
+    { "role": "button", "name": "Refresh", "expect": ["exact", "strong"] },
+    { "role": "button", "name": "Archive", "expect": ["exact", "strong"] }
+  ]
+}

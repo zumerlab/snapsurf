@@ -1,0 +1,12 @@
+{
+  "changed": true,
+  "mustInclude": [{ "kind": "state", "role": "button", "name": "Guardar cambios" }],
+  "allowKindsOnly": ["state"],
+  "forbidKinds": ["content", "added", "removed"],
+  "maxChanges": 1,
+  "stableIdQueries": [
+    { "role": "button", "name": "Guardar cambios" },
+    { "role": "button", "name": "Cancelar" }
+  ],
+  "matchClassFor": [{ "role": "button", "name": "Guardar cambios", "expect": ["exact"] }]
+}

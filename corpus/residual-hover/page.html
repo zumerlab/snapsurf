@@ -1,0 +1,30 @@
+<style>
+  .toolbar button {
+    color: #1a1a2e;
+    background-color: #e8e8f0;
+    border: 1px solid #b0b0c8;
+    font: 500 14px/1.4 Arial, sans-serif;
+    padding: 8px 18px;
+    border-radius: 4px;
+  }
+  /* Hover recolors the button — legitimate style change IF it ever fired,
+     but this fixture never hovers. */
+  .toolbar button:hover {
+    background-color: #4a6cf6;
+    color: #ffffff;
+  }
+  /* Focus produces ONLY a ring: outline + box-shadow, both deliberately
+     outside the visual style subset. No color/background/border change. */
+  .toolbar button:focus,
+  .toolbar button:focus-visible {
+    outline: 3px solid #4a6cf6;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(74, 108, 246, 0.25);
+  }
+</style>
+<div class="toolbar">
+  <h2>Documento</h2>
+  <p>Acciones disponibles para el documento actual.</p>
+  <button data-testid="publish">Publicar</button>
+  <button data-testid="archive">Archivar</button>
+</div>

@@ -1,0 +1,25 @@
+<style>
+  .stack-serif { font-family: Georgia, 'Times New Roman', serif; }
+  .stack-sans { font-family: Arial, Helvetica, sans-serif; }
+  /* Fixed height: the swap reflows the INSIDE of the reader without changing its
+     outer box, so ancestors and siblings (header/footer) genuinely keep their
+     geometry — any change reported on them is propagation, i.e. a bug. */
+  #reader { height: 260px; overflow: hidden; padding: 8px; }
+  #reader button { font: inherit; }
+</style>
+<header>
+  <h1>Boletín semanal</h1>
+  <nav><a href="#archivo">Archivo</a></nav>
+</header>
+<section id="reader" role="region" aria-label="Lectura" class="stack-serif">
+  <h2>Tipografía tardía</h2>
+  <p>Cuando la fuente web termina de cargar, el contenedor cambia de pila serif a
+    sans y todo el texto interior se vuelve a medir. Las palabras ocupan anchos
+    distintos, los renglones se cortan en otros puntos y los elementos que siguen
+    al párrafo se desplazan hacia arriba o hacia abajo según las nuevas métricas
+    de la tipografía aplicada al bloque de lectura.</p>
+  <button type="button">Seguir leyendo</button>
+</section>
+<footer>
+  <p>Pie estable: nada de esto cambia con la fuente del lector.</p>
+</footer>

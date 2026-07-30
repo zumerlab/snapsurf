@@ -1,0 +1,17 @@
+{
+  "changed": true,
+  "mustInclude": [
+    { "kind": "added", "role": "listitem", "name": "Foxtrot", "minCount": 1 },
+    { "kind": "moved", "role": "listitem", "minCount": 3 }
+  ],
+  "forbidKinds": ["removed", "content", "state", "style", "possible-replacement"],
+  "allowKindsOnly": ["added", "moved", "resized"],
+  "stableIdQueries": [
+    { "role": "listitem", "name": "Charlie" },
+    { "role": "listitem", "name": "Echo" }
+  ],
+  "matchClassFor": [
+    { "role": "listitem", "name": "Charlie", "expect": ["exact", "strong"] },
+    { "role": "listitem", "name": "Delta", "expect": ["exact", "strong"] }
+  ]
+}

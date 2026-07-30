@@ -1,0 +1,17 @@
+{
+  "changed": true,
+  "mustInclude": [
+    { "kind": "moved", "role": "dialog", "name": "Session expiring" }
+  ],
+  "forbidKinds": ["added", "removed", "content", "state", "style", "possible-replacement"],
+  "allowKindsOnly": ["moved", "resized"],
+  "stableIdQueries": [
+    { "role": "dialog", "name": "Session expiring" },
+    { "role": "button", "name": "Stay signed in" },
+    { "role": "heading", "name": "Session expiring" }
+  ],
+  "matchClassFor": [
+    { "role": "dialog", "name": "Session expiring", "expect": ["exact", "strong"] },
+    { "role": "button", "name": "Stay signed in", "expect": ["exact", "strong"] }
+  ]
+}

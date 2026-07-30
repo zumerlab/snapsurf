@@ -1,0 +1,8 @@
+{
+  "changed": false,
+  "expectEmpty": true,
+  "stableIdQueries": [
+    { "role": "button", "name": "Publicar" },
+    { "role": "button", "name": "Archivar" }
+  ]
+}

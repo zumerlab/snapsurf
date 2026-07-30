@@ -1,0 +1,13 @@
+{
+  "changed": true,
+  "mustInclude": [
+    { "kind": "added", "role": "dialog", "name": "Second dialog" },
+    { "kind": "added", "role": "button", "name": "Confirm" }
+  ],
+  "allowKindsOnly": ["added"],
+  "actionability": { "becameCoveredMin": 1 },
+  "stableIdQueries": [
+    { "role": "button", "name": "Close first dialog" },
+    { "role": "dialog", "name": "First dialog" }
+  ]
+}

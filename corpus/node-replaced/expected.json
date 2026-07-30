@@ -1,0 +1,12 @@
+{
+  "changed": true,
+  "mustInclude": [
+    { "kind": "possible-replacement", "name": "Gamma" }
+  ],
+  "forbidKinds": ["content"],
+  "allowKindsOnly": ["possible-replacement"],
+  "stableIdQueries": [
+    { "role": "button", "name": "Open Alpha" },
+    { "role": "button", "name": "Open Beta" }
+  ]
+}

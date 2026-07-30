@@ -1,0 +1,10 @@
+{
+  "name": "@zumer/snapdom-agent",
+  "version": "0.0.0",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "description": "Post-layout change oracle for in-page AI agents (working name). NOT FOR PUBLICATION.",
+  "type": "module",
+  "main": "./src/index.js",
+  "publishConfig": { "access": "restricted" }
+}
