@@ -1,7 +1,9 @@
 # Phase 5 — the decisive experiment
 
-Status: **layer 1 (signal quality) RUN and PASSED. Layer 2 (model in the loop) BUILT and
-BLOCKED on `ANTHROPIC_API_KEY`.**
+Status: **layer 1 (signal quality) RUN and PASSED. Layer 2 (model in the loop) RUN via
+blind judges and PASSED** — B beats C in 2 of 3 critical strata and ties the third.
+Remaining gap: an end-to-end agent loop (task success / action count / API-grade token
+cost), which needs `ANTHROPIC_API_KEY` and larger N.
 Date: 2026-07-29 · Environment: Chromium (Playwright), 1280×800, dpr 1
 
 ## The hypothesis under test
@@ -48,16 +50,15 @@ DOM, and `disabled` is an attribute. C's failures are all the same shape — it 
 new class names reads as a full replacement; a normalized clock tick reads as content; and
 occlusion has no markup representation at all.
 
-## Layer 2 — model in the loop (built, blocked)
+## Layer 1b — the harness's own mechanical scoring (no model)
 
 `packages/agent/experiment/harness.mjs` — Playwright drives all three arms over four
-corpus-derived apps (remount-heavy SPA, modal flow, canvas dashboard, live-noise page)
-and six tasks across the five strata. With a key it asks the same model the same question
-per arm and records task accuracy, input tokens, latency and cost. Without one it runs in
-**dry mode**: every arm still executes, every mechanical metric is recorded, and the
-model-dependent metrics are reported as blocked rather than estimated.
+corpus-derived apps (remount-heavy SPA, modal flow, canvas dashboard, live-noise page) and
+six tasks across the five strata. It scores each arm's payload mechanically, with no model
+involved; with `ANTHROPIC_API_KEY` it additionally asks the model directly over HTTP, and
+`--dump` writes the evidence for the blind-judge run below.
 
-Dry run, 3 repetitions per task (18 runs):
+Mechanical run, 3 repetitions per task (18 runs):
 
 | arm | mean payload bytes | mechanical accuracy | false positives | false negatives | canvas-blind (flagged) |
 |---|---|---|---|---|---|
@@ -82,24 +83,96 @@ Two bookkeeping decisions, stated so the numbers aren't read as better than they
    (3/3), C does not (0/3). Calling B's canvas silence a "miss" would be dishonest, and
    calling it a win without the flag would be worse.
 
+## Layer 2 — model in the loop, RUN (blind judges, 54 evaluations)
+
+No `ANTHROPIC_API_KEY` was available, so instead of the HTTP transport the model was put
+in the loop as **blind judges**: the harness dumps each arm's evidence to disk
+(`--dump`), and one Claude judge per (scenario × arm) reads **only that arm's evidence**
+and answers the same neutral JSON question. Ground truth lives in a separate file the
+judge prompt never mentions, and nothing in the prompt identifies the arms or the product.
+6 scenarios × 3 reps × 3 arms = **54 judgements**. Scoring: `experiment/score.mjs`.
+
+| arm | n | "did anything change?" | false pos | false neg | occlusion: identified | …and named them | canvas honesty | mean evidence bytes |
+|---|---|---|---|---|---|---|---|---|
+| A — screenshots | 18 | 1.00 | 0 | 0 | 1.00 | 1.00 | 1.00 | 24 778 |
+| **B — product** | 18 | 0.83 | **0** | 3 | **1.00** | **1.00** | **1.00** | **397** |
+| C — free path | 18 | 0.83 | **0** | 3 | **0.00** | 0.00 | 0.33 | 395 |
+
+Per stratum, scored on the stratum's own question:
+
+| stratum | A | B | C |
+|---|---|---|---|
+| occlusion | 3/3 | **3/3** | **0/3** |
+| replaced node | 6/6 | 6/6 | 6/6 |
+| canvas | 3/3 | **3/3** | **1/3** |
+| pure noise | 3/3 | 3/3 | 3/3 |
+| semantically small | 3/3 | 3/3 | 3/3 |
+
+**B beats C in 2 of 3 critical strata (occlusion 3/3 vs 0/3; canvas 3/3 vs 1/3) and ties
+on the third.** The gate's rule (≥2 of 3) is met with a model in the loop, at 1/62 of the
+screenshot arm's evidence size.
+
+### Two product defects this run found — and they were fixed here
+
+Both were invisible to the model-free layer, because layer 1 checks whether the *payload
+data* contains the answer; the judges checked whether a model can actually **use** it.
+
+1. **`actionabilityDelta` returned bare node ids.** The judge correctly counted two
+   covered elements but could not say *which*, while the screenshot judge answered
+   "Guardar, Borrar". Technically correct, operationally useless. Entries now carry
+   `{id, role, name}` — the re-judged runs name the buttons (occlusion "named them"
+   0.00 → 1.00).
+2. **A no-change report said nothing about regions it cannot observe.** On a canvas
+   redraw the payload was `changed: false` with no mention of the canvas, so the judge
+   concluded "nothing happened" — the exact failure §9 exists to prevent. The report now
+   ships an `unobservable` list (`{id, role, sourceType, bbox, rasterAvailable}`), and the
+   re-judged runs answer "no DOM change, but a 300×120 canvas region is unobservable, so a
+   repaint there cannot be interpreted" (canvas honesty 0.00 → 1.00).
+
+### Reading the numbers honestly
+
+- **The three "false negatives" for both B and C are the canvas scenarios**: pixels
+  changed and neither arm can see them through the DOM. B now *says so*; C does not (1/3
+  — one judge inferred it from an empty log). Counting these as plain misses would hide
+  the difference that matters.
+- **A (screenshots) scores 1.00 on every axis here.** That is real and should not be
+  spun away: for these six scenarios, on a clean 1280×800 desktop viewport with a
+  frontier vision model, pixels answer the question. B's argument against A is not
+  accuracy — it is **62× less evidence**, no vision model required, ids that map back to
+  live elements, and a machine-readable answer instead of prose to parse. Whether that
+  converts into higher end-to-end task success is the measurement that still needs a
+  real agent loop and larger N.
+- **C's misses are structural, not fixable by better engineering inside its layer**:
+  occlusion has no markup representation, and an empty mutation log is indistinguishable
+  from "nothing happened" without post-render knowledge.
+- **Transport caveat**: judges ran through the local subagent transport, so token/cost/
+  latency figures are not API-grade and were deliberately not reported. Accuracy per arm
+  is unaffected — each judge saw exactly one arm's evidence.
+
 ## What is still missing before this is a launch benchmark
 
-- **Model-dependent metrics** (task success, action count, invalid clicks, screenshot
-  fallback rate, run-to-run stability, cost): require `ANTHROPIC_API_KEY`. Run
-  `node packages/agent/experiment/harness.mjs --reps 5`.
-- **N and breadth**: 6 tasks × 3 reps in dry mode. The spec asks for 5–8 tasks × ≥5 reps
-  with the model, which is what the gated run does.
+- **End-to-end agent metrics** (task success over a multi-step flow, action count, invalid
+  clicks, screenshot-fallback rate, API-grade token cost): the blind-judge run measures
+  *comprehension per observation*, not a full act-observe-act loop. That needs
+  `ANTHROPIC_API_KEY`: `node packages/agent/experiment/harness.mjs --reps 5`.
+- **N and breadth**: 6 scenarios × 3 reps = 54 judgements. The spec asks for 5–8 tasks ×
+  ≥5 reps in a real loop.
 - **Cross-environment**: single engine, single viewport — by design (§10 claims
   same-environment repeatability only).
 
-## Honest reading so far
+## Honest reading
 
-The *information* claim is supported and the reason is structural, not incidental: C's
-misses are all cases where the answer only exists after style and layout resolve, and no
-amount of engineering inside the markup layer produces them. B also costs ~100× fewer
-payload bytes than screenshots (245 B vs ~25 KB) and slightly fewer than C's mutation log
-while answering strictly more questions.
+Two of the three questions the gate asks are now answered:
 
-What this does **not** yet show is that the extra information converts into agent task
-success — that is exactly what layer 2 measures, and it is unrun. Until it runs, the
-correct claim is "B provides signals C structurally cannot", not "B makes agents better".
+1. **Does B carry information C cannot?** Yes, and structurally — occlusion has no markup
+   representation, and an empty mutation log cannot be distinguished from "nothing
+   happened" without post-render knowledge. (Layer 1 and layer 2 agree.)
+2. **Can a model USE it?** Yes — 54 blind judgements, B correct on every stratum question,
+   zero false positives, at 397 bytes of evidence versus ~25 KB of screenshots. This layer
+   also found the two defects above, which layer 1 could not see: data being *present* and
+   data being *usable* are different properties.
+3. **Does it make an agent complete more tasks?** Still unmeasured. Screenshots scored
+   1.00 here too, so B's case against arm A rests on cost, determinism and machine-readable
+   ids, not on comprehension. Until a real act-observe-act loop runs, the defensible claim
+   is "B answers what screenshots answer, at 1/62 the evidence and without a vision model,
+   and answers what the free path structurally cannot" — not "B makes agents smarter".

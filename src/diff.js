@@ -29,9 +29,14 @@ export function diffSnapshots(before, after) {
   const bGet = (id) => (before.nodes instanceof Map ? before.nodes.get(id) : before.nodes[id])
   const { matches, removedIds, addedIds, replacements } = matchSnapshots(before, after)
   const changes = []
+  // Actionability entries carry role+name, not a bare id: a consumer (or a model) must be
+  // able to tell WHICH button stopped being clickable without cross-referencing anything.
+  // Blind-judge runs showed bare ids are unusable — the judge could count the covered
+  // elements but not name them, while a screenshot judge said "Guardar, Borrar".
   const becameCovered = []
   const becameVisible = []
   const idMap = new Map()
+  const ref = (id, node) => ({ id, role: node.role, name: node.name || undefined })
 
   const inReplacement = new Set()
   for (const r of replacements) {
@@ -82,8 +87,8 @@ export function diffSnapshots(before, after) {
     const bCov = !!b.covered, aCov = !!a.covered
     const bVis = b.visible !== false, aVis = a.visible !== false
     if ((a.interactive || b.interactive)) {
-      if ((!bCov && aCov) || (bVis && !aVis)) becameCovered.push(m.beforeId)
-      else if ((bCov && !aCov) || (!bVis && aVis)) becameVisible.push(m.beforeId)
+      if ((!bCov && aCov) || (bVis && !aVis)) becameCovered.push(ref(m.beforeId, a))
+      else if ((bCov && !aCov) || (!bVis && aVis)) becameVisible.push(ref(m.beforeId, a))
     }
   }
 
@@ -91,7 +96,7 @@ export function diffSnapshots(before, after) {
     if (inReplacement.has(id)) continue
     const a = after.nodes.get(id)
     changes.push({ id, kind: 'added', match: 'new', role: a.role, name: a.name || undefined })
-    if (a.interactive && a.visible && !a.covered) becameVisible.push(id)
+    if (a.interactive && a.visible && !a.covered) becameVisible.push(ref(id, a))
   }
   for (const id of removedIds) {
     if (inReplacement.has(id)) continue

@@ -33,6 +33,7 @@ const REPS = Number(flag('reps', 5))
 const MODEL = String(flag('model', 'claude-sonnet-4-5'))
 const KEY = process.env.ANTHROPIC_API_KEY
 const DRY = !KEY || flag('dry', false) === true
+const DUMP = flag('dump', false) === true
 
 /* ── Apps: corpus-derived, one per failure mode the strata care about ─────────── */
 const APPS = {
@@ -104,7 +105,8 @@ const APPS = {
  */
 const TASKS = [
   { id: 'modal-covers', app: 'modal-flow', click: '[data-testid="delete"]',
-    truth: { userVisibleChange: true, mustReportCovered: ['save', 'delete'] },
+    // Either identifier counts: a caller may cite the test id or the visible label.
+    truth: { userVisibleChange: true, mustReportCovered: [['save', 'guardar'], ['delete', 'borrar']] },
     stratum: 'occlusion' },
   { id: 'remount-noop', app: 'remount-spa', click: '[data-testid="refresh"]',
     truth: { userVisibleChange: false }, stratum: 'replaced node' },
@@ -215,6 +217,18 @@ async function run() {
             m.correct = parsed.userVisibleChange === task.truth.userVisibleChange
           } catch { m.parsed = null; m.correct = false }
         }
+      }
+      // --dump: write each arm's evidence to disk, blinded, so an external judge (any
+      // model, any transport) can be scored without this process holding a key.
+      if (DUMP) {
+        const base = join(OUT, 'evidence', `${task.id}__rep${rep}`)
+        await mkdir(base, { recursive: true })
+        await writeFile(join(base, 'before.png'), shotBefore)
+        await writeFile(join(base, 'after.png'), shotAfter)
+        await writeFile(join(base, 'armB.json'), JSON.stringify(payloads.B.payload, null, 1))
+        await writeFile(join(base, 'armC.json'), JSON.stringify(payloads.C.payload, null, 1))
+        // Ground truth is written SEPARATELY so a judge prompt can never include it.
+        await writeFile(join(base, '_truth.json'), JSON.stringify({ task: task.id, stratum: task.stratum, truth: task.truth }, null, 1))
       }
       rows.push(row)
       await page.close()

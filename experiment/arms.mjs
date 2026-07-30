@@ -107,6 +107,9 @@ export async function armB(inspectFn, root, previous) {
     changed: ui.changed,
     changes: ui.changes,
     actionabilityDelta: ui.actionabilityDelta,
+    // Regions the DOM cannot answer for (canvas/blocked iframe): shipped alongside the
+    // diff so "no changes" is never mistaken for "nothing happened anywhere".
+    unobservable: ui.unobservable,
     // Localized context: only the regions that changed, not the whole outline — this is
     // what makes B cheap in tokens compared to shipping the full tree.
     context: localizedContext(ui),

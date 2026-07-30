@@ -153,8 +153,22 @@ export async function inspect(root, options = {}) {
 
   const query = makeQueryApi(snapshot)
 
+  // Regions whose semantics this walk cannot read (canvas pixels, blocked iframes).
+  // This must travel WITH the change report: "nothing changed in the DOM" is a
+  // dangerously incomplete answer when a chart may have repainted — blind-judge runs
+  // showed a model concluding "nothing happened" on a canvas redraw. The honest report
+  // says: nothing changed that I can see, AND here is what I cannot see.
+  const unobservable = []
+  for (const id of snapshot.order) {
+    const n = snapshot.nodes.get(id)
+    if (n.semanticsAvailable === false) {
+      unobservable.push({ id: n.id, role: n.role, sourceType: n.sourceType, bbox: n.bbox, rasterAvailable: !!n.rasterAvailable })
+    }
+  }
+
   const ui = {
     rootHash: snapshot.rootHash,
+    unobservable,
     context: renderContext(snapshot),
     agentMap: renderAgentMap(snapshot),
     capabilities: await probeCapabilities(),
