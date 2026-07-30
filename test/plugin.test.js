@@ -83,6 +83,20 @@ describe('agentOracle plugin', () => {
     expect((await second.toChanges()).changed).toBe(true)
   })
 
+  it('keeps the caller subtree when the engine runs the pipeline more than once', async () => {
+    // Field pass: on lanacion.com.ar, mercadolibre and stripe a single snapdom() call
+    // fired beforeClone twice — once for document.body, then once for documentElement.
+    // Keeping the last walk replaced the caller's page with <html> and the report came
+    // back empty. The first pass is the one that was asked for.
+    const el = app()
+    const oracle = agentOracle()
+    oracle.beforeClone({ element: el })
+    const asked = oracle.ui.context
+    oracle.beforeClone({ element: document.documentElement })
+    expect(oracle.ui.context).toBe(asked)
+    expect(oracle.ui.context).toContain('Guardar')
+  })
+
   it('reports the region an agent cannot read, and offers the raster instead (§9)', async () => {
     const el = app()
     const canvas = document.createElement('canvas')

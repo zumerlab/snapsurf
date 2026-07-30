@@ -230,6 +230,12 @@ export function agentOracle(options = {}) {
      * snapshot, the clone and therefore the pixels all describe one instant.
      */
     beforeClone(ctx) {
+      // A single snapdom() call can run the pipeline more than once — on real pages a
+      // pass over `document.body` is followed by one over `documentElement`. Keeping
+      // whichever ran last silently replaced the caller's subtree with `<html>`, which
+      // is how three of five field sites reported an empty snapshot. The first pass is
+      // the element the caller asked about; later passes are the engine's own business.
+      if (state.observation) return
       state.observation = observe(ctx.element, options)
       state.ui = buildUi(state.observation, options)
     },

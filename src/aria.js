@@ -70,6 +70,28 @@ export function computeAccessibleName(el) {
   return computeName(el).name
 }
 
+/** Tags whose text is code or metadata, never something a user reads. */
+const NON_TEXTUAL = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'])
+
+/**
+ * `textContent` includes the source of every inline `<script>` and `<style>` in the
+ * subtree, so a container that happens to hold a tracking snippet gets named after the
+ * snippet. Seen in the field on a real e-commerce home, where a section's name came back
+ * as "(function() { if (false) { var firstViewUrl = …". Walk text nodes and skip those.
+ * @param {Element} el
+ */
+export function visibleText(el) {
+  let out = ''
+  const walk = (node) => {
+    for (let c = node.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType === 3) out += c.nodeValue
+      else if (c.nodeType === 1 && !NON_TEXTUAL.has(c.tagName)) walk(c)
+    }
+  }
+  walk(el)
+  return out
+}
+
 /**
  * @param {Element} el
  * @returns {{name: string, explicit: boolean}} explicit = the name came from an
@@ -86,7 +108,7 @@ export function computeName(el) {
     const parts = labelledBy.split(/\s+/)
       .map((id) => doc.getElementById(id))
       .filter(Boolean)
-      .map((n) => norm(n.textContent))
+      .map((n) => norm(visibleText(n)))
       .filter(Boolean)
     if (parts.length) return { name: parts.join(' '), explicit: true }
   }
@@ -94,12 +116,12 @@ export function computeName(el) {
   if (el.id) {
     try {
       const label = el.ownerDocument.querySelector(`label[for="${CSS.escape(el.id)}"]`)
-      if (label) return { name: norm(label.textContent), explicit: true }
+      if (label) return { name: norm(visibleText(label)), explicit: true }
     } catch { }
   }
   const wrappingLabel = el.closest && el.closest('label')
   if (wrappingLabel && wrappingLabel !== el) {
-    const t = norm(wrappingLabel.textContent)
+    const t = norm(visibleText(wrappingLabel))
     if (t) return { name: t, explicit: true }
   }
 
@@ -117,6 +139,6 @@ export function computeName(el) {
   if (title) return { name: norm(title), explicit: true }
 
   // Content-derived name, capped: identity wants a fingerprint, not a transcript.
-  const text = norm(el.textContent)
+  const text = norm(visibleText(el))
   return { name: text.length > 80 ? text.slice(0, 80) : text, explicit: false }
 }

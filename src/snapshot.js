@@ -6,7 +6,7 @@
  * @module agent/snapshot
  */
 import { hash } from './hash.js'
-import { computeRole, computeName, NAME_FROM_CONTENT_ROLES } from './aria.js'
+import { computeRole, computeName, visibleText, NAME_FROM_CONTENT_ROLES } from './aria.js'
 import { normalizeText, isIgnored, collectAnimatedProps } from './noise.js'
 
 /** §3 initial visualStyleSubset — explicitly empirical; adjust only with corpus
@@ -278,7 +278,7 @@ export function takeSnapshot(root, noise) {
     const n = hitId ? nodes.get(hitId) : null
     // The occluding element's full text is the label an agent can act on ("the bar that
     // says Usamos cookies…"); a bare overlay div has no role and no accessible name.
-    const label = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)
+    const label = visibleText(el).replace(/\s+/g, ' ').trim().slice(0, 60)
     const name = n && n.name ? n.name : ''
     nodes.get(id).coveredBy = {
       ...(hitId ? { id: hitId } : {}),

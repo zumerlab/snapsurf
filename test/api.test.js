@@ -108,6 +108,36 @@ describe('query API + resolve', () => {
     expect(ui.capabilities).toHaveProperty('blobUrls')
   })
 
+  it('never names a node after the source code of a script inside it', async () => {
+    // Found in the field pass: a Mercado Libre container reported its accessible name as
+    // "(function() { if (false) { var firstViewUrl = …" — the inline tracking script's
+    // body, because content-derived names read `textContent`, which includes SCRIPT and
+    // STYLE descendants. It does not corrupt identity (a generic role takes no name from
+    // content) but it ships noise to the model in every outline and every change entry.
+    const root = document.createElement('div')
+    root.style.cssText = 'width:400px'
+    root.innerHTML = `
+      <div data-testid="promo">
+        <h3>Ofertas</h3>
+        <script>window.__tracking = { ts: 1700000000 }</script>
+        <style>.promo { color: red }</style>
+      </div>`
+    document.body.appendChild(root)
+
+    // The vector is the change report: `changes[].name` carries the node's accessible
+    // name whether or not the node is interactive.
+    const before = await inspect(root)
+    root.querySelector('[data-testid="promo"]').style.color = 'rgb(0, 128, 0)'
+    const ui = await inspect(root, { previous: before.checkpoint() })
+
+    const wire = JSON.stringify(ui.changes)
+    expect(ui.changes.length).toBeGreaterThan(0)
+    expect(wire).not.toContain('__tracking')
+    expect(wire).not.toContain('color: red')
+    // The visible text is still there.
+    expect(ui.context).toContain('Ofertas')
+  })
+
   it('rasterize() rides the same walk and returns a snapdom result', async () => {
     const root = app()
     const ui = await inspect(root)
