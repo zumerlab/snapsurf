@@ -228,3 +228,31 @@ oracle / both. Discarded during validation: mercadolibre (captcha wall on result
 navigation), lanacion (google vignette interstitial), MDN (A/B-served homepage without
 a search input). Budget for the full run (2 reps × ≤5 steps × 3 arms × 5 tasks):
 **$1.21 sonnet-5 · $1.81 sonnet-4.6 · $3.02 opus-5 · $6.04 fable-5 · $0.60 haiku-4.5.**
+
+---
+
+# Self-comparison: Claude driving both channels on the same 5 tasks (no API spend)
+
+Date: 2026-07-31 · The model in the loop was the Claude Code session itself — native
+browser tooling (Claude in Chrome: screenshots + coordinate clicks) vs the agent-browse
+harness (`packages/agent/tools/browse.mjs`, oracle only, zero pixels). Same 5 fresh
+tasks, alternating which arm went first.
+
+| task | native calls/images | oracle cmds/images | notes |
+|---|---|---|---|
+| HN top post → comments | 4 / 2 ✅ | 4 / 0 ✅ | even |
+| GitHub open-issue count | 2 / 1 ✅ | 4 / 0 ✅ | native wins STEPS (one glance); oracle still wins COST (~1.6k tok image vs ~0.4k grepped text) |
+| eBay search → first item | 8 / 3 ✅ | 9 / 0 ✅ | popup-follow gap found+fixed |
+| npm weekly downloads | 3 / 2 ✅ | **3 / 0 ✅** | `text` command gap found+fixed |
+| Wikipedia deep link (73 000 px down) | 15 / 9 ✅ | **4 / 0 ✅** | native `find` DIED (page > 200k tokens); scroll-hunt |
+| **total** | 32 calls / **17 images** (~27k tok) | 24 cmds / **0 images** (~7k tok) | 5/5 both |
+
+Reading: two different metrics — in ACTIONS, pixels win when the answer is one glance
+away on a fresh page (GitHub); in TOKENS the oracle won every single task, because its
+observation is FILTERABLE text (grep/slice only the relevant lines into context) while
+a screenshot enters whole or not at all. Beyond that, the
+oracle wins catastrophically when the target is buried (find+click-by-id vs blind
+scroll-hunting) — and the native semantic search tool literally cannot process a page
+the oracle's in-page `find` handles for free. Steady state ≈ 4× fewer context tokens.
+Two harness gaps surfaced and fixed mid-run: follow `_blank` popups; `text <id>` reader
+for data extraction.

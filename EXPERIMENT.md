@@ -308,3 +308,11 @@ the niche no one else serves — snapdom alone delivers the winning configuratio
 call: pixels + semantics + diffs of the same instant, no CDP, no permissions, CSP-proof
 (MV3 harness). Four arms, two days' spend, $2.12 total: A 9/10 · B 8/10 · C 10/10 ·
 **D 10/10 with the fewest steps**.
+
+### npm-B failure root-caused (free, via the agent-browse harness)
+
+Dogfooding the daemon reproduced it exactly: on npm, the FIRST Enter is consumed by the
+suggestions listbox (the diff shows it closing, no navigation); a SECOND Enter submits.
+The oracle reported everything needed at every step — state change on type, listbox
+appearing/closing, URL unchanged. Protocol gap, not a product bug: the agent rule is
+"if Enter didn't navigate and a listbox just closed, press Enter again."
