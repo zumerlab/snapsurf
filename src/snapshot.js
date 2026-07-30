@@ -132,7 +132,11 @@ function occluderAt(el, rect) {
     const doc = el.ownerDocument
     const top = (el.getRootNode()?.elementFromPoint || doc.elementFromPoint).call(el.getRootNode?.() || doc, cx, cy)
     if (!top) return null
-    return (top === el || el.contains(top) || top.contains(el)) ? null : top
+    if (top === el || el.contains(top) || top.contains(el)) return null
+    // A click on an associated label activates the control — a label (or its styled
+    // contents) over its own input is a proxy, not an occluder.
+    if (el.labels) for (const l of el.labels) if (l === top || l.contains(top)) return null
+    return top
   } catch { return null }
 }
 
@@ -157,7 +161,7 @@ export function takeSnapshot(root, noise) {
   let seq = 0
 
   /** @returns {string|null} node id */
-  function visit(el, parentId, semanticPath, ordinalKeyCounts, depth) {
+  function visit(el, parentId, semanticPath, ordinalKeyCounts, depth, frozenGeo) {
     if (el.nodeType !== 1 || SKIP_TAGS.has(el.tagName)) return null
     if (isIgnored(el, noise)) return null
     const cs = getComputedStyle(el)
@@ -180,8 +184,22 @@ export function takeSnapshot(root, noise) {
     const path = semanticPath + '/' + tag + (role !== 'generic' ? `[${role}]` : '')
 
     const bbox = relativeBBox(el, root, noise.geometryTolerance)
-    const visible = cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0 &&
+    let visible = cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0 &&
       bbox.viewport[2] > 0 && bbox.viewport[3] > 0
+    // Hidden-input proxy (FIELD.md visual pass): design systems render the native
+    // control at opacity:0 with a styled label as its visible face. The control is
+    // real, laid out and clickable — dropping it as invisible erases every custom
+    // checkbox/radio from the agent map. If any associated label is visible, the
+    // control is visible.
+    if (!visible && el.labels && el.labels.length && cs.visibility !== 'hidden' &&
+        bbox.viewport[2] > 0 && bbox.viewport[3] > 0) {
+      for (const l of el.labels) {
+        const lcs = getComputedStyle(l)
+        const lr = l.getBoundingClientRect()
+        if (lcs.display !== 'none' && lcs.visibility !== 'hidden' &&
+            parseFloat(lcs.opacity) > 0 && lr.width > 0 && lr.height > 0) { visible = true; break }
+      }
+    }
     const interactive = INTERACTIVE_ROLES.has(role) ||
       el.hasAttribute('onclick') || el.tabIndex >= 0
     const occluder = interactive && visible ? occluderAt(el, bbox.viewport) : null
@@ -211,9 +229,12 @@ export function takeSnapshot(root, noise) {
     // such an animation runs — the element reports neither style nor moved noise.
     // (Its content/state still sign normally: a real change during an animation is
     // still a real change.)
+    // The freeze INHERITS (field pass: a transform animation on a container moves every
+    // descendant while only the container reports an animation — 162 of github's 162
+    // at-rest false positives were descendants of one animating logo strip).
     const animProps = animated.get(el)
-    const geometryAnimating = !!animProps && (animProps.has('*') ||
-      GEOMETRY_ANIMATION_PROPS.some((p) => animProps.has(p)))
+    const geometryAnimating = frozenGeo || (!!animProps && (animProps.has('*') ||
+      GEOMETRY_ANIMATION_PROPS.some((p) => animProps.has(p))))
     const geometryHash = geometryAnimating
       ? hash('g', 'animating')
       : hash('g', bbox.x, bbox.y, bbox.w, bbox.h)
@@ -253,7 +274,7 @@ export function takeSnapshot(root, noise) {
     const childCounts = {}
     const childHashes = []
     for (const child of composedChildren(el)) {
-      const cid = visit(child, id, path, childCounts, depth + 1)
+      const cid = visit(child, id, path, childCounts, depth + 1, geometryAnimating)
       if (cid) {
         node.childIds.push(cid)
         childHashes.push(nodes.get(cid).subtreeHash)
