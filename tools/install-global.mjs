@@ -1,17 +1,17 @@
 /**
- * install-global.mjs — instala el harness del oráculo como herramienta GLOBAL de la
- * máquina (~/.claude/snapdom-agent), independiente de en qué rama esté el repo:
+ * install-global.mjs — installs the oracle harness as a MACHINE-GLOBAL tool
+ * (~/.claude/snapdom-agent), independent of which branch the repo sits on:
  *
- *   node packages/agent/tools/install-global.mjs      # correr desde agent-lab
+ *   node packages/agent/tools/install-global.mjs      # run from agent-lab
  *
- * Escribe:
- *   ~/.claude/snapdom-agent/browse.mjs   copia del CLI/daemon
- *   ~/.claude/snapdom-agent/sdk.js       bundle prebuild del oráculo + snapdom + plugins
- *   ~/.claude/snapdom-agent/paths.json   ruta al repo (para node_modules/playwright)
- *   ~/.claude/skills/agent-browse/       skill a nivel USUARIO (todas las sesiones)
+ * Writes:
+ *   ~/.claude/snapdom-agent/browse.mjs   copy of the CLI/daemon
+ *   ~/.claude/snapdom-agent/sdk.js       prebuilt bundle (oracle + snapdom + plugins)
+ *   ~/.claude/snapdom-agent/paths.json   repo path (for node_modules/playwright)
+ *   ~/.claude/skills/agent-browse/       USER-level skill (every session)
  *
- * Re-correr después de cambiar packages/agent/src o browse.mjs para refrescar.
- * NADA se publica: todo queda en ~/.claude de esta máquina.
+ * Re-run after changing packages/agent/src or browse.mjs to refresh.
+ * NOTHING is published: everything stays in this machine's ~/.claude.
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -49,12 +49,12 @@ await writeFile(join(DEST, 'sdk.js'), SDK)
 await copyFile(join(HERE, 'browse.mjs'), join(DEST, 'browse.mjs'))
 await writeFile(join(DEST, 'paths.json'), JSON.stringify({ repo: REPO }))
 
-// Skill a nivel usuario: la del repo, con las rutas del harness global.
+// User-level skill: the repo one, with the global harness paths.
 const skill = await readFile(join(REPO, '.claude', 'skills', 'agent-browse', 'SKILL.md'), 'utf8')
 await mkdir(SKILLDIR, { recursive: true })
 await writeFile(join(SKILLDIR, 'SKILL.md'),
   skill.replaceAll('packages/agent/tools/browse.mjs', join(DEST, 'browse.mjs'))
-    .replace('# agent-browse — navegar con el oráculo en vez de screenshots',
-      `# agent-browse — navegar con el oráculo en vez de screenshots\n\n> Instalación GLOBAL de esta máquina (~/.claude/snapdom-agent). Para refrescarla tras\n> cambios en agent-lab: \`node ${join(REPO, 'packages/agent/tools/install-global.mjs')}\``))
+    .replace('# agent-browse — browse with the oracle instead of screenshots',
+      `# agent-browse — browse with the oracle instead of screenshots\n\n> MACHINE-GLOBAL install (~/.claude/snapdom-agent). Refresh after agent-lab changes:\n> \`node ${join(REPO, 'packages/agent/tools/install-global.mjs')}\``))
 
-console.log(`instalado:\n  ${join(DEST, 'browse.mjs')} (+ sdk.js ${Math.round(SDK.length / 1024)}KB, paths.json, logs/)\n  ${join(SKILLDIR, 'SKILL.md')} (skill global de usuario)`)
+console.log(`installed:\n  ${join(DEST, 'browse.mjs')} (+ sdk.js ${Math.round(SDK.length / 1024)}KB, paths.json, logs/)\n  ${join(SKILLDIR, 'SKILL.md')} (user-level global skill)`)

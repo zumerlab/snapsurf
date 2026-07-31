@@ -1,18 +1,18 @@
 /**
- * Companion content script (fuente — se bundlea a content.bundle.js).
+ * Companion content script (source — bundled into content.bundle.js).
  *
- * Corre en ISOLATED WORLD: inmune a la CSP de la página (lo que mató la inyección
- * page-world: CSP en wikipedia/ebay + Private Network Access hacia localhost), con
- * DOM compartido. El oráculo vive acá; el mundo de la página (y cualquier agente con
- * un tool de javascript, como la extensión de Claude) le habla por postMessage y lee
- * el resultado de un nodo DOM:
+ * Runs in the ISOLATED WORLD: immune to page CSP (what killed page-world injection:
+ * CSP on wikipedia/ebay + Private Network Access toward localhost), with a shared
+ * DOM. The oracle lives here; the page world (and any agent with a javascript tool,
+ * like the Claude extension) talks to it via postMessage and reads the result from
+ * a DOM node:
  *
- *   window.postMessage({ type: 'SNAPDOM_OBSERVE' }, '*')
- *   // …~100ms después:
+ *   window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId }, '*')
+ *   // await SNAPDOM_DIGEST_READY (echoes obsId), then:
  *   JSON.parse(document.getElementById('__snapdom_digest').textContent)
  *
- * El digest incluye el DIFF contra la observación anterior del mismo documento —
- * la extensión de Claude deja de pagar screenshots para saber qué cambió.
+ * The digest includes the DIFF against the previous observation of the same
+ * document — the Claude extension stops paying screenshots to know what changed.
  */
 import { observe, buildUi } from '../src/plugin.js'
 
@@ -229,7 +229,7 @@ window.addEventListener('message', (e) => {
   }
 })
 
-// Marcador de presencia: los agentes chequean esto antes de pedir observaciones.
+// Presence marker: agents check this before requesting observations.
 const marker = document.createElement('meta')
 marker.name = '__snapdom_companion'
 marker.content = '0.1.0'
