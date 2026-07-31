@@ -111,6 +111,39 @@ function digestOf(ui, topN, headsN) {
   return { marks, heads, top }
 }
 
+// match: the in-page find — searches the WHOLE snapshot (names + text), not the
+// top-N window. Panel round 5: lanacion's front page outran top:100/heads:60 (38kB
+// and still not found) while a text match is one call and ~2kB. Full text up to
+// 300 chars — its native find and read_page both truncate at 100.
+function findMatches(ui, query) {
+  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const q = norm(query)
+  const out = new Map()
+  const add = (id, role, name) => {
+    if (!name || out.has(id) || !norm(name).includes(q)) return
+    const el = ui.__snapshot.elements.get(id)
+    const n = ui.__snapshot.nodes.get(id)
+    let href = null
+    try {
+      const raw = el && el.getAttribute && el.getAttribute('href')
+      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 100) }
+    } catch { /* noop */ }
+    const full = (((n && (n.name || n.text)) || (el && el.textContent) || name)).replace(/\s+/g, ' ').trim().slice(0, 300)
+    out.set(id, {
+      id, role, text: full, href: href || undefined,
+      selector: selectorOf(el), section: sectionOf(el),
+      bbox: n && n.bbox, vbox: vboxOf(n && n.bbox),
+    })
+  }
+  for (const e of ui.agentMap.map) add(e.id, e.r, e.n)
+  for (const id of ui.__snapshot.order) {
+    if (out.size >= 20) break
+    const n = ui.__snapshot.nodes.get(id)
+    add(id, n.role, n.name || n.text)
+  }
+  return [...out.values()].slice(0, 20)
+}
+
 function runObserve(opts = {}) {
   const t0 = performance.now()
   const ui = buildUi(observe(document.body, prev ? { previous: prev } : {}), {})
@@ -139,7 +172,9 @@ function runObserve(opts = {}) {
     // page the query IS the meaning — the reader decides.
     urlFull: opts.fullUrl ? location.href : undefined,
     ts: Date.now(),
-    token: opts.token ?? undefined,
+    // obsId, NOT "token": the panel's JS bridge censors any key literally named
+    // token ("[BLOCKED: Sensitive key]") — the echo was unverifiable from its side.
+    obsId: opts.obsId ?? undefined,
     // Coordinate contract (panel round 3): vbox is CSS px of THIS viewport; readers
     // whose screenshots are scaled (dpr) compute scale = screenshotWidth / viewport.width.
     viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
@@ -151,7 +186,10 @@ function runObserve(opts = {}) {
       ? ui.changes.map(describeChange).sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0)).slice(0, 40)
       : undefined,
     actionabilityDelta: ui.actionabilityDelta,
-    digest: digestOf(ui, Math.min(100, opts.top || 25), Math.min(60, opts.heads || 15)),
+    // match present → matches only (~2kB); digest only otherwise (a 38kB top:100
+    // digest that still misses the target is the wrong tool for long front pages)
+    matches: opts.match ? findMatches(ui, opts.match) : undefined,
+    digest: opts.match ? undefined : digestOf(ui, Math.min(100, opts.top || 25), Math.min(60, opts.heads || 15)),
   }
   let node = document.getElementById(NODE_ID)
   if (!node) {
@@ -165,14 +203,14 @@ function runObserve(opts = {}) {
 
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
-    const token = e.data.token ?? null
-    try { runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, token }) } catch (err) {
+    const obsId = e.data.obsId ?? e.data.token ?? null // token kept for old snippets
+    try { runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, obsId }) } catch (err) {
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
-      node.textContent = JSON.stringify({ error: String(err), url: location.origin + location.pathname, ts: Date.now(), token })
+      node.textContent = JSON.stringify({ error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId })
     }
     // Readiness signal (panel round 3): awaiting this instead of a fixed 800ms sleep
     // cuts the round from ~830ms to ~walk time.
-    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', token }, '*')
+    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId }, '*')
   }
 })
 

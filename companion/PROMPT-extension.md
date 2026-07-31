@@ -14,17 +14,28 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
 
 2. Pedí una observación y esperá la señal de listo (no un sleep fijo):
    ```js
-   const token = Date.now();
+   const obsId = Date.now();
    const ready = new Promise(r => {
-     const h = e => { if (e.data && e.data.type === 'SNAPDOM_DIGEST_READY' && e.data.token === token) { removeEventListener('message', h); r(); } };
+     const h = e => { if (e.data && e.data.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) { removeEventListener('message', h); r(); } };
      addEventListener('message', h);
      setTimeout(r, 2000); // red de seguridad
    });
-   window.postMessage({ type: 'SNAPDOM_OBSERVE', token }, '*');
+   window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId }, '*');
    await ready;
    JSON.parse(document.getElementById('__snapdom_digest').textContent)
    ```
-   El JSON ecoa tu `token`, así verificás que es TU observación y no una vieja.
+   El JSON ecoa tu `obsId`, así verificás que es TU observación y no una vieja.
+   (Se llama obsId a propósito: tu puente censura claves llamadas "token".)
+
+2b. **Para BUSCAR algo puntual en toda la página, usá `match` en vez de agrandar el
+   digest** — busca el snapshot completo (no solo el top-N) y devuelve SOLO lo que
+   matchea, con texto completo (300 chars), href, selector y section, en ~2 KB:
+   ```js
+   window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId, match: 'gaucho de las redes' }, '*');
+   // → { matches: [{ id, role, text, href, selector, section, bbox, vbox }] }
+   ```
+   Con `match` no viene digest (es la herramienta para portadas largas donde top:100
+   no alcanza y cuesta 38 KB).
 
 3. El JSON trae: `actionables` (total), `digest.marks` (regiones landmark),
    `digest.heads` (títulos), `digest.top` (mejores elementos interactivos con id,
