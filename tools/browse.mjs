@@ -609,6 +609,16 @@ const HANDLERS = {
 
 const { createServer } = await import('node:http')
 createServer((req, res) => {
+  // GET /sdk.js: the oracle bundle for OTHER runtimes to inject in-page — e.g. the
+  // Claude-in-Chrome extension via its javascript_tool (<script src="http://127.0.0.1:8377/sdk.js">).
+  // That IS the MV3/embedded deployment: oracle eyes inside a browser we don't drive.
+  // Blocked only by strict script-src CSPs; localhost is exempt from mixed-content.
+  if (req.method === 'GET' && req.url === '/sdk.js') {
+    res.setHeader('content-type', 'application/javascript')
+    res.setHeader('access-control-allow-origin', '*')
+    res.end(SDK)
+    return
+  }
   let body = ''
   req.on('data', (c) => { body += c })
   req.on('end', async () => {
