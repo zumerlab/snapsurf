@@ -207,7 +207,13 @@ const inFind = (query) => {
     if (area > 8000 && area <= 600000) s += 1
     if (area > 600000) s -= 3
     if (r === 'generic' || r === 'table' || r === 'row' || r === 'cell' || r === 'rowgroup') s -= 2
-    cands.set(id, { id, r, n: name.slice(0, 80), b, href: href && !href.startsWith('#') ? href.slice(-48) : null, s })
+    // pathname-first, never the tail: eBay tails are pure tracking noise while the
+    // useful part (/itm/406631272018) lives at the START of the path (codex v3)
+    let shortHref = null
+    if (href && !href.startsWith('#')) {
+      try { const u = new URL(href, location.href); shortHref = (u.pathname + u.search).slice(0, 48) } catch { shortHref = href.slice(0, 48) }
+    }
+    cands.set(id, { id, r, n: name.slice(0, 80), b, href: shortHref, s })
   }
   for (const e of ui.agentMap.map) add(e.id, e.r, e.n, e.b)
   for (const id of ui.__snapshot.order) {
@@ -323,6 +329,7 @@ const HANDLERS = {
     await settle(3500, 500)
     const o = await inPage(observe, {})
     epoch++
+    meta = { mapTotal: o.mapTotal }
     return fmtFirst(o, page.url())
   },
   async look([id]) {
@@ -338,13 +345,16 @@ const HANDLERS = {
     const prev = await inPage(() => window.__lastCp || null)
     const o = await inPage(observe, { previous: prev })
     epoch++
+    // enough summary that the JSONL alone says WHAT was seen, not just that a look ran
+    meta = { mapTotal: o.mapTotal, changed: o.changed, ...(o.changes ? { changes: o.changes.length } : {}) }
     return fmtLook(o, page.url())
   },
   async find(args) {
     const matches = await inPage(inFind, args.join(' '))
-    meta = { matches: matches.map((m) => m.id) }
+    // full matches in the audit log — ids alone can't be reconstructed post-session
+    meta = { matches: matches.map((m) => ({ id: m.id, r: m.r, n: m.n && m.n.slice(0, 60), href: m.href || undefined })) }
     return matches.length
-      ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 60)}"` : ''} [${m.b.join(',')}]${m.href ? ` → …${m.href}` : ''}`).join('\n'))
+      ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 60)}"` : ''} [${m.b.join(',')}]${m.href ? ` → ${m.href}` : ''}`).join('\n'))
       : 'sin resultados'
   },
   async parent([id]) {
@@ -536,11 +546,20 @@ createServer((req, res) => {
       res.statusCode = 500
       res.end(error + '\n')
     }
+    // Tracking URLs run to kilobytes — keep origin+pathname and a stub of the query
+    const trimUrl = (u) => {
+      if (!u) return u
+      try { const x = new URL(u); return x.origin + x.pathname + (x.search ? x.search.slice(0, 60) : '') } catch { return u }
+    }
     appendFile(LOGFILE, JSON.stringify({
       ts: new Date().toISOString(), session: SESSION, seq: ++seq, cmd,
       args: cmd === 'type' ? [`«${args.join(' ').length} chars»`] : args,
-      epoch, urlBefore, urlAfter: (() => { try { return page.url() } catch { return null } })(),
-      durationMs: Date.now() - t0, ok, ...(error ? { error } : {}), ...(meta || {}),
+      epoch, urlBefore: trimUrl(urlBefore), urlAfter: trimUrl((() => { try { return page.url() } catch { return null } })()),
+      durationMs: Date.now() - t0,
+      // a denied command did NOT execute — auditors must never read it as success
+      // (codex v3 found allowlist denials logged ok:true)
+      ok: ok && !(meta && meta.denied),
+      ...(error ? { error } : {}), ...(meta || {}),
     }) + '\n').catch(() => {})
   })
 }).listen(PORT, '127.0.0.1', () => console.log(`agent-browse daemon en http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · sesión ${SESSION}\nlog: ${LOGFILE}`))
