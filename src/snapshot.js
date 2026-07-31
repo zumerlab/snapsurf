@@ -336,7 +336,7 @@ export function takeSnapshot(root, noise) {
  * mutations observed while the walk was parked — a torn observation says so
  * instead of pretending.
  */
-export async function takeSnapshotChunked(root, noise, { sliceSize = 400 } = {}) {
+export async function takeSnapshotChunked(root, noise, { budgetMs = 40 } = {}) {
   const w = makeWalker(root, noise)
   let torn = 0
   let mo = null
@@ -344,11 +344,22 @@ export async function takeSnapshotChunked(root, noise, { sliceSize = 400 } = {})
     mo = new MutationObserver((recs) => { torn += recs.length })
     mo.observe(root, { subtree: true, childList: true, attributes: true, characterData: true })
   } catch { /* no MutationObserver: torn stays 0 */ }
+  // TIME-budget slicing over a MessageChannel task, NOT count-based setTimeout(0):
+  // in a busy real-Chrome tab, timer yields get clamped/throttled and every yield
+  // hands the thread to arbitrary pending work — a 6s walk inflated to 24s in the
+  // field (panel gate round). MessageChannel posts are plain tasks: no 4ms clamp,
+  // no background throttling; and yielding only after budgetMs of actual work keeps
+  // the yield count proportional to work done. Max main-thread block ≈ budgetMs.
+  const yieldNow = () => new Promise((res) => {
+    const { port1, port2 } = new MessageChannel()
+    port1.onmessage = () => { port1.close(); res() }
+    port2.postMessage(0)
+  })
   const gen = w.walk()
-  let count = 0
+  let last = performance.now()
   let r = gen.next()
   while (!r.done) {
-    if (++count % sliceSize === 0) await new Promise((res) => setTimeout(res, 0))
+    if (performance.now() - last >= budgetMs) { await yieldNow(); last = performance.now() }
     r = gen.next()
   }
   if (mo) { torn += mo.takeRecords().length; mo.disconnect() }

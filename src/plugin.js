@@ -245,7 +245,7 @@ export function observe(root, options = {}) {
 export async function observeChunked(root, options = {}) {
   const noise = resolveNoise(options.noise)
   runCounter++
-  const snap = await takeSnapshotChunked(root, noise, { sliceSize: options.sliceSize })
+  const snap = await takeSnapshotChunked(root, noise, { budgetMs: options.budgetMs })
   return finishObserve(snap, options, noise)
 }
 
