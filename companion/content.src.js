@@ -48,7 +48,7 @@ const vboxOf = (b) => b ? [b[0] - Math.round(scrollX), b[1] - Math.round(scrollY
 // sectioning ancestor and returns its own heading text (or aria-label). If that
 // heading IS the element we're describing, keep climbing.
 function sectionOf(el) {
-  const ownText = el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40) : ''
+  const ownText = el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) : ''
   let cur = el && el.parentElement
   let depth = 0
   while (cur && cur !== document.body && depth < 12) {
@@ -58,13 +58,18 @@ function sectionOf(el) {
       // past huge ancestors without taking their heading.
       const tall = cur.getBoundingClientRect().height > 8000
       if (!tall) {
-        const h = cur.querySelector('h1,h2,h3,h4,[role="heading"]')
-        if (h && h !== el && !h.contains(el) && !el.contains(h)) {
-          const t = (h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40)
+        const hs = cur.querySelectorAll('h1,h2,h3,h4,[role="heading"]')
+        // flat result LISTS are heading collections, not titled sections — taking
+        // their first heading labeled every item with the previous item's title
+        // (panel, lanacion buscador). Ambiguous container → absent beats wrong.
+        const isFlatList = hs.length > 3
+        const h = hs[0]
+        if (!isFlatList && h && h !== el && !h.contains(el) && !el.contains(h)) {
+          const t = (h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)
           if (t && t !== ownText) return t
         }
         const al = cur.getAttribute('aria-label')
-        if (al) return al.slice(0, 40)
+        if (al && al.slice(0, 60) !== ownText) return al.slice(0, 60)
       }
     }
     cur = cur.parentElement
@@ -82,15 +87,23 @@ function digestOf(ui, topN, headsN) {
     if (!n) continue
     if (n.role === 'heading' && heads.length < headsN) {
       const el = ui.__snapshot.elements.get(id)
-      heads.push({ id, text: (n.name || n.text || '').slice(0, 90), section: sectionOf(el) })
+      heads.push({ id, text: (n.name || n.text || '').slice(0, 120), section: sectionOf(el) })
     } else if (LANDMARKS[n.role] && marks.length < 10) marks.push({ id, role: n.role, name: (n.name || '').slice(0, 60), bbox: n.bbox })
   }
   const top = ui.agentMap.map.slice(0, topN).map((e) => {
     const el = ui.__snapshot.elements.get(e.id)
+    // href: the panel's read_page gave hrefs without names, our digest names without
+    // hrefs — neither sufficed alone (lanacion buscador). Together the digest does.
+    let href = null
+    try {
+      const raw = el && el.getAttribute && el.getAttribute('href')
+      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 80) }
+    } catch { /* noop */ }
     return {
-      id: e.id, role: e.r, name: (e.n || '').slice(0, 90),
+      id: e.id, role: e.r, name: (e.n || '').slice(0, 120),
       bbox: e.b, vbox: vboxOf(e.b),
       selector: selectorOf(el),
+      href: href || undefined,
       section: sectionOf(el),
       covered: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined,
     }
@@ -121,6 +134,10 @@ function runObserve(opts = {}) {
     // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
+    // opt-in full URL (query included): the default stays sanitized because the
+    // Claude-extension sanitizer redacts query-bearing urls, but on a search-results
+    // page the query IS the meaning — the reader decides.
+    urlFull: opts.fullUrl ? location.href : undefined,
     ts: Date.now(),
     token: opts.token ?? undefined,
     // Coordinate contract (panel round 3): vbox is CSS px of THIS viewport; readers
@@ -149,7 +166,7 @@ function runObserve(opts = {}) {
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
     const token = e.data.token ?? null
-    try { runObserve({ top: e.data.top, heads: e.data.heads, token }) } catch (err) {
+    try { runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, token }) } catch (err) {
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
       node.textContent = JSON.stringify({ error: String(err), url: location.origin + location.pathname, ts: Date.now(), token })
     }
