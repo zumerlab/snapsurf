@@ -17,7 +17,7 @@
  * Core is untouched and knows nothing about this package (§Anti-goals).
  * @module agent/plugin
  */
-import { takeSnapshot } from './snapshot.js'
+import { takeSnapshot, takeSnapshotChunked } from './snapshot.js'
 import { resolveNoise } from './noise.js'
 import { diffSnapshots } from './diff.js'
 import { makeCheckpoint, inflateCheckpoint } from './checkpoint.js'
@@ -212,11 +212,9 @@ export function probeCapabilities() {
  * @param {Element} root
  * @param {{previous?: object, noise?: any}} options
  */
-export function observe(root, options = {}) {
-  const noise = resolveNoise(options.noise)
-  runCounter++
-
-  let snapshot = takeSnapshot(root, noise)
+function finishObserve(snapshot, options, noise) {
+  // capture before applyStableIds rebuilds the snapshot object
+  const torn = snapshot.torn || 0
   // Namespace this run's ids so unmatched (added) nodes can never collide with a
   // previous checkpoint's ids after relabeling.
   const salt = runCounter.toString(36) + 'r'
@@ -234,7 +232,21 @@ export function observe(root, options = {}) {
     diff = diffSnapshots(prev, snapshot)
     snapshot = applyStableIds(snapshot, diff.idMap)
   }
-  return { snapshot, diff, noise }
+  return { snapshot, diff, noise, torn }
+}
+
+export function observe(root, options = {}) {
+  const noise = resolveNoise(options.noise)
+  runCounter++
+  return finishObserve(takeSnapshot(root, noise), options, noise)
+}
+
+/** Chunked observe: same result shape plus `torn` (see takeSnapshotChunked). */
+export async function observeChunked(root, options = {}) {
+  const noise = resolveNoise(options.noise)
+  runCounter++
+  const snap = await takeSnapshotChunked(root, noise, { sliceSize: options.sliceSize })
+  return finishObserve(snap, options, noise)
 }
 
 /** Most recent walk — the fallback table `agent.resolve()` uses for bare node ids. */

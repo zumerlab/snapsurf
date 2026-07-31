@@ -95,11 +95,12 @@ try {
 } catch {
   const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
   const entry = join(HERE, 'sdk-entry.mjs')
-  await writeFile(entry, `import { observe, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+  await writeFile(entry, `import { observe, observeChunked, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
 import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
 import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'
 window.__agentObserve = observe
+window.__agentObserveChunked = observeChunked
 window.__agentBuildUi = buildUi
 window.__agentOracle = agentOracle
 window.__snapdom = snapdom
@@ -165,7 +166,7 @@ let meta = null
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 16)
 
 // ── In-page protocol (same shapes the realloop experiments validated) ────────────────
-const observe = ({ previous, scopeId, parentOfId, peek, changesCap } = {}) => {
+const observe = async ({ previous, scopeId, parentOfId, peek, changesCap } = {}) => {
   // Walk-only (§lite): an agent with a mission needs semantics every turn but pixels
   // almost never — the full capture cost per look was Codex's top complaint (20s on
   // wikipedia). Pixels are requested explicitly and SCOPED via `snap <id>`.
@@ -189,7 +190,8 @@ const observe = ({ previous, scopeId, parentOfId, peek, changesCap } = {}) => {
     if (!cur || cur === document.body) return { noParent: true }
     root = cur
   }
-  const ui = window.__agentBuildUi(window.__agentObserve(root, previous ? { previous } : {}), {})
+  const obs = await window.__agentObserveChunked(root, previous ? { previous } : {})
+  const ui = window.__agentBuildUi(obs, {})
   window.__lastUi = ui
   // A zoomed observation never becomes the global look baseline: the next full look
   // still diffs against the last FULL observation.
@@ -273,6 +275,7 @@ const observe = ({ previous, scopeId, parentOfId, peek, changesCap } = {}) => {
     mapTotal: ui.agentMap.map.length,
     map: digest ? undefined : ui.agentMap.map.slice(0, 40).map((e) => ({ id: e.id, r: e.r, n: e.n, b: e.b, c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })),
     changed: ui.changed,
+    torn: obs.torn || 0,
     changes: ui.changes && ui.changes.slice(0, changesCap || 40),
     delta: ui.actionabilityDelta,
     unobservable: ui.unobservable.length,
@@ -662,7 +665,7 @@ const HANDLERS = {
     }
     const CHECK_KEYS = new Set(['url', 'urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'only', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered'])
     const MOD_KEYS = new Set(['settleMs', 'retry', 'keepBaseline', 'ignore'])
-    const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'selector', 'to'])
+    const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'nameExact', 'selector', 'to'])
     const KINDS = new Set(['added', 'removed', 'content', 'state', 'style', 'moved', 'resized', 'possible-replacement'])
     const preChecks = []
     const push = (arr, type, expected, actual, pass) => arr.push({ type, expected, actual, pass })
@@ -734,6 +737,7 @@ const HANDLERS = {
         (!m.kind || c.kind === m.kind) &&
         (!m.role || c.role === m.role) &&
         (!m.name || c.label.toLowerCase().includes(String(m.name).toLowerCase())) &&
+        (!m.nameExact || c.label.toLowerCase().trim() === String(m.nameExact).toLowerCase().trim()) &&
         (!m.to || (c.after && Object.entries(m.to).every(([k, v]) => c.after[k] === v)))
       const hit = (m) => matches.some((c) => hit1(c, m))
       for (const m of (Array.isArray(spec.mustInclude) ? spec.mustInclude : [])) {

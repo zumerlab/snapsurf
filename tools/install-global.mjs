@@ -26,11 +26,12 @@ const SKILLDIR = join(HOME, '.claude', 'skills', 'agent-browse')
 const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 const SDK = (await esbuild.build({
   stdin: {
-    contents: `import { observe, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+    contents: `import { observe, observeChunked, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
 import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
 import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'
 window.__agentObserve = observe
+window.__agentObserveChunked = observeChunked
 window.__agentBuildUi = buildUi
 window.__agentOracle = agentOracle
 window.__snapdom = snapdom

@@ -150,7 +150,7 @@ function occluderAt(el, rect) {
  * @returns {{ nodes: Map<string, object>, order: string[], rootId: string,
  *             byElement: Map<Element, string>, elements: Map<string, Element>, rootHash: string }}
  */
-export function takeSnapshot(root, noise) {
+function makeWalker(root, noise) {
   const animated = noise.ignoreAnimations ? collectAnimatedProps(root) : new Map()
   const nodes = new Map()
   const order = []
@@ -161,7 +161,7 @@ export function takeSnapshot(root, noise) {
   let seq = 0
 
   /** @returns {string|null} node id */
-  function visit(el, parentId, semanticPath, ordinalKeyCounts, depth, frozenGeo) {
+  function* visit(el, parentId, semanticPath, ordinalKeyCounts, depth, frozenGeo) {
     if (el.nodeType !== 1 || SKIP_TAGS.has(el.tagName)) return null
     if (isIgnored(el, noise)) return null
     const cs = getComputedStyle(el)
@@ -274,11 +274,14 @@ export function takeSnapshot(root, noise) {
     order.push(id)
     byElement.set(el, id)
     elements.set(id, el)
+    // one yield per node: the sync path drains without pausing; the chunked path
+    // parks here every sliceSize nodes so the tab never freezes for seconds
+    yield
 
     const childCounts = {}
     const childHashes = []
     for (const child of composedChildren(el)) {
-      const cid = visit(child, id, path, childCounts, depth + 1, geometryAnimating)
+      const cid = yield* visit(child, id, path, childCounts, depth + 1, geometryAnimating)
       if (cid) {
         node.childIds.push(cid)
         childHashes.push(nodes.get(cid).subtreeHash)
@@ -292,7 +295,7 @@ export function takeSnapshot(root, noise) {
     return id
   }
 
-  const rootId = visit(root, null, '', {}, 0)
+  const finish = (rootId) => {
   // Occluders are resolved only now, after every element has been walked and AFTER all
   // hashes are computed: `coveredBy` describes another node, so letting it into a
   // signature would propagate that node's geometry into this one's identity (§1).
@@ -313,4 +316,43 @@ export function takeSnapshot(root, noise) {
     }
   }
   return { nodes, order, rootId, byElement, elements, rootHash: rootId ? nodes.get(rootId).subtreeHash : hash('empty') }
+  }
+  return { walk: () => visit(root, null, '', {}, 0), finish }
+}
+
+export function takeSnapshot(root, noise) {
+  const w = makeWalker(root, noise)
+  const gen = w.walk()
+  let r = gen.next()
+  while (!r.done) r = gen.next()
+  return w.finish(r.value)
+}
+
+/**
+ * Chunked walk: identical semantics, but the expensive style/geometry reads yield
+ * to the event loop every `sliceSize` nodes so a 13k-node page no longer freezes
+ * the tab for seconds (panel: 5-7s freezes blew CDP budgets and orphaned loops).
+ * The "one instant" guarantee is traded for an HONEST flag: `torn` counts DOM
+ * mutations observed while the walk was parked — a torn observation says so
+ * instead of pretending.
+ */
+export async function takeSnapshotChunked(root, noise, { sliceSize = 400 } = {}) {
+  const w = makeWalker(root, noise)
+  let torn = 0
+  let mo = null
+  try {
+    mo = new MutationObserver((recs) => { torn += recs.length })
+    mo.observe(root, { subtree: true, childList: true, attributes: true, characterData: true })
+  } catch { /* no MutationObserver: torn stays 0 */ }
+  const gen = w.walk()
+  let count = 0
+  let r = gen.next()
+  while (!r.done) {
+    if (++count % sliceSize === 0) await new Promise((res) => setTimeout(res, 0))
+    r = gen.next()
+  }
+  if (mo) { torn += mo.takeRecords().length; mo.disconnect() }
+  const out = w.finish(r.value)
+  out.torn = torn
+  return out
 }

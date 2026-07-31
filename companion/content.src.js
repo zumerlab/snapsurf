@@ -14,7 +14,7 @@
  * The digest includes the DIFF against the previous observation of the same
  * document — the Claude extension stops paying screenshots to know what changed.
  */
-import { observe, buildUi } from '../src/plugin.js'
+import { observeChunked, buildUi } from '../src/plugin.js'
 
 const NODE_ID = '__snapdom_digest'
 let prev = null
@@ -159,9 +159,10 @@ function findMatches(ui, query) {
   return [...out.values()].slice(0, 20)
 }
 
-function runObserve(opts = {}) {
+async function runObserve(opts = {}) {
   const t0 = performance.now()
-  const ui = buildUi(observe(document.body, prev ? { previous: prev } : {}), {})
+  const obs = await observeChunked(document.body, prev ? { previous: prev } : {})
+  const ui = buildUi(obs, {})
   prev = ui.checkpoint()
   // Every change carries a readable label: name, else the node's own text, else the
   // subtree text — 29/30 anonymous `generic` changes made the panel's first diff
@@ -194,6 +195,9 @@ function runObserve(opts = {}) {
     // whose screenshots are scaled (dpr) compute scale = screenshotWidth / viewport.width.
     viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
     walkMs: Math.round(performance.now() - t0),
+    // chunked walk: the tab stays responsive; torn counts DOM mutations that landed
+    // WHILE the walk was parked — a non-zero torn means re-observe if it matters
+    torn: obs.torn || 0,
     actionables: ui.agentMap.map.length,
     unobservable: ui.unobservable.length,
     changed: ui.changed,
@@ -214,6 +218,7 @@ function runObserve(opts = {}) {
     document.documentElement.appendChild(node)
   }
   node.textContent = JSON.stringify(out)
+  return out
 }
 
 // SNAPDOM_ASSERT — the QA vocabulary in the user's own tabs (same contract as the
@@ -225,7 +230,7 @@ function runObserve(opts = {}) {
 // diff, with selector and state from/to) travels with every result that ran a diff.
 const CHECK_KEYS = new Set(['urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'only', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered'])
 const MOD_KEYS = new Set(['settleMs', 'retry', 'keepBaseline', 'ignore'])
-const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'selector', 'to'])
+const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'nameExact', 'selector', 'to'])
 const KINDS = new Set(['added', 'removed', 'content', 'state', 'style', 'moved', 'resized', 'possible-replacement'])
 
 async function runAssert(spec, obsId) {
@@ -277,6 +282,7 @@ async function runAssert(spec, obsId) {
     (!m.role || c.role === m.role) &&
     (!m.selector || selectorOf(ui.__snapshot.elements.get(c.id)) === m.selector) &&
     (!m.name || norm(labelOf(ui, c)).includes(norm(m.name))) &&
+    (!m.nameExact || norm(labelOf(ui, c)) === norm(m.nameExact)) &&
     (!m.to || (c.after && Object.entries(m.to).every(([k, v]) => c.after[k] === v)))
 
   const inIgnored = (ui, id) => {
@@ -373,10 +379,11 @@ async function runAssert(spec, obsId) {
   if (spec.settleMs) await new Promise((r) => setTimeout(r, Math.min(10000, spec.settleMs)))
   const budget = Math.min(15000, spec.retry?.budgetMs || 0)
   const interval = Math.max(100, spec.retry?.intervalMs || 250)
-  let ui, result, attempts = 0
+  let ui, lastObs, result, attempts = 0
   for (;;) {
     attempts++
-    ui = buildUi(observe(document.body, baseline ? { previous: baseline } : {}), {})
+    lastObs = await observeChunked(document.body, baseline ? { previous: baseline } : {})
+    ui = buildUi(lastObs, {})
     result = evaluate(ui)
     if (result.pass || performance.now() - t0 >= budget) break
     await new Promise((r) => setTimeout(r, interval))
@@ -393,6 +400,7 @@ async function runAssert(spec, obsId) {
   return {
     type: 'assert', obsId, ts: Date.now(),
     walkMs: Math.round(performance.now() - t0), attempts,
+    torn: (lastObs && lastObs.torn) || 0,
     hasBaseline,
     pass: result.pass,
     checks: result.checks,
@@ -423,15 +431,17 @@ window.addEventListener('message', (e) => {
   }
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
     const obsId = e.data.obsId ?? e.data.token ?? null // token kept for old snippets
-    let out
-    try { out = runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, obsId }) } catch (err) {
-      out = { error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId }
-      const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
-      node.textContent = JSON.stringify(out)
-    }
-    // The result rides IN the ready message (shared-slot race, round 2); the node
-    // write above stays for backward compat.
-    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId, result: out }, '*')
+    ;(async () => {
+      let out
+      try { out = await runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, obsId }) } catch (err) {
+        out = { error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId }
+        const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
+        node.textContent = JSON.stringify(out)
+      }
+      // The result rides IN the ready message (shared-slot race, round 2); the node
+      // write above stays for backward compat.
+      window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId, result: out }, '*')
+    })()
   }
 })
 

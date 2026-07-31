@@ -181,7 +181,7 @@ const TOOLS = [
         changed: { type: 'boolean', description: 'expected value of the diff since the last observation' },
         mustInclude: {
           type: 'array',
-          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
+          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, nameExact: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
           description: 'changes that must appear in the diff (selector = exact; to = expected state after, e.g. {expanded:true})',
         },
         mustNotInclude: {
