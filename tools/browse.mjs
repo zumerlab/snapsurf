@@ -13,15 +13,25 @@
  *   node packages/agent/tools/browse.mjs click <id|x,y>       # click (auto-scrolls to id)
  *   node packages/agent/tools/browse.mjs type <text…>         # type into focused element
  *   node packages/agent/tools/browse.mjs enter                # press Enter
+ *   node packages/agent/tools/browse.mjs text <id>            # visible text of one node
  *   node packages/agent/tools/browse.mjs shot <file.jpg>      # native screenshot → file
- *   node packages/agent/tools/browse.mjs snap <file.png>      # snapdom render (product path)
+ *   node packages/agent/tools/browse.mjs snap [id] [file.png] # snapdom render (product path)
+ *   node packages/agent/tools/browse.mjs cp save <name>       # name the current baseline
+ *   node packages/agent/tools/browse.mjs cp list              # named checkpoints this session
+ *   node packages/agent/tools/browse.mjs cp diff <name>       # what changed vs a named baseline
  *   node packages/agent/tools/browse.mjs status | stop
+ *
+ * Every command is appended to a durable JSONL log (packages/agent/logs/<session>.jsonl):
+ * ts, seq, epoch, urls before/after, resolved role/name, duration, error, image hashes.
+ * Typed text never lands raw in the log. Observations are numbered (obs #N = epoch);
+ * ids only resolve within the epoch that minted them.
  *
  * NOT FOR PUBLICATION — part of the private packages/agent workspace.
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { writeFile } from 'node:fs/promises'
+import { writeFile, appendFile, mkdir } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = join(HERE, '..', '..', '..')
@@ -78,6 +88,21 @@ context.on('page', (p) => {
   page = p
 })
 
+// ── Session log: one JSONL line per command, durable, typed text redacted ────────────
+const SESSION = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '').replace('T', '-')
+const LOGDIR = join(HERE, '..', 'logs')
+await mkdir(LOGDIR, { recursive: true })
+const LOGFILE = join(LOGDIR, `${SESSION}.jsonl`)
+let seq = 0
+// One observation generation. open/look/cp-diff mint a new epoch and every output is
+// stamped `obs #N` — ids only resolve within the epoch that minted them, and the log
+// records which epoch each action's id came from.
+let epoch = 0
+// Per-command structured extras (resolved target, image hash, checkpoint name) set by
+// handlers and picked up by the log wrapper.
+let meta = null
+const sha256 = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 16)
+
 // ── In-page protocol (same shapes the realloop experiments validated) ────────────────
 const observe = (previous) => {
   // Walk-only (§lite): an agent with a mission needs semantics every turn but pixels
@@ -124,6 +149,25 @@ const inLocate = (id) => {
     role: n && n.role, name: n && (n.name || (n.text || '').slice(0, 40)) }
 }
 
+// ── Page access that survives navigation races ───────────────────────────────────────
+// The eBay v2 failure: `look` right after `enter` evaluated while the new document had
+// no body yet (`Cannot read properties of null (reading 'nodeType')`). Wait for DOM
+// readiness first, and if the context is torn down mid-evaluate, wait again and retry
+// ONCE — a second failure is a real error and should surface.
+async function inPage(fn, arg = null) {
+  await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {})
+  try {
+    return await page.evaluate(fn, arg)
+  } catch (e) {
+    if (/Execution context was destroyed|navigation|reading 'nodeType'|__agentBuildUi/.test(String(e))) {
+      await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {})
+      await page.waitForTimeout(300)
+      return await page.evaluate(fn, arg)
+    }
+    throw e
+  }
+}
+
 // ── Rendering for a model reader: compact text, ids inline ───────────────────────────
 const STRUCTURAL = /\[(button|link|textbox|searchbox|checkbox|radio|combobox|slider|spinbutton|switch|tab|menuitem|option|heading|navigation|main|banner|search|form|contentinfo|img)\]|#/
 function trimOutline(context, budget = 12000) {
@@ -143,31 +187,52 @@ function trimOutline(context, budget = 12000) {
   return s + `\n…[recortado: ${note} — usá find]`
 }
 const fmtMap = (o) => o.map.map((e) => `  ${e.id} ${e.r}${e.n ? ` "${e.n.slice(0, 60)}"` : ''} [${e.b.join(',')}]${e.c ? ` ⊘tapado por ${e.c}` : ''}`).join('\n')
-const fmtFirst = (o, url) => `URL: ${url}\nactionables: ${o.mapTotal} (primeros 40 abajo; el resto vía find) · regiones no observables: ${o.unobservable}\n\nOUTLINE:\n${trimOutline(o.context)}\n\nMAPA:\n${fmtMap(o)}`
+const fmtFirst = (o, url) => `URL: ${url} · obs #${epoch}\nactionables: ${o.mapTotal} (primeros 40 abajo; el resto vía find) · regiones no observables: ${o.unobservable}\n\nOUTLINE:\n${trimOutline(o.context)}\n\nMAPA:\n${fmtMap(o)}`
 const fmtLook = (o, url) => {
   if (o.changed === undefined) return fmtFirst(o, url) // navigation happened: fresh page
-  if (!o.changed) return `URL: ${url}\nsin cambios desde el último look (regiones no observables: ${o.unobservable})`
+  if (!o.changed) return `URL: ${url} · obs #${epoch}\nsin cambios desde el último look (regiones no observables: ${o.unobservable})`
   const ch = o.changes.map((c) => `  ${c.kind} ${c.role || ''}${c.name ? ` "${String(c.name).slice(0, 50)}"` : ''} ${c.id || ''}`).join('\n')
   const d = o.delta || {}
   const vis = (d.becameVisible || []).map((r) => r.name || r.role).slice(0, 10)
   const cov = (d.becameCovered || []).map((r) => r.name || r.role).slice(0, 10)
-  return `URL: ${url}\nCAMBIOS (${o.changes.length}):\n${ch}${vis.length ? `\naparecieron: ${vis.join(' · ')}` : ''}${cov.length ? `\nquedaron tapados: ${cov.join(' · ')}` : ''}`
+  return `URL: ${url} · obs #${epoch}\nCAMBIOS (${o.changes.length}):\n${ch}${vis.length ? `\naparecieron: ${vis.join(' · ')}` : ''}${cov.length ? `\nquedaron tapados: ${cov.join(' · ')}` : ''}`
 }
 
+// ── Adaptive settle: small pages shouldn't pay wikipedia's ceiling ───────────────────
+// networkidle = 500ms without traffic; the cap keeps SPAs with eternal polling at the
+// old fixed cost, and the floor gives rAF-driven UIs a beat to paint.
+const settle = async (cap = 1500, floor = 300) => {
+  const t0 = Date.now()
+  await page.waitForLoadState('domcontentloaded', { timeout: cap }).catch(() => {})
+  await page.waitForLoadState('networkidle', { timeout: Math.max(50, cap - (Date.now() - t0)) }).catch(() => {})
+  const left = floor - (Date.now() - t0)
+  if (left > 0) await page.waitForTimeout(left)
+}
+
+// ── Checkpoints: named observation baselines ─────────────────────────────────────────
+// Recovery here means "diff the present against a known past", NOT undo: a semantic
+// checkpoint cannot revert clicks, navigation or requests. Hence `cp diff`, never
+// `restore`. Saved per-session in memory + serialized next to the log.
+const CHECKPOINTS = new Map()
+
 // ── Command handlers ─────────────────────────────────────────────────────────────────
-const settle = (ms = 1500) => page.waitForTimeout(ms)
 const HANDLERS = {
   async open([url]) {
     await page.goto(url.startsWith('http') ? url : 'https://' + url, { waitUntil: 'domcontentloaded', timeout: 45000 })
-    await settle(3500)
-    return fmtFirst(await page.evaluate(observe, null), page.url())
+    await settle(3500, 500)
+    const o = await inPage(observe, null)
+    epoch++
+    return fmtFirst(o, page.url())
   },
   async look() {
-    const prev = await page.evaluate(() => window.__lastCp || null)
-    return fmtLook(await page.evaluate(observe, prev), page.url())
+    const prev = await inPage(() => window.__lastCp || null)
+    const o = await inPage(observe, prev)
+    epoch++
+    return fmtLook(o, page.url())
   },
   async find(args) {
-    const matches = await page.evaluate(inFind, args.join(' '))
+    const matches = await inPage(inFind, args.join(' '))
+    meta = { matches: matches.map((m) => m.id) }
     return matches.length
       ? matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 60)}"` : ''} [${m.b.join(',')}]`).join('\n')
       : 'sin resultados'
@@ -175,16 +240,18 @@ const HANDLERS = {
   async click([target]) {
     let point = null
     if (/^\d+,\d+$/.test(target)) { const [x, y] = target.split(',').map(Number); point = { x, y } }
-    else point = await page.evaluate(inLocate, target)
+    else point = await inPage(inLocate, target)
     if (!point) return `no pude resolver "${target}" — usá un id del mapa/find o x,y`
+    meta = { resolved: { id: /^\d+,\d+$/.test(target) ? null : target, ...point } }
     const what = point.role ? ` sobre ${point.role}${point.name ? ` "${point.name}"` : ''}` : ''
     await page.mouse.click(point.x, point.y)
-    await settle()
+    await settle(1500)
     return `click en (${point.x},${point.y})${what} · URL: ${page.url()} — corré look para ver qué cambió`
   },
   async type(args) {
     await page.keyboard.insertText(args.join(' '))
-    await settle(400)
+    meta = { typedChars: args.join(' ').length }
+    await page.waitForTimeout(400)
     return 'tipeado — corré look (o enter para enviar)'
   },
   async enter() {
@@ -193,15 +260,17 @@ const HANDLERS = {
     return `enter · URL: ${page.url()} — corré look`
   },
   async text([id]) {
-    const t = await page.evaluate((nid) => {
+    const t = await inPage((nid) => {
       const el = window.__lastUi && window.__lastUi.__snapshot.elements.get(nid)
       return el ? (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 600) : null
     }, id)
+    meta = { resolved: { id } }
     return t === null ? `id desconocido: ${id}` : t || '(sin texto)'
   },
   async shot([file]) {
     const path = file || '/tmp/agent-browse-shot.jpg'
-    await page.screenshot({ type: 'jpeg', quality: 80, path })
+    const buf = await page.screenshot({ type: 'jpeg', quality: 80, path })
+    meta = { image: { path, sha256: sha256(buf) } }
     return `screenshot nativo → ${path}`
   },
   async snap(args) {
@@ -211,7 +280,7 @@ const HANDLERS = {
     let [target, file] = args
     if (target && /\.(png|jpg)$/.test(target)) { file = target; target = null }
     const path = file || '/tmp/agent-browse-snap.png'
-    const src = await page.evaluate(async (nid) => {
+    const src = await inPage(async (nid) => {
       if (nid) {
         const el = window.__lastUi && window.__lastUi.__snapshot.elements.get(nid)
         if (!el) return null
@@ -228,14 +297,43 @@ const HANDLERS = {
       return (await result.toPng()).src
     }, target || null)
     if (!src) return `id desconocido: ${target}`
-    await writeFile(path, Buffer.from(src.split(',')[1], 'base64'))
+    const buf = Buffer.from(src.split(',')[1], 'base64')
+    await writeFile(path, buf)
+    meta = { resolved: { id: target || null }, image: { path, sha256: sha256(buf) } }
     return `render snapdom de ${target ? `${target} + ancestro de contexto` : 'viewport'} → ${path}`
   },
+  async cp([sub, name]) {
+    if (sub === 'save') {
+      if (!name) return 'uso: cp save <nombre>'
+      const cp = await inPage(() => window.__lastCp || null)
+      if (!cp) return 'no hay observación todavía — corré open/look primero'
+      const entry = { name, session: SESSION, epoch, url: page.url(), ts: new Date().toISOString(), cp }
+      CHECKPOINTS.set(name, entry)
+      const file = join(LOGDIR, `${SESSION}-cp-${name}.json`)
+      await writeFile(file, JSON.stringify(entry))
+      meta = { checkpoint: name, file }
+      return `checkpoint "${name}" guardado (obs #${epoch} · ${entry.url}) → ${file}`
+    }
+    if (sub === 'list') {
+      if (!CHECKPOINTS.size) return 'sin checkpoints en esta sesión'
+      return [...CHECKPOINTS.values()].map((e) => `${e.name} · obs #${e.epoch} · ${e.url} · ${e.ts}`).join('\n')
+    }
+    if (sub === 'diff') {
+      const saved = CHECKPOINTS.get(name)
+      if (!saved) return `checkpoint desconocido: ${name} — mirá cp list`
+      const warn = saved.url !== page.url() ? `⚠ el checkpoint es de otra URL (${saved.url}) — un diff entre documentos distintos puede ser puro ruido\n` : ''
+      const o = await inPage(observe, saved.cp)
+      epoch++
+      meta = { checkpoint: name, fromEpoch: saved.epoch }
+      return `${warn}DIFF vs "${name}" (obs #${saved.epoch} → #${epoch}) — ojo: el baseline del próximo look pasa a ser el estado ACTUAL\n${fmtLook(o, page.url())}`
+    }
+    return 'uso: cp save <nombre> | cp list | cp diff <nombre>'
+  },
   async status() {
-    return `daemon ok · URL: ${page.url()}`
+    return `daemon ok · URL: ${page.url()} · obs #${epoch} · sesión ${SESSION}\nlog: ${LOGFILE}\ncheckpoints: ${CHECKPOINTS.size ? [...CHECKPOINTS.keys()].join(', ') : '(ninguno)'}`
   },
   async stop() {
-    setTimeout(() => process.exit(0), 100)
+    setTimeout(() => process.exit(0), 250)
     return 'daemon detenido'
   },
 }
@@ -245,13 +343,25 @@ createServer((req, res) => {
   let body = ''
   req.on('data', (c) => { body += c })
   req.on('end', async () => {
+    const t0 = Date.now()
+    const urlBefore = (() => { try { return page.url() } catch { return null } })()
+    let cmd, args = [], ok = true, error = null
     try {
-      const { cmd, args = [] } = JSON.parse(body || '{}')
+      ;({ cmd, args = [] } = JSON.parse(body || '{}'))
       if (!HANDLERS[cmd]) throw new Error(`comando desconocido: ${cmd}`)
+      meta = null
       res.end(await HANDLERS[cmd](args) + '\n')
     } catch (e) {
+      ok = false
+      error = String(e).split('\n')[0]
       res.statusCode = 500
-      res.end(String(e).split('\n')[0] + '\n')
+      res.end(error + '\n')
     }
+    appendFile(LOGFILE, JSON.stringify({
+      ts: new Date().toISOString(), session: SESSION, seq: ++seq, cmd,
+      args: cmd === 'type' ? [`«${args.join(' ').length} chars»`] : args,
+      epoch, urlBefore, urlAfter: (() => { try { return page.url() } catch { return null } })(),
+      durationMs: Date.now() - t0, ok, ...(error ? { error } : {}), ...(meta || {}),
+    }) + '\n').catch(() => {})
   })
-}).listen(PORT, '127.0.0.1', () => console.log(`agent-browse daemon en http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'})`))
+}).listen(PORT, '127.0.0.1', () => console.log(`agent-browse daemon en http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · sesión ${SESSION}\nlog: ${LOGFILE}`))
