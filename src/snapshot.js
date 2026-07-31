@@ -369,16 +369,36 @@ export const yieldToLoop = () => new Promise((res) => {
 /** Time-budget slicer shared by every loop that must not block the tab (the walk,
  *  the digest, assert evidence). Call the returned pause() between units of work;
  *  it returns null (no promise, no microtask) until budgetMs of continuous work has
- *  accrued, then a yield. Slice stats land in __SD_PROF when profiling. */
+ *  accrued, then a yield. Slice stats land in __SD_PROF when profiling.
+ *
+ *  Every ~150ms of work the yield goes through setTimeout(0) instead of the
+ *  MessageChannel: a chain of posted-message tasks can be serviced ahead of the
+ *  TIMER queue, so a walk that slices perfectly still reads as one giant block to
+ *  a setInterval probe (panel round: internal maxSliceMs 88ms vs external 1017ms —
+ *  and its own safety timeouts starve the same way). Draining the timer queue at a
+ *  bounded interval costs a few 4ms clamps per walk and makes the external
+ *  measurement converge with the internal one. */
 export function makeSlicer(budgetMs = 40) {
   const P = typeof window !== 'undefined' && window.__SD_PROF
   let last = performance.now()
-  return () => {
+  let lastTimerYield = last
+  const pause = () => {
     const now = performance.now()
     if (now - last < budgetMs) return null
     if (P) { P.slices = (P.slices || 0) + 1; P.maxSliceMs = Math.max(P.maxSliceMs || 0, Math.round(now - last)) }
-    return yieldToLoop().then(() => { last = performance.now() })
+    const viaTimer = now - lastTimerYield >= 150
+    const p = viaTimer ? new Promise((res) => setTimeout(res, 0)) : yieldToLoop()
+    return p.then(() => {
+      last = performance.now()
+      if (viaTimer) lastTimerYield = last
+    })
   }
+  // Call after awaiting FOREIGN async work (which slices itself): wall time spent
+  // there is not this slicer's continuous work — counting it reported maxSliceMs 255
+  // for a pipeline whose real slices were ≤45ms (falsely alarming, the mirror image
+  // of the falsely-reassuring self-report the panel warned about).
+  pause.reset = () => { last = performance.now() }
+  return pause
 }
 
 /**

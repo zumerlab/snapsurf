@@ -17,10 +17,10 @@
  * Core is untouched and knows nothing about this package (§Anti-goals).
  * @module agent/plugin
  */
-import { takeSnapshot, takeSnapshotChunked, yieldToLoop } from './snapshot.js'
+import { takeSnapshot, takeSnapshotChunked, makeSlicer } from './snapshot.js'
 import { resolveNoise } from './noise.js'
 import { diffSnapshots } from './diff.js'
-import { makeCheckpoint, inflateCheckpoint } from './checkpoint.js'
+import { makeCheckpoint, inflateCheckpoint, inflateCheckpointChunked } from './checkpoint.js'
 import { makeQueryApi } from './query.js'
 
 let runCounter = 0
@@ -251,20 +251,32 @@ export function observe(root, options = {}) {
 export async function observeChunked(root, options = {}) {
   const noise = resolveNoise(options.noise)
   const run = ++runCounter
+  const P = typeof window !== 'undefined' && window.__SD_PROF
+  // Inflate BEFORE the walk, sliced: three hash derivations per node made it the
+  // biggest post-walk monolith (480ms measured by the panel). Callers that reuse a
+  // baseline (assert retries) pass an already-inflated one and skip this entirely.
+  if (options.previous && !(options.previous.nodes instanceof Map) && !options.previous.__inflated) {
+    const t0 = performance.now()
+    const prev = await inflateCheckpointChunked(options.previous, makeSlicer(options.budgetMs || 40))
+    if (P) P.inflate = (P.inflate || 0) + (performance.now() - t0)
+    options = { ...options, previous: prev }
+  }
   const snap = await takeSnapshotChunked(root, noise, { budgetMs: options.budgetMs })
   // The post-walk stages yield between one another: with a baseline present,
   // inflate + diff + relabel used to run as ONE task and blocked ~1s on 3.5k-node
   // pages (panel probe round) — the walk sliced, its bookends didn't.
-  const P = typeof window !== 'undefined' && window.__SD_PROF
+  const pause = makeSlicer(options.budgetMs || 40)
   const gen = finishObserveStages(snap, options, noise, run)
   let t = performance.now()
   let r = gen.next()
   while (!r.done) {
     if (P) P[r.value] = (P[r.value] || 0) + (performance.now() - t)
-    await yieldToLoop()
+    const p = pause()
+    if (p) await p
     t = performance.now()
     r = gen.next()
   }
+  if (P) P.relabel = (P.relabel || 0) + (performance.now() - t)
   return r.value
 }
 

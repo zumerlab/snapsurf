@@ -36,7 +36,7 @@ Cómo se usa:
 1. Verificá que está presente (con tu herramienta de ejecutar JavaScript):
    `!!document.querySelector('meta[name="__snapdom_companion"]')`
    Y verificá la VERSIÓN DEL CONTRATO: todo resultado (observe/assert) trae
-   `contract: 4`. Si no aparece o es menor, el bundle cargado es viejo — reportalo
+   `contract: 5`. Si no aparece o es menor, el bundle cargado es viejo — reportalo
    y pedí recargar la extensión antes de sacar conclusiones (cuatro rondas de
    feedback se contaminaron por evaluar bundles desactualizados).
 
@@ -134,12 +134,22 @@ Cómo se usa:
 
 4c. **PROF — desglose de tiempos por fase** (observe Y assert): agregá `prof: true`
    al MENSAJE (nivel mensaje, no dentro de `spec` — el spec lo rechazaría como clave
-   desconocida). El resultado trae `prof` con ms por fase: las del walk por nodo
-   (styleSubset, relativeBBox, computeName, …) y las de pipeline (prelude, finish,
-   saltIds, inflate, diff, buildUi, evaluate, checkpoint, evidence, changeLabels,
-   digest), más `slices` (cuántas veces cedió el thread) y `maxSliceMs` (el bloque
-   continuo más largo — si tu sonda ve bloques mucho mayores que este, el bloqueo
-   no es nuestro).
+   desconocida). El resultado trae `prof` con ms por clave, y las claves son de DOS
+   CLASES que no hay que confundir:
+   - **Acumuladores POR NODO** (styleSubset, relativeBBox, computeName,
+     getComputedStyle, computeRole, interactionState, occluderAt): total sumado a lo
+     largo de TODOS los nodos del walk, repartido entre los slices. `styleSubset: 500`
+     con 3.500 nodos son ~0,14ms por nodo DENTRO del lazo troceado — NO es un bloque
+     de 500ms (lectura errónea de una ronda anterior).
+   - **Stages de pipeline** (prelude, finish, saltIds, inflate, diff, relabel,
+     buildUi, evaluate, checkpoint, evidence, changeLabels, digest): tramos que corren
+     entre yields; un número alto acá SÍ es un candidato a bloque.
+   Más `slices` (cuántas veces cedió el thread) y `maxSliceMs` (el bloque continuo
+   más largo auto-medido). Nota sobre sondas externas: los yields drenan la cola de
+   TIMERS a intervalos acotados (~150ms de trabajo); si una sonda setInterval mide
+   bloques muy por encima de maxSliceMs, lo que está corriendo en el medio es
+   trabajo de OTROS (tareas del entorno intercaladas en nuestros yields), no nuestro
+   — el gate ahora verifica la paridad sonda-externa/auto-reporte con setInterval.
    Para LEER contenido largo (artículos, hilos), tu get_page_text sigue siendo mejor:
    el digest es mapa y cambios, no texto completo.
 

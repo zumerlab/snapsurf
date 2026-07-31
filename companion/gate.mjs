@@ -79,7 +79,7 @@ const first = await page.evaluate(async () => {
 check('ready message carries result', !!first, first ? '' : 'no ready/result within 60s')
 if (!first) { await ctx.close(); process.exit(1) }
 const r1 = first.result
-check('contract === 4', r1.contract === 4, `contract: ${r1.contract}`)
+check('contract === 5', r1.contract === 5, `contract: ${r1.contract}`)
 check('torn/changesTotal-class fields present', 'torn' in r1, `torn: ${r1.torn}`)
 check('walk wall-time sane (< 8s)', first.wallMs < 8000, `${first.wallMs}ms for ${r1.actionables} actionables`)
 check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
@@ -87,10 +87,17 @@ check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
 // ── with-baseline pass: the post-walk pipeline (inflate+diff+relabel+checkpoint+digest)
 // only runs when a baseline exists — the first-walk probe above never saw it, which is
 // how 1-1.6s blocks reached the panel while this gate stayed green (panel probe round).
+// TWO probes per request: rAF (rendering gaps) AND setInterval (timer queue — the
+// panel's method). MessageChannel yield chains can starve the timer queue while
+// rendering stays live: internal maxSliceMs said 88ms while the panel's setInterval
+// probe read 1017ms. The gate must measure what an external consumer measures, not
+// trust the walk's self-report.
 const probed = (msg, tmo = 60000) => page.evaluate(async ({ m, tmo }) => {
   let maxGap = 0, last = performance.now(), running = true
   const tick = () => { const now = performance.now(); maxGap = Math.max(maxGap, now - last); last = now; if (running) requestAnimationFrame(tick) }
   requestAnimationFrame(tick)
+  let maxTimerGap = 0, lastT = performance.now()
+  const iv = setInterval(() => { const now = performance.now(); maxTimerGap = Math.max(maxTimerGap, now - lastT - 25); lastT = now }, 25)
   const obsId = 'probe' + Math.random()
   const res = new Promise((r) => {
     const h = (e) => { if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) { removeEventListener('message', h); r(e.data.result) } }
@@ -100,30 +107,25 @@ const probed = (msg, tmo = 60000) => page.evaluate(async ({ m, tmo }) => {
   window.postMessage({ ...m, obsId }, '*')
   const result = await res
   running = false
-  return { result, maxGap: Math.round(maxGap) }
+  clearInterval(iv)
+  return { result, maxGap: Math.round(maxGap), maxTimerGap: Math.round(maxTimerGap) }
 }, { m: msg, tmo })
 
 const second = await probed({ type: 'SNAPDOM_OBSERVE', prof: true })
 check('with-baseline observe: max block < 300ms', !!second.result && second.maxGap < 300, `${second.maxGap}ms`)
+check('with-baseline observe: timer-queue block < 300ms (external-probe parity)', !!second.result && second.maxTimerGap < 300, `${second.maxTimerGap}ms`)
 check('prof covers the post-walk stages', !!second.result?.prof && 'diff' in second.result.prof && 'digest' in second.result.prof,
   JSON.stringify(second.result?.prof || null))
 
 // ── throttled-environment pass (panel ask: measure where CDP/automation lives) ───────
 const cdp = await ctx.newCDPSession(page)
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
-const thr = await page.evaluate(async () => {
-  const obsId = 'gate-thr'
-  const t0 = performance.now()
-  const res = new Promise((r) => {
-    addEventListener('message', (e) => { if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) r(e.data.result) })
-    setTimeout(() => r(null), 60000)
-  })
-  window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId }, '*')
-  const result = await res
-  return result ? Math.round(performance.now() - t0) : null
-})
+const t0thr = Date.now()
+const thr = await probed({ type: 'SNAPDOM_OBSERVE' })
+const thrMs = thr.result ? Date.now() - t0thr : null
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
-check('walk under 4x CPU throttle < 4s', thr !== null && thr < 4000, `${thr}ms`)
+check('walk under 4x CPU throttle < 4s', thrMs !== null && thrMs < 4000, `${thrMs}ms`)
+check('throttled 4x: timer-queue block < 500ms (panel-env analog)', !!thr.result && thr.maxTimerGap < 500, `${thr.maxTimerGap}ms`)
 
 // ── assert reply channel: EXPLICIT check, message-only, no node fallback ─────────────
 // (panel field report: asserts arrived node-only in its env while observes messaged
@@ -133,6 +135,7 @@ check('ASSERT reply arrives via SNAPDOM_DIGEST_READY with result payload',
   chan.result && chan.result.type === 'assert' && 'pass' in chan.result,
   chan.result ? `result.type: ${chan.result?.type}` : 'NO message within 15s (node-only channel — panel blindspot reproduced)')
 check('assert: max block < 300ms', !!chan.result && chan.maxGap < 300, `${chan.maxGap}ms`)
+check('assert: timer-queue block < 300ms (external-probe parity)', !!chan.result && chan.maxTimerGap < 300, `${chan.maxTimerGap}ms`)
 check('assert result carries prof (panel ask)', !!chan.result?.prof && 'evaluate' in chan.result.prof,
   JSON.stringify(chan.result?.prof || null))
 

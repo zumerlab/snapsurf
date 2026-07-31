@@ -72,10 +72,14 @@ export function makeCheckpoint(snapshot, opts = {}) {
 
 /** Restore the matcher/differ node shape from the terse wire format, re-deriving the
  *  three omitted signals with the SAME formulas snapshot.js uses (semanticPath from the
- *  parent chain, ancestorFp from the parent's path, geometryHash from rel). */
-export function inflateCheckpoint(cp) {
+ *  parent chain, ancestorFp from the parent's path, geometryHash from rel).
+ *  Generator so the chunked driver below can slice it: three hash derivations per node
+ *  made this the single biggest post-walk monolith (480ms on a 3.5k-node baseline in
+ *  the panel's environment). */
+function* inflateGen(cp) {
   const nodes = {}
   for (const [id, c] of Object.entries(cp.nodes)) {
+    yield
     nodes[id] = {
       id,
       parentId: c.P || null,
@@ -107,6 +111,28 @@ export function inflateCheckpoint(cp) {
       : (n.rel ? hash('g', n.rel[0], n.rel[1], n.rel[2], n.rel[3]) : '')).slice(0, 8)
     return path
   }
-  for (const n of Object.values(nodes)) derive(n)
+  for (const n of Object.values(nodes)) {
+    yield
+    derive(n)
+  }
   return { ...cp, nodes, __inflated: true }
+}
+
+export function inflateCheckpoint(cp) {
+  const gen = inflateGen(cp)
+  let r = gen.next()
+  while (!r.done) r = gen.next()
+  return r.value
+}
+
+/** Sliced inflate: `pause` is a makeSlicer() pause fn (snapshot.js). */
+export async function inflateCheckpointChunked(cp, pause) {
+  const gen = inflateGen(cp)
+  let r = gen.next()
+  while (!r.done) {
+    const p = pause()
+    if (p) await p
+    r = gen.next()
+  }
+  return r.value
 }

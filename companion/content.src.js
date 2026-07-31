@@ -15,10 +15,18 @@
  * document — the Claude extension stops paying screenshots to know what changed.
  */
 import { observeChunked, buildUi } from '../src/plugin.js'
-import { yieldToLoop, makeSlicer } from '../src/snapshot.js'
+import { makeSlicer } from '../src/snapshot.js'
+import { inflateCheckpointChunked } from '../src/checkpoint.js'
 
 const NODE_ID = '__snapdom_digest'
 let prev = null
+// Same baseline, inflated ONCE and cached: inflation re-derives three hashes per
+// node (480ms on wikipedia in the panel's env) and used to run again on every
+// observe AND every assert retry attempt. The matcher/differ never mutate it.
+let prevInflated = null
+const setBaseline = (cp) => { prev = cp; prevInflated = null }
+const inflatedBaseline = async () =>
+  prev ? (prevInflated || (prevInflated = await inflateCheckpointChunked(prev, makeSlicer(40)))) : null
 
 // CSS selector the READER can act with (its own click tools) — feedback from the
 // Claude-extension panel: our n_xxx ids aren't actionable from outside the oracle.
@@ -180,15 +188,21 @@ async function runObserve(opts = {}) {
   const t0 = performance.now()
   if (opts.prof) window.__SD_PROF = {}
   const pacc = (k, t) => { const p = window.__SD_PROF; if (opts.prof && p) p[k] = (p[k] || 0) + (performance.now() - t) }
-  const obs = await observeChunked(document.body, prev ? { previous: prev } : {})
   let t = performance.now()
+  const baseline = await inflatedBaseline()
+  pacc('inflate', t)
+  const obs = await observeChunked(document.body, baseline ? { previous: baseline } : {})
+  const pause = makeSlicer(40)
+  t = performance.now()
   const ui = buildUi(obs, {})
   pacc('buildUi', t)
-  await yieldToLoop()
+  let p = pause()
+  if (p) await p
   t = performance.now()
-  prev = ui.checkpoint()
+  setBaseline(ui.checkpoint())
   pacc('checkpoint', t)
-  await yieldToLoop()
+  p = pause()
+  if (p) await p
   // Every change carries a readable label: name, else the node's own text, else the
   // subtree text — 29/30 anonymous `generic` changes made the panel's first diff
   // useless. Named changes sort first.
@@ -210,7 +224,6 @@ async function runObserve(opts = {}) {
   let changes
   if (ui.changes) {
     t = performance.now()
-    const pause = makeSlicer(40)
     // label first (cheap), THEN sort, THEN cut to 40, and only those 40 pay
     // selectorOf — the old path ran a verified querySelector for EVERY change
     // before the cut, which on a big diff was its own main-thread monolith.
@@ -237,8 +250,8 @@ async function runObserve(opts = {}) {
     // contract marker: readers verify the loaded bundle matches the documented
     // protocol (four consumer rounds bitten by stale bundles — result-in-message,
     // ignore, chunked walk all "missing" because the extension was never reloaded)
-    // v4: sliced post-walk pipeline + full-stage prof + prof on asserts
-    contract: 4,
+    // v5: sliced+cached inflate, timer-queue-bounded yields, external-probe parity
+    contract: 5,
     // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
@@ -326,7 +339,10 @@ async function runAssert(spec, obsId, profFlag) {
   }
 
   const hasBaseline = !!prev
-  const baseline = prev
+  const pause = makeSlicer(40)
+  const tInf = performance.now()
+  const baseline = await inflatedBaseline()
+  pacc('inflate', tInf)
   const needsDiff = spec.changed !== undefined || spec.mustInclude || spec.mustNotInclude ||
     spec.only || spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
   // no baseline → every diff check fails LOUDLY (panel 3a: the post-reload vacuous pass)
@@ -445,19 +461,25 @@ async function runAssert(spec, obsId, profFlag) {
   for (;;) {
     attempts++
     lastObs = await observeChunked(document.body, baseline ? { previous: baseline } : {})
+    pause.reset()
     let t = performance.now()
     ui = buildUi(lastObs, {})
     pacc('buildUi', t)
-    await yieldToLoop()
+    const p = pause()
+    if (p) await p
     t = performance.now()
     result = await evaluate(ui)
+    pause.reset()
     pacc('evaluate', t)
     if (result.pass || performance.now() - t0 >= budget) break
     await new Promise((r) => setTimeout(r, interval))
   }
-  await yieldToLoop()
+  {
+    const p = pause()
+    if (p) await p
+  }
   let t = performance.now()
-  if (!spec.keepBaseline) prev = ui.checkpoint()
+  if (!spec.keepBaseline) setBaseline(ui.checkpoint())
   pacc('checkpoint', t)
 
   const ranDiff = hasBaseline && needsDiff
@@ -465,7 +487,6 @@ async function runAssert(spec, obsId, profFlag) {
   let evidence
   if (ranDiff) {
     t = performance.now()
-    const pause = makeSlicer(40)
     evidence = []
     for (const c of effective.slice(0, 60)) {
       const p = pause()
@@ -479,7 +500,7 @@ async function runAssert(spec, obsId, profFlag) {
     pacc('evidence', t)
   }
   return {
-    type: 'assert', contract: 4, obsId, ts: Date.now(),
+    type: 'assert', contract: 5, obsId, ts: Date.now(),
     walkMs: Math.round(performance.now() - t0), attempts,
     torn: (lastObs && lastObs.torn) || 0,
     hasBaseline,
