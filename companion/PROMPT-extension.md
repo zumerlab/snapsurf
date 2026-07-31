@@ -21,12 +21,17 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
 
 3. El JSON trae: `actionables` (total), `digest.marks` (regiones landmark),
    `digest.heads` (títulos), `digest.top` (mejores elementos interactivos con id,
-   role, name, bbox y si están tapados), y — si ya habías observado antes en esta
-   misma página — `changed` + `changes` (QUÉ cambió: added/removed/state/style/moved)
-   y `actionabilityDelta` (qué quedó tapado o visible).
+   role, name, `bbox` en coords de página, `vbox` en coords de VIEWPORT, `selector`
+   CSS accionable, y si están tapados), y — si ya habías observado antes en esta
+   misma página — `changed` + `changes` (QUÉ cambió: added/removed/state/style/moved,
+   siempre con nombre o texto del nodo, y su selector) y `actionabilityDelta`.
+   Podés pedir más elementos: `postMessage({type:'SNAPDOM_OBSERVE', top: 60}, '*')`.
 
-4. Flujo recomendado: observá → actuá (click/type) → volvé a observar y leé
-   `changes` para confirmar el efecto. Eso reemplaza comparar screenshots.
+4. Flujo recomendado: observá → actuá usando el `selector` de cada elemento (con tu
+   herramienta de click, o `document.querySelector(sel).click()`) → volvé a observar
+   y leé `changes` para confirmar el efecto. Eso reemplaza comparar screenshots.
+   Para LEER contenido largo (artículos, hilos), tu get_page_text sigue siendo mejor:
+   el digest es mapa y cambios, no texto completo.
 
 5. Screenshots solo cuando la duda sea genuinamente visual (color, layout,
    solapamiento). Si no tenés herramienta de JavaScript disponible, avisá y seguí

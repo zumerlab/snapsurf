@@ -19,37 +19,82 @@ import { observe, buildUi } from '../src/plugin.js'
 const NODE_ID = '__snapdom_digest'
 let prev = null
 
-function digestOf(ui) {
+// CSS selector the READER can act with (its own click tools) — feedback from the
+// Claude-extension panel: our n_xxx ids aren't actionable from outside the oracle.
+// Read-only: no DOM stamping, no self-inflicted diff noise.
+function selectorOf(el) {
+  if (!el) return null
+  if (el.id) return '#' + CSS.escape(el.id)
+  const parts = []
+  let cur = el
+  while (cur && cur !== document.body && parts.length < 5) {
+    let p = cur.localName
+    const parent = cur.parentElement
+    if (parent) {
+      const sibs = [...parent.children].filter((c) => c.localName === cur.localName)
+      if (sibs.length > 1) p += `:nth-of-type(${sibs.indexOf(cur) + 1})`
+    }
+    parts.unshift(p)
+    if (parent && parent.id) { parts.unshift('#' + CSS.escape(parent.id)); break }
+    cur = parent
+  }
+  return parts.join(' > ')
+}
+
+const vboxOf = (b) => b ? [b[0] - Math.round(scrollX), b[1] - Math.round(scrollY), b[2], b[3]] : undefined
+
+function digestOf(ui, topN) {
   const marks = []
   const heads = []
   const LANDMARKS = { navigation: 1, main: 1, banner: 1, contentinfo: 1, search: 1, form: 1, complementary: 1 }
   for (const id of ui.__snapshot.order) {
     const n = ui.__snapshot.nodes.get(id)
     if (!n) continue
-    if (n.role === 'heading' && heads.length < 15) heads.push({ id, text: (n.name || n.text || '').slice(0, 70) })
-    else if (LANDMARKS[n.role] && marks.length < 10) marks.push({ id, role: n.role, name: (n.name || '').slice(0, 40), bbox: n.bbox })
+    if (n.role === 'heading' && heads.length < 15) heads.push({ id, text: (n.name || n.text || '').slice(0, 90) })
+    else if (LANDMARKS[n.role] && marks.length < 10) marks.push({ id, role: n.role, name: (n.name || '').slice(0, 60), bbox: n.bbox })
   }
-  const top = ui.agentMap.map.slice(0, 25).map((e) => ({
-    id: e.id, role: e.r, name: (e.n || '').slice(0, 70), bbox: e.b,
+  const top = ui.agentMap.map.slice(0, topN).map((e) => ({
+    id: e.id, role: e.r, name: (e.n || '').slice(0, 90),
+    bbox: e.b, vbox: vboxOf(e.b),
+    selector: selectorOf(ui.__snapshot.elements.get(e.id)),
     covered: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined,
   }))
   return { marks, heads, top }
 }
 
-function runObserve() {
+function runObserve(opts = {}) {
   const t0 = performance.now()
   const ui = buildUi(observe(document.body, prev ? { previous: prev } : {}), {})
   prev = ui.checkpoint()
+  // Every change carries a readable label: name, else the node's own text, else the
+  // subtree text — 29/30 anonymous `generic` changes made the panel's first diff
+  // useless. Named changes sort first.
+  const describeChange = (c) => {
+    let label = c.name && String(c.name).slice(0, 60)
+    if (!label && c.id) {
+      const n = ui.__snapshot.nodes.get(c.id)
+      if (n) label = ((n.name || n.text || '')).slice(0, 60) || undefined
+      if (!label) {
+        const el = ui.__snapshot.elements.get(c.id)
+        if (el) label = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) || undefined
+      }
+    }
+    return { kind: c.kind, role: c.role, name: label, id: c.id, selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined }
+  }
   const out = {
-    url: location.href,
+    // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
+    // query strings ("[BLOCKED: Cookie/query string data]")
+    url: location.origin + location.pathname,
     ts: Date.now(),
     walkMs: Math.round(performance.now() - t0),
     actionables: ui.agentMap.map.length,
     unobservable: ui.unobservable.length,
     changed: ui.changed,
-    changes: ui.changes ? ui.changes.slice(0, 40).map((c) => ({ kind: c.kind, role: c.role, name: c.name && String(c.name).slice(0, 50), id: c.id })) : undefined,
+    changes: ui.changes
+      ? ui.changes.map(describeChange).sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0)).slice(0, 40)
+      : undefined,
     actionabilityDelta: ui.actionabilityDelta,
-    digest: digestOf(ui),
+    digest: digestOf(ui, Math.min(100, opts.top || 25)),
   }
   let node = document.getElementById(NODE_ID)
   if (!node) {
@@ -63,7 +108,7 @@ function runObserve() {
 
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
-    try { runObserve() } catch (err) {
+    try { runObserve({ top: e.data.top }) } catch (err) {
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
       node.textContent = JSON.stringify({ error: String(err), url: location.href, ts: Date.now() })
     }
