@@ -172,6 +172,25 @@ const TOOLS = [
     run: async ({ name }) => cmd('cp', ['diff', name]),
   },
   {
+    name: 'browser_assert',
+    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). Returns structured {pass, checks[]}. A failed assertion is a RESULT (isError stays false). Note: it consumes the diff baseline like browser_verify — one call covers act → assert.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'substring the current URL must contain' },
+        changed: { type: 'boolean', description: 'expected value of the diff since the last observation' },
+        mustInclude: {
+          type: 'array',
+          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' } } },
+          description: 'changes that must appear in the diff',
+        },
+        exists: { type: 'string', description: 'text that must be findable on the page' },
+        notCovered: { type: 'string', description: 'text whose best match must not be occluded' },
+      },
+    },
+    run: async (args) => cmd('assert', [JSON.stringify(args)]),
+  },
+  {
     name: 'browser_text',
     description: 'Full visible text of ONE node (by id) — to extract numbers, titles or exact values without interpreting pixels.',
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },

@@ -642,6 +642,51 @@ const HANDLERS = {
     meta = { rec: out, seconds, ...(target && { resolved: { id: target } }), image: { path: out, sha256: sha256(buf) } }
     return `recording ready → ${out} (${seconds} s · ${r.type} · ${target || 'body'} · snapdom's ${wantGif ? 'gifExport' : 'videoExport'} plugin)${out !== file ? `\n(this browser's MediaRecorder produces ${r.type}; the extension follows the real container)` : ''}`
   },
+  async assert(args) {
+    // assert '<json>' — deterministic checks built ON the diff (codex-mcp ask: QA
+    // pipelines must not parse prose). Runs its OWN verify, so one call covers
+    // act → assert; like look, it advances the observation baseline.
+    let spec
+    try { spec = JSON.parse(args.join(' ')) } catch {
+      return 'usage: assert {"url"?, "changed"?, "mustInclude"?: [{kind,role,name}], "exists"?, "notCovered"?}'
+    }
+    const checks = []
+    const push = (type, expected, actual, pass) => checks.push({ type, expected, actual, pass })
+    if (spec.url !== undefined) push('url', spec.url, page.url(), page.url().includes(spec.url))
+    if (spec.changed !== undefined || spec.mustInclude) {
+      const prev = await inPage(() => window.__lastCp || null)
+      const o = await inPage(observe, { previous: prev })
+      epoch++
+      const changed = !!o.changed
+      if (spec.changed !== undefined) push('changed', spec.changed, changed, changed === spec.changed)
+      for (const m of spec.mustInclude || []) {
+        const hit = (o.changes || []).some((c) =>
+          (!m.kind || c.kind === m.kind) &&
+          (!m.role || c.role === m.role) &&
+          (!m.name || String(c.name || '').includes(m.name)))
+        push('mustInclude', m, hit ? 'found' : 'absent', hit)
+      }
+    }
+    if (spec.exists) {
+      const ms = await inPage(inFind, spec.exists)
+      push('exists', spec.exists, ms.length ? `${ms.length} match(es)` : 'absent', ms.length > 0)
+    }
+    if (spec.notCovered) {
+      const cov = await inPage((q) => {
+        const ui = window.__lastUi
+        if (!ui) return null
+        const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        const e = ui.agentMap.map.find((x) => norm(x.n).includes(norm(q)))
+        return e ? { found: true, covered: !!e.covered } : { found: false }
+      }, spec.notCovered)
+      push('notCovered', spec.notCovered, cov && cov.found ? (cov.covered ? 'covered' : 'clear') : 'absent', !!(cov && cov.found && !cov.covered))
+    }
+    const pass = checks.every((c) => c.pass)
+    // A failed assertion is a RESULT, not a command error: ok stays true, pass says it.
+    meta = { assert: { pass, checks } }
+    return `${pass ? 'PASS' : 'FAIL'} (${checks.filter((c) => c.pass).length}/${checks.length} checks)\n` +
+      checks.map((c) => `  ${c.pass ? '✓' : '✗'} ${c.type} · expected ${JSON.stringify(c.expected)} · actual ${JSON.stringify(c.actual)}`).join('\n')
+  },
   async status() {
     const policy = [READONLY && 'readonly', ALLOW && `allow=[${ALLOW.join(', ')}]`].filter(Boolean).join(' · ') || '(unrestricted)'
     return `daemon ok · URL: ${page.url()} · obs #${epoch} · session ${SESSION}\npolicy: ${policy}\nlog: ${LOGFILE}\ncheckpoints: ${CHECKPOINTS.size ? [...CHECKPOINTS.keys()].join(', ') : '(none)'}`
