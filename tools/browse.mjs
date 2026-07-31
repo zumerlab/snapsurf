@@ -24,6 +24,8 @@
  *   node packages/agent/tools/browse.mjs cp save <name>       # name the current baseline
  *   node packages/agent/tools/browse.mjs cp list              # named checkpoints this session
  *   node packages/agent/tools/browse.mjs cp diff <name>       # what changed vs a named baseline
+ *   node packages/agent/tools/browse.mjs run "<cmd…>" …       # batch: N commands, ONE process,
+ *                                                             # abort on first error, JSONL per verb
  *   node packages/agent/tools/browse.mjs status | stop
  *
  * Policy (daemon flags, agent-browser-inspired): --readonly refuses the mutating verbs
@@ -49,15 +51,25 @@ const PORT = 8377
 const [, , CMD, ...ARGS] = process.argv
 
 // ── Client mode: every command except `serve` is one HTTP call ───────────────────────
+// Batch (codex v4): `run "open X" "find Y" "click Z"` executes each quoted arg as one
+// full command from a SINGLE node process — kills the ~80ms launch per verb while the
+// server still logs one JSONL entry per verb. Aborts at the first failed command.
 if (CMD !== 'serve') {
+  const t0 = Date.now()
+  const cmds = CMD === 'run' ? ARGS.map((s) => s.trim().split(/\s+/)) : [[CMD, ...ARGS]]
   try {
-    const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ cmd: CMD, args: ARGS }),
-    })
-    process.stdout.write(await res.text())
-    process.exit(res.ok ? 0 : 1)
+    for (const [cmd, ...args] of cmds) {
+      const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ cmd, args }),
+      })
+      if (cmds.length > 1) process.stdout.write(`── ${cmd} ${args.join(' ')}\n`)
+      process.stdout.write(await res.text())
+      if (!res.ok) process.exit(1)
+    }
+    if (cmds.length > 1) process.stdout.write(`── batch: ${cmds.length} comandos · ${Date.now() - t0} ms\n`)
+    process.exit(0)
   } catch {
     console.error(`daemon no está corriendo — arrancalo con:\n  node packages/agent/tools/browse.mjs serve`)
     process.exit(1)
@@ -295,12 +307,17 @@ const fmtLook = (o, url) => {
 // ── Adaptive settle: small pages shouldn't pay wikipedia's ceiling ───────────────────
 // networkidle = 500ms without traffic; the cap keeps SPAs with eternal polling at the
 // old fixed cost, and the floor gives rAF-driven UIs a beat to paint.
+// Returns the phase breakdown so outliers are explainable from the JSONL alone
+// (codex v4: a 7.7s Wikipedia open was unattributable — network? settle? walk?).
 const settle = async (cap = 1500, floor = 300) => {
   const t0 = Date.now()
   await page.waitForLoadState('domcontentloaded', { timeout: cap }).catch(() => {})
-  await page.waitForLoadState('networkidle', { timeout: Math.max(50, cap - (Date.now() - t0)) }).catch(() => {})
-  const left = floor - (Date.now() - t0)
+  const t1 = Date.now()
+  await page.waitForLoadState('networkidle', { timeout: Math.max(50, cap - (t1 - t0)) }).catch(() => {})
+  const t2 = Date.now()
+  const left = floor - (t2 - t0)
   if (left > 0) await page.waitForTimeout(left)
+  return { dom: t1 - t0, idle: t2 - t1, floor: Math.max(0, left) }
 }
 
 // ── Checkpoints: named observation baselines ─────────────────────────────────────────
@@ -325,11 +342,14 @@ const HANDLERS = {
       meta = { denied: 'allowlist' }
       return `⛔ denegado por política --allow: ${new URL(full).hostname} no está en [${ALLOW.join(', ')}]`
     }
+    const tNav = Date.now()
     await page.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
-    await settle(3500, 500)
+    const navMs = Date.now() - tNav
+    const s = await settle(3500, 500)
+    const tWalk = Date.now()
     const o = await inPage(observe, {})
     epoch++
-    meta = { mapTotal: o.mapTotal }
+    meta = { mapTotal: o.mapTotal, nav: navMs, settle: s, walk: Date.now() - tWalk }
     return fmtFirst(o, page.url())
   },
   async look([id]) {
@@ -351,8 +371,10 @@ const HANDLERS = {
   },
   async find(args) {
     const matches = await inPage(inFind, args.join(' '))
-    // full matches in the audit log — ids alone can't be reconstructed post-session
-    meta = { matches: matches.map((m) => ({ id: m.id, r: m.r, n: m.n && m.n.slice(0, 60), href: m.href || undefined })) }
+    // full matches in the audit log — ids alone can't be reconstructed post-session.
+    // Full field names: the documented contract is {id, role, name, href} and a literal
+    // consumer must find exactly that (codex v4 caught the r/n abbreviation drift).
+    meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n && m.n.slice(0, 60), href: m.href || undefined })) }
     return matches.length
       ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 60)}"` : ''} [${m.b.join(',')}]${m.href ? ` → ${m.href}` : ''}`).join('\n'))
       : 'sin resultados'
@@ -393,7 +415,7 @@ const HANDLERS = {
     meta = { resolved: { id: /^\d+,\d+$/.test(target) ? null : target, ...point } }
     const what = point.role ? ` sobre ${point.role}${point.name ? ` "${point.name}"` : ''}` : ''
     await page.mouse.click(point.x, point.y)
-    await settle(1500)
+    meta.settle = await settle(1500)
     return `click en (${point.x},${point.y})${what} · URL: ${page.url()} — corré look para ver qué cambió`
   },
   async type(args) {
@@ -404,7 +426,7 @@ const HANDLERS = {
   },
   async enter() {
     await page.keyboard.press('Enter')
-    await settle(2000)
+    meta = { settle: await settle(2000) }
     return `enter · URL: ${page.url()} — corré look`
   },
   async text([id]) {
@@ -546,10 +568,12 @@ createServer((req, res) => {
       res.statusCode = 500
       res.end(error + '\n')
     }
-    // Tracking URLs run to kilobytes — keep origin+pathname and a stub of the query
+    // origin+pathname only; the query is REDACTED to its length, not truncated —
+    // a 60-char stub still leaked _nkw/epid/session params (codex v4). Element hrefs
+    // inside find matches keep their query: that's page content, not navigation state.
     const trimUrl = (u) => {
       if (!u) return u
-      try { const x = new URL(u); return x.origin + x.pathname + (x.search ? x.search.slice(0, 60) : '') } catch { return u }
+      try { const x = new URL(u); return x.origin + x.pathname + (x.search ? `?«${x.search.length - 1} chars»` : '') } catch { return u }
     }
     appendFile(LOGFILE, JSON.stringify({
       ts: new Date().toISOString(), session: SESSION, seq: ++seq, cmd,
