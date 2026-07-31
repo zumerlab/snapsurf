@@ -650,59 +650,130 @@ const HANDLERS = {
     return `recording ready → ${out} (${seconds} s · ${r.type} · ${target || 'body'} · snapdom's ${wantGif ? 'gifExport' : 'videoExport'} plugin)${out !== file ? `\n(this browser's MediaRecorder produces ${r.type}; the extension follows the real container)` : ''}`
   },
   async assert(args) {
-    // assert '<json>' — deterministic checks built ON the diff (codex-mcp ask: QA
-    // pipelines must not parse prose). Runs its OWN verify, so one call covers
-    // act → assert; like look, it advances the observation baseline.
+    // assert '<json>' — deterministic checks built ON the diff. The panel's
+    // adversarial round set the law: FAILURE MODES MUST NEVER POINT GREEN — unknown
+    // keys, empty specs and missing baselines are hard pass:false with a reason;
+    // {retry:{budgetMs}} re-walks against the SAME baseline (transitions land
+    // mid-flight); evidence with selector and state from/to travels with results.
     let spec
     try { spec = JSON.parse(args.join(' ')) } catch {
-      return 'usage: assert {"url"?, "changed"?, "mustInclude"?: [{kind,role,name}], "exists"?, "notCovered"?}'
+      meta = { assert: { pass: false, checks: [{ type: 'spec', expected: 'valid JSON', actual: 'parse error', pass: false }] } }
+      return 'FAIL (0/1 checks)\n  ✗ spec · expected valid JSON · actual parse error'
     }
-    const checks = []
-    const push = (type, expected, actual, pass) => checks.push({ type, expected, actual, pass })
-    if (spec.url !== undefined) push('url', spec.url, page.url(), page.url().includes(spec.url))
-    let diffChanges = null
-    if (spec.changed !== undefined || spec.mustInclude) {
-      const prev = await inPage(() => window.__lastCp || null)
-      // ALL changes, not the 40-slice: codex's banner removal existed in the diff but
-      // sat past the cap behind 40 layout moves — the assertion must see everything.
-      const o = await inPage(observe, { previous: prev, changesCap: 2000, peek: !!spec.keepBaseline })
-      epoch++
-      diffChanges = o.changes || []
-      const changed = !!o.changed
-      if (spec.changed !== undefined) push('changed', spec.changed, changed, changed === spec.changed)
-      for (const m of spec.mustInclude || []) {
-        const hit = diffChanges.some((c) =>
-          (!m.kind || c.kind === m.kind) &&
-          (!m.role || c.role === m.role) &&
-          (!m.name || String(c.name || '').includes(m.name)))
-        push('mustInclude', m, hit ? 'found' : 'absent', hit)
+    const KEYS = new Set(['url', 'urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered', 'settleMs', 'retry', 'keepBaseline'])
+    const preChecks = []
+    const push = (arr, type, expected, actual, pass) => arr.push({ type, expected, actual, pass })
+    const specKeys = Object.keys(spec).filter((k) => k !== 'keepBaseline')
+    if (!specKeys.length) push(preChecks, 'spec', 'at least one check', 'empty spec', false)
+    for (const k of Object.keys(spec)) if (!KEYS.has(k)) push(preChecks, 'spec', 'known key', `unknown key "${k}"`, false)
+    for (const k of ['mustInclude', 'mustNotInclude']) {
+      if (spec[k] !== undefined && !Array.isArray(spec[k])) push(preChecks, 'spec', `${k} is an array`, typeof spec[k], false)
+    }
+    const urlWant = spec.url ?? spec.urlIncludes
+    const hasBaseline = !!(await inPage(() => window.__lastCp || null))
+    const needsDiff = spec.changed !== undefined || spec.mustInclude || spec.mustNotInclude ||
+      spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
+    if (needsDiff && !hasBaseline) push(preChecks, 'baseline', 'established (open/verify first)', 'missing', false)
+
+    const evalOnce = async () => {
+      const checks = [...preChecks]
+      let o = null
+      if (needsDiff || spec.exists || spec.notCovered) {
+        const prev = await inPage(() => window.__lastCp || null)
+        o = await inPage(observe, { previous: prev, changesCap: 2000, peek: true })
+        epoch++
       }
-    }
-    if (spec.exists) {
-      const ms = await inPage(inFind, spec.exists)
-      push('exists', spec.exists, ms.length ? `${ms.length} match(es)` : 'absent', ms.length > 0)
-    }
-    if (spec.notCovered) {
-      const cov = await inPage((q) => {
+      const changes = (o && o.changes) || []
+      if (urlWant !== undefined) push(checks, 'url', urlWant, page.url(), page.url().includes(urlWant))
+      if (spec.changed !== undefined) {
+        if (!hasBaseline) push(checks, 'changed', spec.changed, 'no-baseline', false)
+        else push(checks, 'changed', spec.changed, !!o.changed, !!o.changed === spec.changed)
+      }
+      const matches = await inPage((mm) => {
         const ui = window.__lastUi
-        if (!ui) return null
+        if (!ui) return []
         const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-        const e = ui.agentMap.map.find((x) => norm(x.n).includes(norm(q)))
-        return e ? { found: true, covered: !!e.covered } : { found: false }
-      }, spec.notCovered)
-      push('notCovered', spec.notCovered, cov && cov.found ? (cov.covered ? 'covered' : 'clear') : 'absent', !!(cov && cov.found && !cov.covered))
+        const labelOf = (c) => {
+          if (c.name) return String(c.name)
+          const n = c.id && ui.__snapshot.nodes.get(c.id)
+          if (n && (n.name || n.text)) return String(n.name || n.text)
+          const el = c.id && ui.__snapshot.elements.get(c.id)
+          return el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''
+        }
+        return mm.changes.map((c) => ({ ...c, label: labelOf(c) }))
+      }, { changes })
+      const hit = (m) => matches.some((c) =>
+        (!m.kind || c.kind === m.kind) &&
+        (!m.role || c.role === m.role) &&
+        (!m.name || c.label.toLowerCase().includes(String(m.name).toLowerCase())) &&
+        (!m.to || (c.after && Object.entries(m.to).every(([k, v]) => c.after[k] === v))))
+      for (const m of (Array.isArray(spec.mustInclude) ? spec.mustInclude : [])) {
+        const h = hasBaseline && hit(m)
+        push(checks, 'mustInclude', m, hasBaseline ? (h ? 'found' : 'absent') : 'no-baseline', h)
+      }
+      for (const m of (Array.isArray(spec.mustNotInclude) ? spec.mustNotInclude : [])) {
+        const h = hasBaseline && hit(m)
+        push(checks, 'mustNotInclude', m, h ? 'found' : 'absent', hasBaseline && !h)
+      }
+      if (spec.maxChanges !== undefined) push(checks, 'maxChanges', spec.maxChanges, changes.length, hasBaseline && changes.length <= spec.maxChanges)
+      if (spec.becameVisible) {
+        const h = hasBaseline && ((o && o.delta && o.delta.becameVisible) || []).some((r) => String(r.name || r.role || '').toLowerCase().includes(spec.becameVisible.toLowerCase()))
+        push(checks, 'becameVisible', spec.becameVisible, h ? 'found' : 'absent', h)
+      }
+      if (spec.becameCovered) {
+        const want = typeof spec.becameCovered === 'string' ? { name: spec.becameCovered } : spec.becameCovered
+        const h = hasBaseline && ((o && o.delta && o.delta.becameCovered) || []).some((r) => String(r.name || r.role || '').toLowerCase().includes(String(want.name || '').toLowerCase()))
+        push(checks, 'becameCovered', spec.becameCovered, h ? 'found' : 'absent', h)
+      }
+      if (spec.exists) {
+        const ms = await inPage(inFind, spec.exists)
+        const inProse = !ms.length && await inPage((q) => (document.body.innerText || '').toLowerCase().includes(q.toLowerCase()), spec.exists)
+        push(checks, 'exists', spec.exists, ms.length ? `${ms.length} match(es)` : (inProse ? 'in page text' : 'absent'), ms.length > 0 || inProse)
+      }
+      if (spec.notCovered) {
+        const cov = await inPage((q) => {
+          const ui = window.__lastUi
+          if (!ui) return null
+          const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+          const e = ui.agentMap.map.find((x) => {
+            if (norm(x.n).includes(norm(q))) return true
+            const el = ui.__snapshot.elements.get(x.id)
+            return el && norm((el.textContent || '').replace(/\s+/g, ' ')).includes(norm(q))
+          })
+          if (!e) return { found: false }
+          const b = e.b || []
+          const off = b.length === 4 && (b[1] - scrollY > innerHeight || b[1] + b[3] - scrollY < 0)
+          return { found: true, covered: !!e.covered, off }
+        }, spec.notCovered)
+        push(checks, 'notCovered', spec.notCovered, cov && cov.found ? ((cov.covered ? 'covered' : 'clear') + (cov.off ? '·offscreen' : '')) : 'absent', !!(cov && cov.found && !cov.covered))
+      }
+      return { checks, changes: matches, pass: checks.every((c) => c.pass) }
     }
-    const pass = checks.every((c) => c.pass)
-    // A failed assertion is a RESULT, not a command error: ok stays true, pass says it.
-    // The evidence travels WITH the verdict: a FAIL that destroyed its diff forced
-    // codex to reload and re-act just to see what actually happened.
-    const evidence = diffChanges ? diffChanges.slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: c.name, id: c.id })) : undefined
-    meta = { assert: { pass, checks, ...(evidence ? { changes: evidence } : {}) } }
-    let out = `${pass ? 'PASS' : 'FAIL'} (${checks.filter((c) => c.pass).length}/${checks.length} checks)\n` +
-      checks.map((c) => `  ${c.pass ? '✓' : '✗'} ${c.type} · expected ${JSON.stringify(c.expected)} · actual ${JSON.stringify(c.actual)}`).join('\n')
-    if (!pass && evidence && evidence.length) {
+
+    const t0 = Date.now()
+    if (spec.settleMs) await page.waitForTimeout(Math.min(10000, spec.settleMs))
+    const budget = Math.min(15000, (spec.retry && spec.retry.budgetMs) || 0)
+    const interval = Math.max(100, (spec.retry && spec.retry.intervalMs) || 250)
+    let r, attempts = 0
+    for (;;) {
+      attempts++
+      r = await evalOnce()
+      if (r.pass || Date.now() - t0 >= budget) break
+      await page.waitForTimeout(interval)
+    }
+    // consume the baseline only at the END (retry re-walked against the original)
+    if (!spec.keepBaseline && (needsDiff || spec.exists || spec.notCovered)) {
+      await inPage(() => { if (window.__lastUi) window.__lastCp = window.__lastUi.checkpoint() })
+    }
+    const evidence = (needsDiff && hasBaseline)
+      ? r.changes.slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: (c.label || '').slice(0, 60) || undefined, id: c.id, from: c.before, to: c.after }))
+      : undefined
+    meta = { assert: { pass: r.pass, hasBaseline, attempts, checks: r.checks, ...(evidence ? { changes: evidence } : {}) } }
+    let out = `${r.pass ? 'PASS' : 'FAIL'} (${r.checks.filter((c) => c.pass).length}/${r.checks.length} checks${attempts > 1 ? ` · ${attempts} attempts` : ''})\n` +
+      r.checks.map((c) => `  ${c.pass ? '✓' : '✗'} ${c.type} · expected ${JSON.stringify(c.expected)} · actual ${JSON.stringify(c.actual)}`).join('\n')
+    if (!r.pass && evidence && evidence.length) {
       out += `\nDIFF EVIDENCE (${evidence.length} change(s)):\n` +
-        evidence.slice(0, 15).map((c) => `  ${c.kind} ${c.role || ''}${c.name ? ` \"${String(c.name).slice(0, 50)}\"` : ''} ${c.id || ''}`).join('\n')
+        evidence.slice(0, 15).map((c) => `  ${c.kind} ${c.role || ''}${c.name ? ` "${String(c.name).slice(0, 50)}"` : ''} ${c.id || ''}`).join('\n')
     }
     return out
   },

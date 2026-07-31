@@ -173,7 +173,7 @@ const TOOLS = [
   },
   {
     name: 'browser_assert',
-    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). Returns structured {pass, checks[], changes[]} — a FAILED assertion carries the full diff evidence, so you never need to re-act to diagnose. A failed assertion is a RESULT (isError stays false). It consumes the diff baseline like browser_verify (one call covers act → assert) unless you pass keepBaseline:true (peek mode for diagnosis/retry).',
+    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). FAIL-LOUD CONTRACT: unknown spec keys, empty specs and missing baselines are hard pass:false with a reason — confusion never looks green. Returns structured {pass, hasBaseline, attempts, checks[], changes[]}; the diff evidence (with state from/to) travels with every result. Also: mustNotInclude (assert side-effect ABSENCE), maxChanges, becameVisible/becameCovered (actionability deltas), mustInclude entries accept selector and to:{state:value} (directional state — assert the menu IS open), settleMs and retry:{budgetMs} re-walk against the SAME baseline until pass or budget (CSS transitions land mid-flight). exists searches accessible names AND page text. It consumes the diff baseline at the END unless keepBaseline:true.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -181,9 +181,19 @@ const TOOLS = [
         changed: { type: 'boolean', description: 'expected value of the diff since the last observation' },
         mustInclude: {
           type: 'array',
-          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' } } },
-          description: 'changes that must appear in the diff',
+          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
+          description: 'changes that must appear in the diff (selector = exact; to = expected state after, e.g. {expanded:true})',
         },
+        mustNotInclude: {
+          type: 'array',
+          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
+          description: 'changes that must NOT appear (assert absence of side-effects)',
+        },
+        maxChanges: { type: 'number', description: 'diff must contain at most N changes' },
+        becameVisible: { type: 'string', description: 'an actionable matching this text must have become visible' },
+        becameCovered: { type: 'string', description: 'an actionable matching this text must have become covered' },
+        settleMs: { type: 'number', description: 'wait before the first walk' },
+        retry: { type: 'object', properties: { budgetMs: { type: 'number' }, intervalMs: { type: 'number' } }, description: 're-walk against the SAME baseline until pass or budget' },
         exists: { type: 'string', description: 'text that must be findable on the page' },
         notCovered: { type: 'string', description: 'text whose best match must not be occluded' },
         keepBaseline: { type: 'boolean', description: 'do not consume the diff baseline (peek mode — safe to retry)' },

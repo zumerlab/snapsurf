@@ -217,66 +217,159 @@ function runObserve(opts = {}) {
 }
 
 // SNAPDOM_ASSERT — the QA vocabulary in the user's own tabs (same contract as the
-// MCP browser_assert): deterministic checks built on the diff. Runs its own observe
-// (advances the baseline), so one message covers act → assert.
-function runAssert(spec, obsId) {
+// MCP browser_assert): deterministic checks built on the diff. The panel's
+// adversarial round rewrote this contract: FAILURE MODES MUST NEVER POINT GREEN.
+// Unknown keys, empty specs, missing baselines and malformed specs are all hard
+// pass:false with a reason; retry ({retry:{budgetMs}}) re-walks against the SAME
+// baseline until pass or budget (CSS transitions land mid-flight); evidence (the
+// diff, with selector and state from/to) travels with every result that ran a diff.
+const ASSERT_KEYS = new Set(['urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered', 'settleMs', 'retry', 'keepBaseline'])
+
+async function runAssert(spec, obsId) {
   const t0 = performance.now()
-  const ui = buildUi(observe(document.body, prev ? { previous: prev } : {}), {})
-  prev = ui.checkpoint()
+  spec = spec || {}
   const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  const labelOf = (c) => {
+  const preChecks = []
+  const push = (arr, type, expected, actual, pass) => arr.push({ type, expected, actual, pass })
+
+  // strict spec: a typo must never look like success (panel 3b)
+  const keys = Object.keys(spec).filter((k) => k !== 'keepBaseline')
+  if (!keys.length) push(preChecks, 'spec', 'at least one check', 'empty spec', false)
+  for (const k of Object.keys(spec)) {
+    if (!ASSERT_KEYS.has(k)) push(preChecks, 'spec', 'known key', `unknown key "${k}"`, false)
+  }
+  for (const k of ['mustInclude', 'mustNotInclude']) {
+    if (spec[k] !== undefined && !Array.isArray(spec[k])) push(preChecks, 'spec', `${k} is an array`, typeof spec[k], false)
+  }
+
+  const hasBaseline = !!prev
+  const baseline = prev
+  const needsDiff = spec.changed !== undefined || spec.mustInclude || spec.mustNotInclude ||
+    spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
+  // no baseline → every diff check fails LOUDLY (panel 3a: the post-reload vacuous pass)
+  if (needsDiff && !hasBaseline) push(preChecks, 'baseline', 'established (send SNAPDOM_OBSERVE first)', 'missing', false)
+
+  const labelOf = (ui, c) => {
     if (c.name) return String(c.name)
     const n = c.id && ui.__snapshot.nodes.get(c.id)
     if (n && (n.name || n.text)) return String(n.name || n.text)
     const el = c.id && ui.__snapshot.elements.get(c.id)
     return el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''
   }
-  const checks = []
-  const push = (type, expected, actual, pass) => checks.push({ type, expected, actual, pass })
-  if (spec.urlIncludes !== undefined) {
-    const here = location.origin + location.pathname + location.search
-    push('urlIncludes', spec.urlIncludes, location.origin + location.pathname, here.includes(spec.urlIncludes))
+  const matchChange = (ui, c, m) =>
+    (!m.kind || c.kind === m.kind) &&
+    (!m.role || c.role === m.role) &&
+    (!m.selector || selectorOf(ui.__snapshot.elements.get(c.id)) === m.selector) &&
+    (!m.name || norm(labelOf(ui, c)).includes(norm(m.name))) &&
+    (!m.to || (c.after && Object.entries(m.to).every(([k, v]) => c.after[k] === v)))
+
+  const evaluate = (ui) => {
+    const checks = [...preChecks]
+    const changes = ui.changes || []
+    if (spec.urlIncludes !== undefined) {
+      const here = location.origin + location.pathname + location.search
+      push(checks, 'urlIncludes', spec.urlIncludes, location.origin + location.pathname, here.includes(spec.urlIncludes))
+    }
+    if (spec.changed !== undefined) {
+      if (!hasBaseline) push(checks, 'changed', spec.changed, 'no-baseline', false)
+      else push(checks, 'changed', spec.changed, !!ui.changed, !!ui.changed === spec.changed)
+    }
+    if (Array.isArray(spec.mustInclude)) {
+      for (const m of spec.mustInclude) {
+        const hit = hasBaseline && changes.some((c) => matchChange(ui, c, m))
+        push(checks, 'mustInclude', m, hasBaseline ? (hit ? 'found' : 'absent') : 'no-baseline', hit)
+      }
+    }
+    if (Array.isArray(spec.mustNotInclude)) {
+      for (const m of spec.mustNotInclude) {
+        const hit = hasBaseline && changes.some((c) => matchChange(ui, c, m))
+        push(checks, 'mustNotInclude', m, hit ? 'found' : 'absent', hasBaseline && !hit)
+      }
+    }
+    if (spec.maxChanges !== undefined) {
+      push(checks, 'maxChanges', spec.maxChanges, changes.length, hasBaseline && changes.length <= spec.maxChanges)
+    }
+    if (spec.becameVisible) {
+      const hit = hasBaseline && (ui.actionabilityDelta?.becameVisible || []).some((r) => norm(r.name || r.role).includes(norm(spec.becameVisible)))
+      push(checks, 'becameVisible', spec.becameVisible, hit ? 'found' : 'absent', hit)
+    }
+    if (spec.becameCovered) {
+      const want = typeof spec.becameCovered === 'string' ? { name: spec.becameCovered } : spec.becameCovered
+      const hit = hasBaseline && (ui.actionabilityDelta?.becameCovered || []).some((r) => {
+        if (!norm(r.name || r.role).includes(norm(want.name || ''))) return false
+        if (!want.by) return true
+        const e = ui.agentMap.map.find((x) => norm(x.n).includes(norm(want.name || '')))
+        const by = e && e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)
+        return norm(by || '').includes(norm(want.by))
+      })
+      push(checks, 'becameCovered', spec.becameCovered, hit ? 'found' : 'absent', hit)
+    }
+    if (spec.exists) {
+      // accessible names AND page text (panel 3i: paragraph prose must be findable)
+      const ms = findMatches(ui, spec.exists)
+      const inProse = !ms.length && norm(document.body.innerText || '').includes(norm(spec.exists))
+      push(checks, 'exists', spec.exists, ms.length ? `${ms.length} match(es)` : (inProse ? 'in page text' : 'absent'), ms.length > 0 || inProse)
+    }
+    if (spec.notCovered) {
+      const q = norm(spec.notCovered)
+      // match by accessible name OR visible text (panel: the visible label failed)
+      const e = ui.agentMap.map.find((x) => {
+        if (norm(x.n).includes(q)) return true
+        const el = ui.__snapshot.elements.get(x.id)
+        return el && norm((el.textContent || '').replace(/\s+/g, ' ')).includes(q)
+      })
+      const v = e && vboxOf(ui.__snapshot.nodes.get(e.id)?.bbox && ui.__snapshot.nodes.get(e.id).bbox)
+      const off = e && v && !inViewOf(v) ? '·offscreen' : ''
+      push(checks, 'notCovered', spec.notCovered, e ? ((e.covered ? 'covered' : 'clear') + off) : 'absent', !!(e && !e.covered))
+    }
+    return { checks, pass: checks.every((c) => c.pass) }
   }
-  if (spec.changed !== undefined) push('changed', spec.changed, !!ui.changed, !!ui.changed === spec.changed)
-  for (const m of spec.mustInclude || []) {
-    const hit = (ui.changes || []).some((c) =>
-      (!m.kind || c.kind === m.kind) &&
-      (!m.role || c.role === m.role) &&
-      (!m.name || norm(labelOf(c)).includes(norm(m.name))))
-    push('mustInclude', m, hit ? 'found' : 'absent', hit)
+
+  // settle + retry against the SAME baseline (panel 3g: transitions land mid-flight;
+  // single-shot snapshotting made correctness a race with the CSS timeline)
+  if (spec.settleMs) await new Promise((r) => setTimeout(r, Math.min(10000, spec.settleMs)))
+  const budget = Math.min(15000, spec.retry?.budgetMs || 0)
+  const interval = Math.max(100, spec.retry?.intervalMs || 250)
+  let ui, result, attempts = 0
+  for (;;) {
+    attempts++
+    ui = buildUi(observe(document.body, baseline ? { previous: baseline } : {}), {})
+    result = evaluate(ui)
+    if (result.pass || performance.now() - t0 >= budget) break
+    await new Promise((r) => setTimeout(r, interval))
   }
-  if (spec.exists) {
-    const ms = findMatches(ui, spec.exists)
-    push('exists', spec.exists, ms.length ? `${ms.length} match(es)` : 'absent', ms.length > 0)
-  }
-  if (spec.notCovered) {
-    const e = ui.agentMap.map.find((x) => norm(x.n).includes(norm(spec.notCovered)))
-    push('notCovered', spec.notCovered, e ? (e.covered ? 'covered' : 'clear') : 'absent', !!(e && !e.covered))
-  }
-  const out = {
+  if (!spec.keepBaseline) prev = ui.checkpoint()
+
+  const ranDiff = hasBaseline && needsDiff
+  const evidence = ranDiff ? (ui.changes || []).slice(0, 60).map((c) => ({
+    kind: c.kind, role: c.role, name: labelOf(ui, c).slice(0, 60) || undefined,
+    selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined,
+    from: c.before, to: c.after,
+  })) : undefined
+  return {
     type: 'assert', obsId, ts: Date.now(),
-    walkMs: Math.round(performance.now() - t0),
-    pass: checks.every((c) => c.pass),
-    checks,
+    walkMs: Math.round(performance.now() - t0), attempts,
+    hasBaseline,
+    pass: result.pass,
+    checks: result.checks,
+    changes: evidence,
   }
-  let node = document.getElementById(NODE_ID)
-  if (!node) {
-    node = document.createElement('script')
-    node.type = 'application/json'
-    node.id = NODE_ID
-    document.documentElement.appendChild(node)
-  }
-  node.textContent = JSON.stringify(out)
 }
 
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SNAPDOM_ASSERT') {
     const obsId = e.data.obsId ?? null
-    try { runAssert(e.data.spec || {}, obsId) } catch (err) {
+    ;(async () => {
+      let out
+      try { out = await runAssert(e.data.spec || {}, obsId) } catch (err) {
+        // a malformed spec is STILL a failed assertion with a pass field — a result
+        // without pass reads as success to `if (r.pass === false)` harnesses (panel 3f)
+        out = { type: 'assert', obsId, ts: Date.now(), pass: false, checks: [{ type: 'error', expected: 'valid spec/execution', actual: String(err), pass: false }], error: String(err) }
+      }
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
-      node.textContent = JSON.stringify({ type: 'assert', error: String(err), obsId, ts: Date.now() })
-    }
-    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId }, '*')
+      node.textContent = JSON.stringify(out)
+      window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId }, '*')
+    })()
     return
   }
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {

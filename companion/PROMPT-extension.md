@@ -61,19 +61,31 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
    herramienta de click, o `document.querySelector(sel).click()`) → volvé a observar
    y leé `changes` para confirmar el efecto. Eso reemplaza comparar screenshots.
 
-4b. **ASSERT — verificación determinista sobre el diff** (mismo patrón de espera):
+4b. **ASSERT — verificación determinista sobre el diff** (mismo patrón de espera;
+   timeout de seguridad recomendado: 10000ms — walks de páginas grandes toman 5-6s):
    ```js
    window.postMessage({ type: 'SNAPDOM_ASSERT', obsId, spec: {
      changed: true,                                  // o false: "mi acción no hizo nada" es asertable
-     mustInclude: [{ kind: 'state', name: 'Menú' }], // kinds: added/removed/content/state/style/moved/resized
-     exists: 'texto en la página',
-     notCovered: 'texto de un botón',
-     urlIncludes: '/wiki/'
+     mustInclude: [{ kind: 'state', selector: '#menu-checkbox', to: { expanded: true } }],
+     mustNotInclude: [{ kind: 'removed' }],          // ausencia de efectos colaterales
+     maxChanges: 10,
+     becameVisible: 'Página aleatoria',              // deltas de actionability asertables
+     becameCovered: 'Suscribite',
+     exists: 'texto o nombre accesible',             // busca nombres accesibles Y texto de página
+     notCovered: 'label visible o accName',          // matchea por nombre O texto visible; actual
+                                                     // puede venir 'clear·offscreen' (fuera de viewport)
+     urlIncludes: '/wiki/',
+     retry: { budgetMs: 2000 },                      // re-walk contra el MISMO baseline (transiciones CSS)
+     settleMs: 300,
+     keepBaseline: true                              // peek: no consume el baseline
    }}, '*');
-   // → { type:'assert', pass, checks:[{type, expected, actual, pass}] }
+   // → { type:'assert', obsId, pass, hasBaseline, attempts, checks:[...], changes:[...] }
    ```
-   El FAIL es un resultado estructurado, no un error. Consume el baseline del diff
-   (como una observación): un mensaje cubre actuar → asertar.
+   **Contrato fail-loud**: claves desconocidas, spec vacío, baseline ausente y specs
+   malformados son TODOS pass:false con razón — la confusión nunca se ve verde.
+   Verificá `obsId` en el resultado (guardia de staleness) y `hasBaseline`. La
+   evidencia del diff (con from/to de estados y selector) viaja en `changes`.
+   Consume el baseline AL FINAL salvo keepBaseline:true.
    Para LEER contenido largo (artículos, hilos), tu get_page_text sigue siendo mejor:
    el digest es mapa y cambios, no texto completo.
 
