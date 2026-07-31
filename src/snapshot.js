@@ -379,7 +379,11 @@ export const yieldToLoop = () => new Promise((res) => {
  *  bounded interval costs a few 4ms clamps per walk and makes the external
  *  measurement converge with the internal one. */
 export function makeSlicer(budgetMs = 40) {
-  const P = typeof window !== 'undefined' && window.__SD_PROF
+  // __SD_SLICES: slice-stats-only sink for consumers that want maxSliceMs/slices
+  // auditable on EVERY walk without paying the per-node phase accumulators of the
+  // full profiler (codex v5: "the ≤90ms-block property is not auditable from the
+  // consumer surface")
+  const P = typeof window !== 'undefined' && (window.__SD_PROF || window.__SD_SLICES)
   let last = performance.now()
   let lastTimerYield = last
   const pause = () => {

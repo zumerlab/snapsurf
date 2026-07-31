@@ -67,6 +67,7 @@ if (CMD !== 'serve') {
   const t0 = Date.now()
   const cmds = CMD === 'run' ? ARGS.map((s) => s.trim().split(/\s+/)) : [[CMD, ...ARGS]]
   try {
+    let stopPid = null
     for (const [cmd, ...args] of cmds) {
       const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
         method: 'POST',
@@ -74,10 +75,32 @@ if (CMD !== 'serve') {
         body: JSON.stringify({ cmd, args }),
       })
       if (cmds.length > 1) process.stdout.write(`── ${cmd} ${args.join(' ')}\n`)
-      process.stdout.write(await res.text())
+      const text = await res.text()
+      process.stdout.write(text)
+      if (cmd === 'stop') stopPid = (text.match(/pid (\d+)/) || [])[1] || null
       if (!res.ok) process.exit(1)
     }
     if (cmds.length > 1) process.stdout.write(`── batch: ${cmds.length} commands · ${Date.now() - t0} ms\n`)
+    // stop must VERIFY the death, not report intent (codex v5 top finding: "stop said
+    // daemon stopped while a serve with PPID 1 stayed alive; needed SIGKILL by pid").
+    // Fact = the port refusing connections. If it still answers, escalate TERM→KILL —
+    // the CLI survives the signals, so delivery is not at the mercy of the dying
+    // process (the measured landmine: signal + immediate exit never gets delivered).
+    if (stopPid !== null || cmds.some(([c]) => c === 'stop')) {
+      const alive = async () => { try { await fetch(`http://127.0.0.1:${PORT}/cmd`, { method: 'POST', body: '{"cmd":"status"}', signal: AbortSignal.timeout(500) }); return true } catch { return false } }
+      let dead = false
+      for (let i = 0; i < 6 && !dead; i++) { await new Promise((r) => setTimeout(r, 300)); dead = !(await alive()) }
+      if (!dead && stopPid) {
+        try { process.kill(Number(stopPid), 'SIGTERM') } catch { /* already gone */ }
+        await new Promise((r) => setTimeout(r, 400))
+        if (await alive()) { try { process.kill(Number(stopPid), 'SIGKILL') } catch { /* gone */ } await new Promise((r) => setTimeout(r, 300)) }
+        dead = !(await alive())
+        process.stdout.write(dead ? `stop verified after signal escalation (pid ${stopPid})\n` : `⛔ daemon STILL ALIVE (pid ${stopPid}) — kill it manually\n`)
+      } else {
+        process.stdout.write(dead ? `stop verified: port ${PORT} closed\n` : '⛔ daemon still answering and no pid to signal — kill it manually\n')
+      }
+      process.exit(dead ? 0 : 1)
+    }
     process.exit(0)
   } catch {
     console.error(`daemon not running — start it with:\n  node packages/agent/tools/browse.mjs serve`)
@@ -139,7 +162,26 @@ const context = await browser.newContext({
   bypassCSP: true,
   locale: 'es-AR',
 })
-if (ALLOW) await context.route('**/*', (route) => hostAllowed(route.request().url()) ? route.continue() : route.abort())
+// Every allowlist block is AUDITABLE (codex v5: "the policy seems effective but a
+// client can't demonstrate what was blocked"): first block per origin gets a JSONL
+// line; repeats only bump the count; `status` prints the cumulative summary.
+const NETBLOCKED = new Map()
+if (ALLOW) await context.route('**/*', (route) => {
+  const u = route.request().url()
+  if (hostAllowed(u)) return route.continue()
+  let origin = u.slice(0, 120)
+  try { origin = new URL(u).origin } catch { /* keep slice */ }
+  const e = NETBLOCKED.get(origin)
+  if (e) e.count++
+  else {
+    NETBLOCKED.set(origin, { count: 1 })
+    appendFile(LOGFILE, JSON.stringify({
+      ts: new Date().toISOString(), session: SESSION, seq: ++seq, cmd: 'netblock',
+      origin, resourceType: route.request().resourceType(), reason: 'allowlist', ok: false,
+    }) + '\n').catch(() => {})
+  }
+  return route.abort()
+})
 // Re-injected by the browser itself on EVERY navigation — no re-injection dance.
 await context.addInitScript({ content: SDK })
 let page = await context.newPage()
@@ -190,6 +232,9 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap } = {})
     if (!cur || cur === document.body) return { noParent: true }
     root = cur
   }
+  // slice-stats-only sink (no per-node profiler overhead): makes the ≤~90ms
+  // main-thread-block property AUDITABLE from the consumer surface on every walk
+  window.__SD_SLICES = {}
   const obs = await window.__agentObserveChunked(root, previous ? { previous } : {})
   const ui = window.__agentBuildUi(obs, {})
   window.__lastUi = ui
@@ -282,6 +327,7 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap } = {})
     changes: ui.changes && ui.changes.slice(0, changesCap || 40),
     delta: ui.actionabilityDelta,
     unobservable: ui.unobservable.length,
+    walkDetail: { slices: window.__SD_SLICES.slices || 0, maxSliceMs: Math.round(window.__SD_SLICES.maxSliceMs || 0) },
   }
 }
 const inFind = (query) => {
@@ -351,9 +397,29 @@ const inLocate = (id) => {
   const el = ui && ui.__snapshot.elements.get(id)
   if (!el) return null
   let r = el.getBoundingClientRect()
-  if (r.bottom < 0 || r.top > window.innerHeight) { el.scrollIntoView({ block: 'center' }); r = el.getBoundingClientRect() }
+  // behavior:'instant' is load-bearing: pages with CSS scroll-behavior:smooth
+  // (en.wikipedia) animate the default scroll ASYNC — the immediate re-measure read
+  // the old position and the mouse clicked outside the viewport (silent no-op; the
+  // echo still named the right element, which is how the v5 self-run caught it)
+  if (r.bottom < 0 || r.top > window.innerHeight) { el.scrollIntoView({ block: 'center', behavior: 'instant' }); r = el.getBoundingClientRect() }
   const n = ui.__snapshot.nodes.get(id)
-  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
+  const offscreen = r.bottom < 0 || r.top > window.innerHeight
+  // scroll didn't move it → almost always clipped inside a scrollable/collapsed
+  // ancestor (wikipedia navbox <tr>): scrollIntoView moves NEITHER the container nor
+  // the window, and a user can't see the element either — name the container
+  let clippedBy = null
+  if (offscreen) {
+    let cur = el.parentElement
+    while (cur && cur !== document.documentElement) {
+      const s = getComputedStyle(cur)
+      if (s.overflowY !== 'visible' && cur.scrollHeight > cur.clientHeight + 1) {
+        clippedBy = (cur.localName + (cur.className ? '.' + String(cur.className).trim().split(/\s+/)[0] : '')).slice(0, 40)
+        break
+      }
+      cur = cur.parentElement
+    }
+  }
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), offscreen, clippedBy,
     role: n && n.role, name: n && (n.name || (n.text || '').slice(0, 40)) }
 }
 
@@ -462,7 +528,7 @@ const HANDLERS = {
     const tWalk = Date.now()
     const o = await inPage(observe, {})
     epoch++
-    meta = { mapTotal: o.mapTotal, nav: navMs, settle: s, walk: Date.now() - tWalk }
+    meta = { mapTotal: o.mapTotal, nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail }
     return fmtFirst(o, page.url())
   },
   async look([id]) {
@@ -485,7 +551,7 @@ const HANDLERS = {
     const o = await inPage(observe, { previous: prev })
     epoch++
     // enough summary that the JSONL alone says WHAT was seen, not just that a look ran
-    meta = { mapTotal: o.mapTotal, changed: o.changed, ...(o.changes ? { changes: o.changes.length } : {}), ...(navigated ? { navigated: true, baselineUrl: baseUrl } : {}) }
+    meta = { mapTotal: o.mapTotal, changed: o.changed, walkDetail: o.walkDetail, ...(o.changes ? { changes: o.changes.length } : {}), ...(navigated ? { navigated: true, baselineUrl: baseUrl } : {}) }
     return (navigated ? `⚠ navigated since baseline (${baseUrl}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, page.url())
   },
   async find(args) {
@@ -538,6 +604,14 @@ const HANDLERS = {
     if (/^\d+,\d+$/.test(target)) { const [x, y] = target.split(',').map(Number); point = { x, y } }
     else point = await inPage(inLocate, target)
     if (!point) return `could not resolve "${target}" — use an id from the map/find, or x,y`
+    // fail loud, never a silent no-op: a click outside the viewport reaches nothing
+    // (denied: the same channel policy denials use — auditors read ok:false)
+    if (point.offscreen) {
+      meta = { resolved: { id: target, ...point }, denied: 'offscreen' }
+      return point.clippedBy
+        ? `⛔ not clicking ${target}: clipped inside a scrollable/collapsed ancestor <${point.clippedBy}> — a user can't see it either; find another route to the same target`
+        : `⛔ not clicking ${target}: still outside the viewport after scroll (y=${point.y}) — re-observe and retry`
+    }
     meta = { resolved: { id: /^\d+,\d+$/.test(target) ? null : target, ...point } }
     const what = point.role ? ` on ${point.role}${point.name ? ` "${point.name}"` : ''}` : ''
     await page.mouse.click(point.x, point.y)
@@ -584,7 +658,7 @@ const HANDLERS = {
         // viewport around it. (A tight rect clip would be nicer, but rect-clip over
         // deep lazy/content-visibility regions renders partially blank — real product
         // bug, documented in FIELD.md; clip:'viewport' is the 10/10-proven path.)
-        el.scrollIntoView({ block: 'center' })
+        el.scrollIntoView({ block: 'center', behavior: 'instant' })
         await new Promise((r) => setTimeout(r, 400))
         const result = await window.__snapdom(document.body, { clip: 'viewport' })
         return (await result.toPng()).src
@@ -836,13 +910,42 @@ const HANDLERS = {
     }
     return out
   },
+  // codex v5 discoverability finding: it tried `help`, `digest` and `rebaseline` —
+  // all unknown. The prompt's concepts must be explainable by the executable itself.
+  async help() {
+    return [
+      'verbs (client: browse.mjs <verb> … · batch: run "v1 …" "v2 …"):',
+      '  open <url>       navigate + observe → prints the DIGEST (landmarks/heads/top); there is no separate digest verb',
+      '  look [id]        re-observe + DIFF vs the baseline · with id: zoom ONE subtree (global baseline untouched)',
+      '  find <text>      ranked in-page search over the whole snapshot → id/role/name/href',
+      '  parent <id>      climb to the card (≥2 actionables) around a node',
+      '  map <offset>     page through actionables beyond the top',
+      '  outline          full trimmed outline of the current observation',
+      '  click <id|x,y>   real mouse click (auto-scrolls; refuses clipped/offscreen targets, ok:false)',
+      '  type <text> · enter',
+      '  text <id>        innerText of one node',
+      '  snap [id] [file] pixels of ONE region (snapdom capture) · shot [file] native screenshot',
+      '  assert <json>    deterministic checks on the diff — fail-loud (see MCP browser_assert description)',
+      '  cp save|list|diff <name>   named observation baselines (not undo)',
+      '  rec <secs> [id] [file.gif|.mp4]   record body or one element',
+      '  status · stop    (stop verifies the daemon actually died)',
+      '',
+      'BASELINE = the last full open/look observation; each look diffs against it.',
+      'REBASELINE = run look again on settled content — there is no separate verb.',
+      'SPA soft nav: look/assert print ⚠ navigated when the URL moved since the baseline — re-baseline before trusting the diff.',
+      'policies: serve --readonly (observe-only) · --allow d1,d2 (nav + every subresource; subdomains implied, add auxiliary CDN domains explicitly; blocks are logged as netblock JSONL lines and summarized in status)',
+    ].join('\n')
+  },
   async status() {
     const policy = [READONLY && 'readonly', ALLOW && `allow=[${ALLOW.join(', ')}]`].filter(Boolean).join(' · ') || '(unrestricted)'
-    return `daemon ok · URL: ${page.url()} · obs #${epoch} · session ${SESSION}\npolicy: ${policy}\nlog: ${LOGFILE}\ncheckpoints: ${CHECKPOINTS.size ? [...CHECKPOINTS.keys()].join(', ') : '(none)'}`
+    const blocked = NETBLOCKED.size ? `\nblocked (allowlist): ${[...NETBLOCKED.entries()].map(([o, e]) => `${o} ×${e.count}`).join(' · ')}` : ''
+    return `daemon ok · pid ${process.pid} · URL: ${page.url()} · obs #${epoch} · session ${SESSION}\npolicy: ${policy}${blocked}\nlog: ${LOGFILE}\ncheckpoints: ${CHECKPOINTS.size ? [...CHECKPOINTS.keys()].join(', ') : '(none)'}`
   },
   async stop() {
-    setTimeout(() => process.exit(0), 250)
-    return 'daemon stopped'
+    // close the browser BEFORE exiting: process.exit alone can orphan the chromium
+    // child; and report the pid so the CLI can verify/escalate (codex v5 top finding)
+    setTimeout(async () => { try { await browser.close() } catch { /* dying anyway */ } process.exit(0) }, 250)
+    return `daemon stopping (pid ${process.pid})`
   },
 }
 
@@ -866,15 +969,24 @@ createServer((req, res) => {
   req.on('data', (c) => { body += c })
   req.on('end', () => { queue = queue.then(() => handle(res, body)).catch(() => {}) })
 }).listen(PORT, '127.0.0.1', () => console.log(`agent-browse daemon at http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · session ${SESSION}\nlog: ${LOGFILE}`))
+  .on('error', async (e) => {
+    // fail FAST and visibly: a serve that lost the port race used to linger with a
+    // live chromium child — the orphan the v5 rounds kept tripping over
+    console.error(e.code === 'EADDRINUSE'
+      ? `cannot bind 127.0.0.1:${PORT}: another daemon is running (try: browse.mjs status · browse.mjs stop)`
+      : `cannot bind 127.0.0.1:${PORT}: ${e}`)
+    try { await browser.close() } catch { /* exiting */ }
+    process.exit(1)
+  })
 
 async function handle(res, body) {
   {
     const t0 = Date.now()
     const urlBefore = (() => { try { return page.url() } catch { return null } })()
-    let cmd, args = [], ok = true, error = null, envelope = false, outText = ''
+    let cmd, args = [], ok = true, error = null, envelope = false, internal = false, outText = ''
     meta = null
     try {
-      ;({ cmd, args = [], envelope = false } = JSON.parse(body || '{}'))
+      ;({ cmd, args = [], envelope = false, internal = false } = JSON.parse(body || '{}'))
       if (!HANDLERS[cmd]) throw new Error(`unknown command: ${cmd}`)
       if (READONLY && MUTATING.has(cmd)) {
         meta = { denied: 'readonly' }
@@ -903,8 +1015,12 @@ async function handle(res, body) {
     // inside find matches keep their query: that's page content, not navigation state.
     const trimUrl = (u) => {
       if (!u) return u
-      try { const x = new URL(u); return x.origin + x.pathname + (x.search ? `?«${x.search.length - 1} chars»` : '') } catch { return u }
+      // file: has origin "null" — the log printed null/Users/... (codex v5)
+      try { const x = new URL(u); return (x.protocol === 'file:' ? 'file://' : x.origin) + x.pathname + (x.search ? `?«${x.search.length - 1} chars»` : '') } catch { return u }
     }
+    // internal liveness probes (MCP's pre-tool status) stay out of the audit log —
+    // only ever honored for the read-only status verb, nothing else can hide
+    if (internal && cmd === 'status') return
     appendFile(LOGFILE, JSON.stringify({
       ts: new Date().toISOString(), session: SESSION, seq: ++seq, cmd,
       args: cmd === 'type' ? [`«${args.join(' ').length} chars»`] : args,

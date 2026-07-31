@@ -38,11 +38,11 @@ async function browsePath() {
 
 // Daemon envelope v1: {ok, text, error, epoch, url, meta} — a machine contract
 // instead of parsed prose (codex-mcp ask).
-async function cmd(name, args = []) {
+async function cmd(name, args = [], { internal = false } = {}) {
   const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ cmd: name, args, envelope: true }),
+    body: JSON.stringify({ cmd: name, args, envelope: true, internal }),
   })
   const env = await res.json()
   if (!env.ok && env.error) throw new Error(env.error)
@@ -98,14 +98,16 @@ process.stdin.on('end', () => shutdown(0))
 process.stdin.on('close', () => shutdown(0))
 
 async function ensureDaemon() {
-  try { await cmd('status'); return } catch { /* spawn it */ }
+  // internal: the liveness probe before every tool call must not pollute the JSONL
+  // (codex v5: 13 zero-ms status entries made per-verb suite reconstruction noisy)
+  try { await cmd('status', [], { internal: true }); return } catch { /* spawn it */ }
   const p = await browsePath()
   log('spawning daemon (own child):', p)
   spawnedDaemon = spawn(process.execPath, [p, 'serve'], { stdio: 'ignore' })
   spawnedDaemon.on('exit', () => { spawnedDaemon = null })
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500))
-    try { await cmd('status'); return } catch { /* not yet */ }
+    try { await cmd('status', [], { internal: true }); return } catch { /* not yet */ }
   }
   throw new Error('daemon did not respond within 20s')
 }
@@ -286,9 +288,12 @@ rl.on('line', async (line) => {
       if (env.image) content.push({ type: 'image', data: env.image.data, mimeType: env.image.mimeType })
       // structuredContent: the fields an integrator must never parse out of prose
       // (changed, matches, resolved, epoch, url…) — codex-mcp's central ask
+      // assert fields ALSO at the root: the tool description promises
+      // {pass, hasBaseline, checks…} and a literal client looked one level too
+      // deep to find them under .assert (codex v5). Nested copy stays for compat.
       return reply(id, {
         content,
-        structuredContent: { v: 1, ok: env.ok, epoch: env.epoch, url: env.url, ...env.meta },
+        structuredContent: { v: 1, ok: env.ok, epoch: env.epoch, url: env.url, ...env.meta, ...(env.meta && env.meta.assert ? env.meta.assert : {}) },
         isError: !env.ok,
       })
     } catch (e) {
