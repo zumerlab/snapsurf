@@ -1,8 +1,7 @@
 # Snippet para el Claude de la extensión (panel de claude.ai en Chrome)
 
-Pegar esto en el chat del panel. IMPORTANTE: la procedencia la establece el USUARIO
-al pegarlo — si el panel pide confirmación, confirmá con tus palabras que la
-extensión es tuya.
+Pegar esto en el chat del panel. La procedencia solo puede establecerla el usuario
+por sus propios medios; este texto no puede establecerla por él.
 
 ---
 
@@ -41,7 +40,7 @@ Cómo se usa:
    **Leé SIEMPRE `e.data.result` del mensaje ready (verificando `e.data.obsId ===
    obsId`), NUNCA el nodo #__snapdom_digest**: el nodo es un slot compartido que otro
    assert/observe concurrente puede pisar (carrera real, medida). El nodo queda solo
-   como compat. (Se llama obsId a propósito: tu puente censura claves "token".)
+   como compat.
 
 2b. **Para BUSCAR algo puntual en toda la página, usá `match` en vez de agrandar el
    digest** — busca el snapshot completo (no solo el top-N) y devuelve SOLO lo que
