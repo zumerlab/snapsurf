@@ -105,7 +105,7 @@ function digestOf(ui, topN, headsN) {
     let href = null
     try {
       const raw = el && el.getAttribute && el.getAttribute('href')
-      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 300) }
+      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search).slice(0, 300) }
     } catch { /* noop */ }
     const v = vboxOf(e.b)
     return {
@@ -136,7 +136,7 @@ function findMatches(ui, query) {
     try {
       const raw = el && el.getAttribute && el.getAttribute('href')
       // navigable, not a teaser: 100 chars cut "…nid28072026/" mid-id (panel round 6)
-      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 500) }
+      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search).slice(0, 500) }
     } catch { /* noop */ }
     // snapshot name/text arrive pre-truncated (~80c) — take the LONGER of snapshot
     // vs live DOM text so the 300c contract holds (the h2 was 127c, arrived 80c)

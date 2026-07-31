@@ -40,6 +40,7 @@ export function makeCheckpoint(snapshot, opts = {}) {
     const c = { g: n.tag, r: n.role, o: n.ordinal, h: H(n.subtreeHash) }
     if (n.parentId) c.P = n.parentId
     if (n.textHash) c.t = H(n.textHash)
+    if (n.rawTextHash && n.rawTextHash !== n.textHash) c.w = H(n.rawTextHash)
     if (n.stateHash) c.s = H(n.stateHash)
     if (n.styleHash) c.y = H(n.styleHash)
     if (n.textFp) c.f = H(n.textFp)
@@ -81,7 +82,7 @@ export function inflateCheckpoint(cp) {
       childIds: [],
       tag: c.g, role: c.r, ordinal: c.o,
       subtreeHash: c.h,
-      textHash: c.t || '', stateHash: c.s || '', styleHash: c.y || '',
+      textHash: c.t || '', rawTextHash: c.w || c.t || '', stateHash: c.s || '', styleHash: c.y || '',
       textFp: c.f || '',
       rel: c.b, testid: c.d || null,
       interactive: !!c.i, visible: c.v !== 0, covered: !!c.c,

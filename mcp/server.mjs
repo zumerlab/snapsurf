@@ -173,7 +173,7 @@ const TOOLS = [
   },
   {
     name: 'browser_assert',
-    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). Returns structured {pass, checks[]}. A failed assertion is a RESULT (isError stays false). Note: it consumes the diff baseline like browser_verify — one call covers act → assert.',
+    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). Returns structured {pass, checks[], changes[]} — a FAILED assertion carries the full diff evidence, so you never need to re-act to diagnose. A failed assertion is a RESULT (isError stays false). It consumes the diff baseline like browser_verify (one call covers act → assert) unless you pass keepBaseline:true (peek mode for diagnosis/retry).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -186,6 +186,7 @@ const TOOLS = [
         },
         exists: { type: 'string', description: 'text that must be findable on the page' },
         notCovered: { type: 'string', description: 'text whose best match must not be occluded' },
+        keepBaseline: { type: 'boolean', description: 'do not consume the diff baseline (peek mode — safe to retry)' },
       },
     },
     run: async (args) => cmd('assert', [JSON.stringify(args)]),

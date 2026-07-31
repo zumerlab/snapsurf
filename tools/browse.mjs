@@ -165,7 +165,7 @@ let meta = null
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 16)
 
 // ── In-page protocol (same shapes the realloop experiments validated) ────────────────
-const observe = ({ previous, scopeId, parentOfId } = {}) => {
+const observe = ({ previous, scopeId, parentOfId, peek, changesCap } = {}) => {
   // Walk-only (§lite): an agent with a mission needs semantics every turn but pixels
   // almost never — the full capture cost per look was Codex's top complaint (20s on
   // wikipedia). Pixels are requested explicitly and SCOPED via `snap <id>`.
@@ -193,7 +193,9 @@ const observe = ({ previous, scopeId, parentOfId } = {}) => {
   window.__lastUi = ui
   // A zoomed observation never becomes the global look baseline: the next full look
   // still diffs against the last FULL observation.
-  if (!scopeId) window.__lastCp = ui.checkpoint()
+  // peek (assert keepBaseline): diagnose without consuming the diff baseline —
+  // a FAILED assertion must not destroy its own evidence (codex assert round).
+  if (!scopeId && !peek) window.__lastCp = ui.checkpoint()
   // Compaction: full-page observations ship a ~2KB DIGEST (landmarks + headings +
   // top-15 RANKED actionables) instead of the 12KB outline — the sweep measured the
   // first-turn outline costing more than a screenshot on 31/35 sites, and codex v4
@@ -271,7 +273,7 @@ const observe = ({ previous, scopeId, parentOfId } = {}) => {
     mapTotal: ui.agentMap.map.length,
     map: digest ? undefined : ui.agentMap.map.slice(0, 40).map((e) => ({ id: e.id, r: e.r, n: e.n, b: e.b, c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })),
     changed: ui.changed,
-    changes: ui.changes && ui.changes.slice(0, 40),
+    changes: ui.changes && ui.changes.slice(0, changesCap || 40),
     delta: ui.actionabilityDelta,
     unobservable: ui.unobservable.length,
   }
@@ -316,7 +318,12 @@ const inFind = (query) => {
     // useful part (/itm/406631272018) lives at the START of the path (codex v3)
     let shortHref = null
     if (href && !href.startsWith('#')) {
-      try { const u = new URL(href, location.href); shortHref = (u.pathname + u.search).slice(0, 120) } catch { shortHref = href.slice(0, 120) }
+      try {
+        const u = new URL(href, location.href)
+        // cross-origin destinations keep their origin — "/" told codex nothing
+        // about the external Homepage link (npm → preactjs.com)
+        shortHref = ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search).slice(0, 140)
+      } catch { shortHref = href.slice(0, 140) }
     }
     cands.set(id, { id, r, n: name.slice(0, 160), b, href: shortHref, s })
   }
@@ -653,14 +660,18 @@ const HANDLERS = {
     const checks = []
     const push = (type, expected, actual, pass) => checks.push({ type, expected, actual, pass })
     if (spec.url !== undefined) push('url', spec.url, page.url(), page.url().includes(spec.url))
+    let diffChanges = null
     if (spec.changed !== undefined || spec.mustInclude) {
       const prev = await inPage(() => window.__lastCp || null)
-      const o = await inPage(observe, { previous: prev })
+      // ALL changes, not the 40-slice: codex's banner removal existed in the diff but
+      // sat past the cap behind 40 layout moves — the assertion must see everything.
+      const o = await inPage(observe, { previous: prev, changesCap: 2000, peek: !!spec.keepBaseline })
       epoch++
+      diffChanges = o.changes || []
       const changed = !!o.changed
       if (spec.changed !== undefined) push('changed', spec.changed, changed, changed === spec.changed)
       for (const m of spec.mustInclude || []) {
-        const hit = (o.changes || []).some((c) =>
+        const hit = diffChanges.some((c) =>
           (!m.kind || c.kind === m.kind) &&
           (!m.role || c.role === m.role) &&
           (!m.name || String(c.name || '').includes(m.name)))
@@ -683,9 +694,17 @@ const HANDLERS = {
     }
     const pass = checks.every((c) => c.pass)
     // A failed assertion is a RESULT, not a command error: ok stays true, pass says it.
-    meta = { assert: { pass, checks } }
-    return `${pass ? 'PASS' : 'FAIL'} (${checks.filter((c) => c.pass).length}/${checks.length} checks)\n` +
+    // The evidence travels WITH the verdict: a FAIL that destroyed its diff forced
+    // codex to reload and re-act just to see what actually happened.
+    const evidence = diffChanges ? diffChanges.slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: c.name, id: c.id })) : undefined
+    meta = { assert: { pass, checks, ...(evidence ? { changes: evidence } : {}) } }
+    let out = `${pass ? 'PASS' : 'FAIL'} (${checks.filter((c) => c.pass).length}/${checks.length} checks)\n` +
       checks.map((c) => `  ${c.pass ? '✓' : '✗'} ${c.type} · expected ${JSON.stringify(c.expected)} · actual ${JSON.stringify(c.actual)}`).join('\n')
+    if (!pass && evidence && evidence.length) {
+      out += `\nDIFF EVIDENCE (${evidence.length} change(s)):\n` +
+        evidence.slice(0, 15).map((c) => `  ${c.kind} ${c.role || ''}${c.name ? ` \"${String(c.name).slice(0, 50)}\"` : ''} ${c.id || ''}`).join('\n')
+    }
+    return out
   },
   async status() {
     const policy = [READONLY && 'readonly', ALLOW && `allow=[${ALLOW.join(', ')}]`].filter(Boolean).join(' · ') || '(unrestricted)'
@@ -698,6 +717,10 @@ const HANDLERS = {
 }
 
 const { createServer } = await import('node:http')
+// One page and one module-global `meta`: commands MUST serialize. Pipelined MCP
+// requests contaminated structuredContent (act inherited the previous find's
+// matches — codex assert round) and raced the shared page.
+let queue = Promise.resolve()
 createServer((req, res) => {
   // GET /sdk.js: the oracle bundle for OTHER runtimes to inject in-page — e.g. the
   // Claude-in-Chrome extension via its javascript_tool (<script src="http://127.0.0.1:8377/sdk.js">).
@@ -711,7 +734,11 @@ createServer((req, res) => {
   }
   let body = ''
   req.on('data', (c) => { body += c })
-  req.on('end', async () => {
+  req.on('end', () => { queue = queue.then(() => handle(res, body)).catch(() => {}) })
+}).listen(PORT, '127.0.0.1', () => console.log(`agent-browse daemon at http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · session ${SESSION}\nlog: ${LOGFILE}`))
+
+async function handle(res, body) {
+  {
     const t0 = Date.now()
     const urlBefore = (() => { try { return page.url() } catch { return null } })()
     let cmd, args = [], ok = true, error = null, envelope = false, outText = ''
@@ -758,5 +785,5 @@ createServer((req, res) => {
       ok: ok && !(meta && meta.denied),
       ...(error ? { error } : {}), ...(meta || {}),
     }) + '\n').catch(() => {})
-  })
-}).listen(PORT, '127.0.0.1', () => console.log(`agent-browse daemon at http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · session ${SESSION}\nlog: ${LOGFILE}`))
+  }
+}

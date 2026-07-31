@@ -80,8 +80,18 @@ export function diffSnapshots(before, after) {
     if (!sameHash(b.styleHash, a.styleHash)) kinds.push('style')
     if (b.tag !== a.tag || b.role !== a.role) kinds.push('content')
     if (!sameHash(b.geometryHash, a.geometryHash) && b.rel && a.rel) {
-      if (b.rel[0] !== a.rel[0] || b.rel[1] !== a.rel[1]) kinds.push('moved')
-      if (b.rel[2] !== a.rel[2] || b.rel[3] !== a.rel[3]) kinds.push('resized')
+      // A normalized-equivalent text change (clock tick, relative time) still nudges
+      // the box in proportional fonts. If the RAW text changed while the normalized
+      // text did not, the geometry delta is the same non-change — suppress it here,
+      // on THIS node only (ripples to siblings still report; they carry no raw-text
+      // change of their own). Found by the codex assert round: changed:false went
+      // flaky 1.1s after a no-op because the demo clock span resized by one digit.
+      const normalizedTextSideEffect = sameHash(b.textHash, a.textHash) &&
+        !sameHash(b.rawTextHash || b.textHash, a.rawTextHash || a.textHash)
+      if (!normalizedTextSideEffect) {
+        if (b.rel[0] !== a.rel[0] || b.rel[1] !== a.rel[1]) kinds.push('moved')
+        if (b.rel[2] !== a.rel[2] || b.rel[3] !== a.rel[3]) kinds.push('resized')
+      }
     }
     if (kinds.length) {
       for (const kind of kinds) changes.push({ ...detail, kind, role: a.role, name: a.name || undefined })

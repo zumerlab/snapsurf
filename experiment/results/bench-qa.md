@@ -18,7 +18,7 @@ El brazo oráculo corre A TRAVÉS del servidor MCP (browser_open + browser_verif
 |---|:---:|:---:|:---:|:---:|---:|---:|---:|
 | button-enabled | cambio | ✓ | ✗ (0%) | ✓ | 197 B | 33 KB | 1 KB |
 | canvas-region | ruido | ✓ | ✗ (4.875%) | ✓ | 123 B | 29 KB | 0 KB |
-| css-animation-running | ruido | ✓ | ✗ (0.324%) | ✓ | 131 B | 24 KB | 0 KB |
+| css-animation-running | ruido | ✓ | ✗ (0.323%) | ✓ | 131 B | 24 KB | 0 KB |
 | css-in-js-regeneration | ruido | ✓ | ✓ | ✓ | 132 B | 44 KB | 1 KB |
 | font-swap-late | cambio | ✓ | ✓ | ✗ | 619 B | 98 KB | 1 KB |
 | inline-script-noise | ruido | ✓ | ✓ | ✓ | 130 B | 23 KB | 0 KB |

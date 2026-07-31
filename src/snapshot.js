@@ -221,6 +221,10 @@ export function takeSnapshot(root, noise) {
     // accessibleName can derive from SUBTREE text, and letting it in would produce two
     // changes for one text edit (the text node's and every named ancestor's).
     const textHash = hash('t', normText)
+    // Raw-text hash rides along so the diff can attribute geometry side-effects of
+    // NORMALIZED text changes (a clock tick shifts the span width in proportional
+    // fonts — the resize is the same non-change as the digits; codex assert round).
+    const rawTextHash = ownText === normText ? textHash : hash('t', ownText)
     const stateHash = hash('s', JSON.stringify(state), valueHash)
     const sHash = hash('y', styleSubset(el, cs, animated.get(el)))
     const contentHash = hash('c', tag, role, testid || '', textHash, stateHash, sHash)
@@ -249,7 +253,7 @@ export function takeSnapshot(root, noise) {
       rel: [bbox.x, bbox.y, bbox.w, bbox.h],
       visible, covered, interactive,
       state,
-      textHash, stateHash, styleHash: sHash, contentHash, geometryHash,
+      textHash, rawTextHash, stateHash, styleHash: sHash, contentHash, geometryHash,
       subtreeHash: '', // filled after children
       geometryAnimating,
       childIds: [],
