@@ -202,6 +202,31 @@ const observe = ({ previous, scopeId, parentOfId } = {}) => {
   let digest = null
   if (root === document.body) {
     const NAVISH = 'nav,header,footer,aside,[role="navigation"],[role="banner"],[role="contentinfo"],[role="complementary"]'
+    // Parent-section context, ported from the companion rounds: nearest BOUNDED
+    // sectioning ancestor's heading; page-wide wrappers (>8000px) skipped, flat
+    // heading LISTS (>3 headings) skipped — absent beats wrong.
+    const sectionOf = (el) => {
+      const ownText = el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) : ''
+      let cur = el && el.parentElement
+      let depth = 0
+      while (cur && cur !== document.body && depth < 12) {
+        if (/^(section|article|aside|nav|main|header|footer)$/.test(cur.localName) || cur.getAttribute('role') === 'region') {
+          if (cur.getBoundingClientRect().height <= 8000) {
+            const hs = cur.querySelectorAll('h1,h2,h3,h4,[role="heading"]')
+            const h = hs[0]
+            if (hs.length <= 3 && h && h !== el && !h.contains(el) && !el.contains(h)) {
+              const t = (h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)
+              if (t && t !== ownText) return t
+            }
+            const al = cur.getAttribute('aria-label')
+            if (al && al.slice(0, 60) !== ownText) return al.slice(0, 60)
+          }
+        }
+        cur = cur.parentElement
+        depth++
+      }
+      return undefined
+    }
     const score = (e) => {
       let s = 0
       const name = e.n || ''
@@ -226,7 +251,7 @@ const observe = ({ previous, scopeId, parentOfId } = {}) => {
         const raw = el && el.getAttribute && el.getAttribute('href')
         if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 48) }
       } catch { /* noop */ }
-      top.push({ id: e.id, r: e.r, n: e.n.slice(0, 70), b: e.b, href, c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })
+      top.push({ id: e.id, r: e.r, n: e.n.slice(0, 90), b: e.b, href, s: sectionOf(ui.__snapshot.elements.get(e.id)), c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })
       if (top.length >= 15) break
     }
     const marks = []
@@ -235,7 +260,7 @@ const observe = ({ previous, scopeId, parentOfId } = {}) => {
     for (const id of ui.__snapshot.order) {
       const n = ui.__snapshot.nodes.get(id)
       if (!n) continue
-      if (n.role === 'heading' && heads.length < 15) heads.push({ id, t: (n.name || n.text || '').slice(0, 70) })
+      if (n.role === 'heading' && heads.length < 15) heads.push({ id, t: (n.name || n.text || '').slice(0, 90), s: sectionOf(ui.__snapshot.elements.get(id)) })
       else if (LANDMARKS[n.role] && marks.length < 10) marks.push({ id, r: n.role, n: (n.name || '').slice(0, 40), b: n.bbox })
     }
     digest = { marks, heads, top }
@@ -264,9 +289,15 @@ const inFind = (query) => {
   const cands = new Map()
   const add = (id, r, n, b) => {
     if (!n || cands.has(id)) return
-    const name = String(n)
+    let name = String(n)
     if (!norm(name).includes(q)) return
     const el = ui.__snapshot.elements.get(id)
+    // snapshot name/text arrive pre-truncated (~80c) — take the live DOM text when
+    // longer, so long headlines survive whole (companion round 6 lesson)
+    if (el) {
+      const fromDom = (el.textContent || '').replace(/\s+/g, ' ').trim()
+      if (fromDom.length > name.length) name = fromDom
+    }
     const href = el && el.getAttribute ? el.getAttribute('href') : null
     const area = b ? b[2] * b[3] : 0
     let s = 0
@@ -285,9 +316,9 @@ const inFind = (query) => {
     // useful part (/itm/406631272018) lives at the START of the path (codex v3)
     let shortHref = null
     if (href && !href.startsWith('#')) {
-      try { const u = new URL(href, location.href); shortHref = (u.pathname + u.search).slice(0, 48) } catch { shortHref = href.slice(0, 48) }
+      try { const u = new URL(href, location.href); shortHref = (u.pathname + u.search).slice(0, 120) } catch { shortHref = href.slice(0, 120) }
     }
-    cands.set(id, { id, r, n: name.slice(0, 80), b, href: shortHref, s })
+    cands.set(id, { id, r, n: name.slice(0, 160), b, href: shortHref, s })
   }
   for (const e of ui.agentMap.map) add(e.id, e.r, e.n, e.b)
   for (const id of ui.__snapshot.order) {
@@ -353,8 +384,8 @@ function trimOutline(context, budget = 12000) {
 const fmtMap = (o) => o.map.map((e) => `  ${e.id} ${e.r}${e.n ? ` "${e.n.slice(0, 60)}"` : ''} [${e.b.join(',')}]${e.c ? ` ⊘tapado por ${e.c}` : ''}`).join('\n')
 const fmtDigest = (d) => [
   d.marks.length ? `REGIONES (zoom con look <id>):\n${d.marks.map((m) => `  ${m.id} ${m.r}${m.n ? ` "${m.n}"` : ''} [${m.b.join(',')}]`).join('\n')}` : '',
-  d.heads.length ? `TÍTULOS:\n${d.heads.map((h) => `  ${h.id} "${h.t}"`).join('\n')}` : '',
-  d.top.length ? `TOP ACTIONABLES (rankeados, no exhaustivo — el resto vía find/map):\n${d.top.map((e) => `  ${e.id} ${e.r} "${e.n}" [${e.b.join(',')}]${e.href ? ` → ${e.href}` : ''}${e.c ? ` ⊘tapado por ${e.c}` : ''}`).join('\n')}` : '',
+  d.heads.length ? `TÍTULOS:\n${d.heads.map((h) => `  ${h.id} "${h.t}"${h.s ? ` §${h.s}` : ''}`).join('\n')}` : '',
+  d.top.length ? `TOP ACTIONABLES (rankeados, no exhaustivo — el resto vía find/map):\n${d.top.map((e) => `  ${e.id} ${e.r} "${e.n}" [${e.b.join(',')}]${e.href ? ` → ${e.href}` : ''}${e.s ? ` §${e.s}` : ''}${e.c ? ` ⊘tapado por ${e.c}` : ''}`).join('\n')}` : '',
 ].filter(Boolean).join('\n')
 // Content boundaries (agent-browser's --content-boundaries): everything the page wrote
 // travels fenced — it is DATA and must never be read as instructions by the model driving
@@ -443,9 +474,9 @@ const HANDLERS = {
     // full matches in the audit log — ids alone can't be reconstructed post-session.
     // Full field names: the documented contract is {id, role, name, href} and a literal
     // consumer must find exactly that (codex v4 caught the r/n abbreviation drift).
-    meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n && m.n.slice(0, 60), href: m.href || undefined })) }
+    meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n && m.n.slice(0, 120), href: m.href || undefined })) }
     return matches.length
-      ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 60)}"` : ''} [${m.b.join(',')}]${m.href ? ` → ${m.href}` : ''}`).join('\n'))
+      ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 120)}"` : ''} [${m.b.join(',')}]${m.href ? ` → ${m.href}` : ''}`).join('\n'))
       : 'sin resultados'
   },
   async parent([id]) {
