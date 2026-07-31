@@ -197,7 +197,10 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap } = {})
   // still diffs against the last FULL observation.
   // peek (assert keepBaseline): diagnose without consuming the diff baseline —
   // a FAILED assertion must not destroy its own evidence (codex assert round).
-  if (!scopeId && !peek) window.__lastCp = ui.checkpoint()
+  // baseline URL travels with the baseline: after an SPA soft nav the page world —
+  // and this checkpoint — survive, and a cross-page diff needs to SAY so (navigated
+  // flag, ported from the companion's github field round)
+  if (!scopeId && !peek) { window.__lastCp = ui.checkpoint(); window.__lastCpUrl = location.origin + location.pathname }
   // Compaction: full-page observations ship a ~2KB DIGEST (landmarks + headings +
   // top-15 RANKED actionables) instead of the 12KB outline — the sweep measured the
   // first-turn outline costing more than a screenshot on 31/35 sites, and codex v4
@@ -473,11 +476,17 @@ const HANDLERS = {
       return `SCOPE ${id} (global baseline untouched)\n${fmtFirst(o, page.url())}`
     }
     const prev = await inPage(() => window.__lastCp || null)
+    // both sides computed PAGE-side: Node's new URL().origin and the page's
+    // location.origin disagree on file:// ("null" vs "file://") — the demo fired a
+    // false navigated warning on a same-page file:// assert
+    const baseUrl = prev ? await inPage(() => window.__lastCpUrl || null) : null
+    const here = await inPage(() => location.origin + location.pathname)
+    const navigated = !!(baseUrl && here !== baseUrl)
     const o = await inPage(observe, { previous: prev })
     epoch++
     // enough summary that the JSONL alone says WHAT was seen, not just that a look ran
-    meta = { mapTotal: o.mapTotal, changed: o.changed, ...(o.changes ? { changes: o.changes.length } : {}) }
-    return fmtLook(o, page.url())
+    meta = { mapTotal: o.mapTotal, changed: o.changed, ...(o.changes ? { changes: o.changes.length } : {}), ...(navigated ? { navigated: true, baselineUrl: baseUrl } : {}) }
+    return (navigated ? `⚠ navigated since baseline (${baseUrl}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, page.url())
   },
   async find(args) {
     const matches = await inPage(inFind, args.join(' '))
@@ -687,7 +696,11 @@ const HANDLERS = {
       push(preChecks, 'spec', 'ignore is an array of CSS selectors', JSON.stringify(spec.ignore), false)
     }
     const urlWant = spec.url ?? spec.urlIncludes
-    const hasBaseline = !!(await inPage(() => window.__lastCp || null))
+    // here computed PAGE-side like the stored baseline url (Node URL.origin vs
+    // location.origin disagree on file:// — false warning caught by the demo run)
+    const baseInfo = await inPage(() => ({ has: !!window.__lastCp, url: window.__lastCpUrl || null, here: location.origin + location.pathname }))
+    const hasBaseline = baseInfo.has
+    const navigated = hasBaseline && baseInfo.url ? baseInfo.here !== baseInfo.url : undefined
     const needsDiff = spec.changed !== undefined || spec.mustInclude || spec.mustNotInclude ||
       spec.only || spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
     if (needsDiff && !hasBaseline) push(preChecks, 'baseline', 'established (open/verify first)', 'missing', false)
@@ -764,7 +777,12 @@ const HANDLERS = {
       }
       if (spec.exists) {
         const ms = await inPage(inFind, spec.exists)
-        const inProse = !ms.length && await inPage((q) => (document.body.innerText || '').toLowerCase().includes(q.toLowerCase()), spec.exists)
+        // collapse whitespace on BOTH sides (innerText carries line breaks — a query
+        // spanning a wrap point read absent) + NFD, parity with the companion
+        const inProse = !ms.length && await inPage((q) => {
+          const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+          return norm(document.body.innerText).includes(norm(q))
+        }, spec.exists)
         push(checks, 'exists', spec.exists, ms.length ? `${ms.length} match(es)` : (inProse ? 'in page text' : 'absent'), ms.length > 0 || inProse)
       }
       if (spec.notCovered) {
@@ -801,14 +819,17 @@ const HANDLERS = {
     }
     // consume the baseline only at the END (retry re-walked against the original)
     if (!spec.keepBaseline && (needsDiff || spec.exists || spec.notCovered)) {
-      await inPage(() => { if (window.__lastUi) window.__lastCp = window.__lastUi.checkpoint() })
+      await inPage(() => { if (window.__lastUi) { window.__lastCp = window.__lastUi.checkpoint(); window.__lastCpUrl = location.origin + location.pathname } })
     }
     const evidence = (needsDiff && hasBaseline)
       ? r.changes.slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: (c.label || '').slice(0, 60) || undefined, id: c.id, from: c.before, to: c.after }))
       : undefined
-    meta = { assert: { pass: r.pass, hasBaseline, attempts, changesTotal: (needsDiff && hasBaseline) ? r.changes.length : undefined, evidenceCap: 60, checks: r.checks, ...(evidence ? { changes: evidence } : {}) } }
+    meta = { assert: { pass: r.pass, hasBaseline, attempts, ...(navigated !== undefined ? { navigated, baselineUrl: baseInfo.url || undefined } : {}), changesTotal: (needsDiff && hasBaseline) ? r.changes.length : undefined, evidenceCap: 60, checks: r.checks, ...(evidence ? { changes: evidence } : {}) } }
     let out = `${r.pass ? 'PASS' : 'FAIL'} (${r.checks.filter((c) => c.pass).length}/${r.checks.length} checks${attempts > 1 ? ` · ${attempts} attempts` : ''})\n` +
       r.checks.map((c) => `  ${c.pass ? '✓' : '✗'} ${c.type} · expected ${JSON.stringify(c.expected)} · actual ${JSON.stringify(c.actual)}`).join('\n')
+    if (navigated) {
+      out = `⚠ navigated since baseline (${baseInfo.url}): diff-based checks span two pages of one document — re-baseline on settled content before trusting them\n` + out
+    }
     if (!r.pass && evidence && evidence.length) {
       out += `\nDIFF EVIDENCE (${evidence.length} change(s)):\n` +
         evidence.slice(0, 15).map((c) => `  ${c.kind} ${c.role || ''}${c.name ? ` "${String(c.name).slice(0, 50)}"` : ''} ${c.id || ''}`).join('\n')

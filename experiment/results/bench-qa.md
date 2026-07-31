@@ -16,25 +16,25 @@ El brazo oráculo corre A TRAVÉS del servidor MCP (browser_open + browser_verif
 
 | Fixture | Truth | Oráculo | Pixel | a11y | Evidencia oráculo | Evidencia pixel | Evidencia a11y |
 |---|:---:|:---:|:---:|:---:|---:|---:|---:|
-| button-enabled | cambio | ✓ | ✗ (0%) | ✓ | 197 B | 33 KB | 1 KB |
-| canvas-region | ruido | ✓ | ✗ (4.875%) | ✓ | 123 B | 29 KB | 0 KB |
-| css-animation-running | ruido | ✓ | ✗ (0.323%) | ✓ | 131 B | 24 KB | 0 KB |
-| css-in-js-regeneration | ruido | ✓ | ✓ | ✓ | 132 B | 44 KB | 1 KB |
-| font-swap-late | cambio | ✓ | ✓ | ✗ | 619 B | 98 KB | 1 KB |
-| inline-script-noise | ruido | ✓ | ✓ | ✓ | 130 B | 23 KB | 0 KB |
-| list-reordered | cambio | ✓ | ✓ | ✓ | 370 B | 36 KB | 1 KB |
-| list-row-inserted | cambio | ✓ | ✓ | ✓ | 553 B | 43 KB | 1 KB |
-| live-timestamp | ruido | ✓ | ✗ (0.008%) | ✗ | 125 B | 40 KB | 1 KB |
-| modal-overlay | cambio | ✓ | ✓ | ✓ | 342 B | 23 KB | 0 KB |
-| nested-modal-stack | cambio | ✓ | ✓ | ✓ | 367 B | 29 KB | 1 KB |
-| node-replaced | cambio | ✓ | ✓ | ✓ | 307 B | 38 KB | 1 KB |
-| portal-render | cambio | ✓ | ✓ | ✓ | 584 B | 42 KB | 1 KB |
-| react-remount | ruido | ✓ | ✓ | ✓ | 124 B | 27 KB | 0 KB |
-| residual-hover | ruido | ✓ | ✗ (0.249%) | ✗ | 125 B | 31 KB | 0 KB |
-| scroll-only | ruido | ✓ | ✗ (0.308%) | ✓ | 122 B | 39 KB | 2 KB |
-| shadow-dom-mutation | cambio | ✓ | ✓ | ✓ | 205 B | 25 KB | 0 KB |
-| text-update | cambio | ✓ | ✓ | ✓ | 198 B | 26 KB | 0 KB |
-| virtualized-scroll | cambio | ✓ | ✓ | ✓ | 713 B | 31 KB | 1 KB |
+| button-enabled | cambio | ✓ | ✗ (0%) | ✓ | 438 B | 33 KB | 1 KB |
+| canvas-region | ruido | ✓ | ✗ (4.875%) | ✓ | 363 B | 29 KB | 0 KB |
+| css-animation-running | ruido | ✓ | ✗ (0.323%) | ✓ | 379 B | 24 KB | 0 KB |
+| css-in-js-regeneration | ruido | ✓ | ✓ | ✓ | 381 B | 44 KB | 1 KB |
+| font-swap-late | cambio | ✓ | ✓ | ✗ | 860 B | 98 KB | 1 KB |
+| inline-script-noise | ruido | ✓ | ✓ | ✓ | 376 B | 23 KB | 0 KB |
+| list-reordered | cambio | ✓ | ✓ | ✓ | 611 B | 36 KB | 1 KB |
+| list-row-inserted | cambio | ✓ | ✓ | ✓ | 797 B | 43 KB | 1 KB |
+| live-timestamp | ruido | ✓ | ✗ (0.008%) | ✗ | 366 B | 40 KB | 1 KB |
+| modal-overlay | cambio | ✓ | ✓ | ✓ | 582 B | 23 KB | 0 KB |
+| nested-modal-stack | cambio | ✓ | ✓ | ✓ | 612 B | 29 KB | 1 KB |
+| node-replaced | cambio | ✓ | ✓ | ✓ | 547 B | 38 KB | 1 KB |
+| portal-render | cambio | ✓ | ✓ | ✓ | 824 B | 42 KB | 1 KB |
+| react-remount | ruido | ✓ | ✓ | ✓ | 364 B | 27 KB | 0 KB |
+| residual-hover | ruido | ✓ | ✗ (0.249%) | ✗ | 366 B | 31 KB | 0 KB |
+| scroll-only | ruido | ✓ | ✗ (0.308%) | ✓ | 360 B | 39 KB | 2 KB |
+| shadow-dom-mutation | cambio | ✓ | ✓ | ✓ | 451 B | 25 KB | 0 KB |
+| text-update | cambio | ✓ | ✓ | ✓ | 436 B | 26 KB | 0 KB |
+| virtualized-scroll | cambio | ✓ | ✓ | ✓ | 958 B | 31 KB | 1 KB |
 
 Notas de honestidad:
 - El pixel-diff se corrió con el MISMO algoritmo perceptual con anti-aliasing de
