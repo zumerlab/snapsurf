@@ -21,11 +21,12 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
      setTimeout(r, 2000); // red de seguridad
    });
    window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId }, '*');
-   await ready;
-   JSON.parse(document.getElementById('__snapdom_digest').textContent)
+   const result = await ready;   // ← el resultado viene EN e.data.result
    ```
-   El JSON ecoa tu `obsId`, así verificás que es TU observación y no una vieja.
-   (Se llama obsId a propósito: tu puente censura claves llamadas "token".)
+   **Leé SIEMPRE `e.data.result` del mensaje ready (verificando `e.data.obsId ===
+   obsId`), NUNCA el nodo #__snapdom_digest**: el nodo es un slot compartido que otro
+   assert/observe concurrente puede pisar (carrera real, medida). El nodo queda solo
+   como compat. (Se llama obsId a propósito: tu puente censura claves "token".)
 
 2b. **Para BUSCAR algo puntual en toda la página, usá `match` en vez de agrandar el
    digest** — busca el snapshot completo (no solo el top-N) y devuelve SOLO lo que
@@ -75,9 +76,11 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
      notCovered: 'label visible o accName',          // matchea por nombre O texto visible; actual
                                                      // puede venir 'clear·offscreen' (fuera de viewport)
      urlIncludes: '/wiki/',
+     only: [{ kind: 'state' }, { kind: 'style' }],   // scoping causal: TODO cambio debe matchear
+     ignore: ['#claude-agent-stop-button'],          // excluí tu propia UI inyectada del diff
      retry: { budgetMs: 2000 },                      // re-walk contra el MISMO baseline (transiciones CSS)
      settleMs: 300,
-     keepBaseline: true                              // peek: no consume el baseline
+     keepBaseline: true                              // peek: no consume el baseline (SÍ existe)
    }}, '*');
    // → { type:'assert', obsId, pass, hasBaseline, attempts, checks:[...], changes:[...] }
    ```
@@ -85,7 +88,15 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
    malformados son TODOS pass:false con razón — la confusión nunca se ve verde.
    Verificá `obsId` en el resultado (guardia de staleness) y `hasBaseline`. La
    evidencia del diff (con from/to de estados y selector) viaja en `changes`.
-   Consume el baseline AL FINAL salvo keepBaseline:true.
+   Consume el baseline AL FINAL salvo keepBaseline:true. El resultado trae
+   `changesTotal` y `evidenceCap: 60` (la evidencia es una muestra). La validación es
+   estricta en TODOS los niveles: claves, campos de entries (kind/role/name/selector/to),
+   valores de kind, forma de retry — cualquier typo es pass:false con razón.
+   ADVERTENCIAS HONESTAS: `changed:true` a secas es una señal de humo, no una
+   aserción (un scroll ambiental la satisface — usá mustInclude con selector, o only);
+   `notCovered` con matches múltiples resuelve por orden DOM (el actual reporta el
+   count); el walk es síncrono y congela el tab (1-7s en páginas grandes — subí tu
+   timeout de seguridad acorde y no corras asserts en paralelo).
    Para LEER contenido largo (artículos, hilos), tu get_page_text sigue siendo mejor:
    el digest es mapa y cambios, no texto completo.
 

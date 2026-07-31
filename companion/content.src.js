@@ -223,7 +223,10 @@ function runObserve(opts = {}) {
 // pass:false with a reason; retry ({retry:{budgetMs}}) re-walks against the SAME
 // baseline until pass or budget (CSS transitions land mid-flight); evidence (the
 // diff, with selector and state from/to) travels with every result that ran a diff.
-const ASSERT_KEYS = new Set(['urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered', 'settleMs', 'retry', 'keepBaseline'])
+const CHECK_KEYS = new Set(['urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'only', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered'])
+const MOD_KEYS = new Set(['settleMs', 'retry', 'keepBaseline', 'ignore'])
+const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'selector', 'to'])
+const KINDS = new Set(['added', 'removed', 'content', 'state', 'style', 'moved', 'resized', 'possible-replacement'])
 
 async function runAssert(spec, obsId) {
   const t0 = performance.now()
@@ -232,20 +235,33 @@ async function runAssert(spec, obsId) {
   const preChecks = []
   const push = (arr, type, expected, actual, pass) => arr.push({ type, expected, actual, pass })
 
-  // strict spec: a typo must never look like success (panel 3b)
-  const keys = Object.keys(spec).filter((k) => k !== 'keepBaseline')
-  if (!keys.length) push(preChecks, 'spec', 'at least one check', 'empty spec', false)
+  // strict spec, ALL levels: a typo must never look like success — round 1 fixed the
+  // top level, round 2 found entry fields, kind values, retry shapes and empty
+  // matcher arrays all still failing OPEN. Everything validates now.
   for (const k of Object.keys(spec)) {
-    if (!ASSERT_KEYS.has(k)) push(preChecks, 'spec', 'known key', `unknown key "${k}"`, false)
+    if (!CHECK_KEYS.has(k) && !MOD_KEYS.has(k)) push(preChecks, 'spec', 'known key', `unknown key "${k}"`, false)
   }
-  for (const k of ['mustInclude', 'mustNotInclude']) {
-    if (spec[k] !== undefined && !Array.isArray(spec[k])) push(preChecks, 'spec', `${k} is an array`, typeof spec[k], false)
+  for (const k of ['mustInclude', 'mustNotInclude', 'only']) {
+    if (spec[k] === undefined) continue
+    if (!Array.isArray(spec[k])) { push(preChecks, 'spec', `${k} is an array`, typeof spec[k], false); continue }
+    if (!spec[k].length) push(preChecks, 'spec', `${k} is non-empty`, 'empty array', false)
+    for (const m of spec[k]) {
+      if (typeof m !== 'object' || !m) { push(preChecks, 'spec', `${k} entries are objects`, typeof m, false); continue }
+      for (const f of Object.keys(m)) if (!ENTRY_FIELDS.has(f)) push(preChecks, 'spec', 'known entry field', `unknown field "${f}" in ${k}`, false)
+      if (m.kind !== undefined && !KINDS.has(m.kind)) push(preChecks, 'spec', `kind ∈ ${[...KINDS].join('/')}`, `"${m.kind}"`, false)
+    }
+  }
+  if (spec.retry !== undefined && (typeof spec.retry !== 'object' || !spec.retry || typeof spec.retry.budgetMs !== 'number')) {
+    push(preChecks, 'spec', 'retry is {budgetMs[, intervalMs]}', JSON.stringify(spec.retry), false)
+  }
+  if (spec.ignore !== undefined && (!Array.isArray(spec.ignore) || spec.ignore.some((x) => typeof x !== 'string'))) {
+    push(preChecks, 'spec', 'ignore is an array of CSS selectors', JSON.stringify(spec.ignore), false)
   }
 
   const hasBaseline = !!prev
   const baseline = prev
   const needsDiff = spec.changed !== undefined || spec.mustInclude || spec.mustNotInclude ||
-    spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
+    spec.only || spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
   // no baseline → every diff check fails LOUDLY (panel 3a: the post-reload vacuous pass)
   if (needsDiff && !hasBaseline) push(preChecks, 'baseline', 'established (send SNAPDOM_OBSERVE first)', 'missing', false)
 
@@ -263,16 +279,27 @@ async function runAssert(spec, obsId) {
     (!m.name || norm(labelOf(ui, c)).includes(norm(m.name))) &&
     (!m.to || (c.after && Object.entries(m.to).every(([k, v]) => c.after[k] === v)))
 
+  const inIgnored = (ui, id) => {
+    if (!Array.isArray(spec.ignore) || !spec.ignore.length || !id) return false
+    const el = ui.__snapshot.elements.get(id)
+    if (!el || !el.closest) return false
+    return spec.ignore.some((sel) => { try { return !!el.closest(sel) } catch { return false } })
+  }
   const evaluate = (ui) => {
     const checks = [...preChecks]
-    const changes = ui.changes || []
+    // ignore: the measuring apparatus must be excludable — the panel caught the
+    // Claude toolbar's own show/hide transition contaminating changed:false
+    const changes = (ui.changes || []).filter((c) => !inIgnored(ui, c.id))
     if (spec.urlIncludes !== undefined) {
       const here = location.origin + location.pathname + location.search
       push(checks, 'urlIncludes', spec.urlIncludes, location.origin + location.pathname, here.includes(spec.urlIncludes))
     }
     if (spec.changed !== undefined) {
       if (!hasBaseline) push(checks, 'changed', spec.changed, 'no-baseline', false)
-      else push(checks, 'changed', spec.changed, !!ui.changed, !!ui.changed === spec.changed)
+      else {
+        const eff = changes.length > 0
+        push(checks, 'changed', spec.changed, eff, eff === spec.changed)
+      }
     }
     if (Array.isArray(spec.mustInclude)) {
       for (const m of spec.mustInclude) {
@@ -285,6 +312,11 @@ async function runAssert(spec, obsId) {
         const hit = hasBaseline && changes.some((c) => matchChange(ui, c, m))
         push(checks, 'mustNotInclude', m, hit ? 'found' : 'absent', hasBaseline && !hit)
       }
+    }
+    if (Array.isArray(spec.only) && spec.only.length) {
+      // causal scoping: EVERY (non-ignored) change must match one of the matchers
+      const offender = hasBaseline ? changes.find((c) => !spec.only.some((m) => matchChange(ui, c, m))) : null
+      push(checks, 'only', spec.only, offender ? `unmatched: ${offender.kind} "${labelOf(ui, offender).slice(0, 40)}"` : (hasBaseline ? 'all matched' : 'no-baseline'), hasBaseline && !offender)
     }
     if (spec.maxChanges !== undefined) {
       push(checks, 'maxChanges', spec.maxChanges, changes.length, hasBaseline && changes.length <= spec.maxChanges)
@@ -318,11 +350,22 @@ async function runAssert(spec, obsId) {
         const el = ui.__snapshot.elements.get(x.id)
         return el && norm((el.textContent || '').replace(/\s+/g, ' ')).includes(q)
       })
+      const matchesAll = ui.agentMap.map.filter((x) => {
+        if (norm(x.n).includes(q)) return true
+        const el = ui.__snapshot.elements.get(x.id)
+        return el && norm((el.textContent || '').replace(/\s+/g, ' ')).includes(q)
+      })
       const v = e && vboxOf(ui.__snapshot.nodes.get(e.id)?.bbox && ui.__snapshot.nodes.get(e.id).bbox)
-      const off = e && v && !inViewOf(v) ? '·offscreen' : ''
-      push(checks, 'notCovered', spec.notCovered, e ? ((e.covered ? 'covered' : 'clear') + off) : 'absent', !!(e && !e.covered))
+      const off = e && v && !inViewOf(v)
+      // offscreen is NOT clickable: clear·offscreen now FAILS (round 2: a 1-char
+      // substring matching something 400px below the fold returned green)
+      const count = matchesAll.length > 1 ? ` (${matchesAll.length} matches, first by DOM order)` : ''
+      push(checks, 'notCovered', spec.notCovered, e ? ((e.covered ? 'covered' : 'clear') + (off ? '·offscreen' : '') + count) : 'absent', !!(e && !e.covered && !off))
     }
-    return { checks, pass: checks.every((c) => c.pass) }
+    // zero-check guard: a spec whose checks all validated away must not pass —
+    // {mustInclude: []} returned green with 0 checks (round 2)
+    if (!checks.some((c) => c.type !== 'spec')) push(checks, 'spec', 'at least one check emitted', 'none', false)
+    return { checks, changes, pass: checks.every((c) => c.pass) }
   }
 
   // settle + retry against the SAME baseline (panel 3g: transitions land mid-flight;
@@ -341,7 +384,8 @@ async function runAssert(spec, obsId) {
   if (!spec.keepBaseline) prev = ui.checkpoint()
 
   const ranDiff = hasBaseline && needsDiff
-  const evidence = ranDiff ? (ui.changes || []).slice(0, 60).map((c) => ({
+  const effective = result.changes || []
+  const evidence = ranDiff ? effective.slice(0, 60).map((c) => ({
     kind: c.kind, role: c.role, name: labelOf(ui, c).slice(0, 60) || undefined,
     selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined,
     from: c.before, to: c.after,
@@ -352,6 +396,8 @@ async function runAssert(spec, obsId) {
     hasBaseline,
     pass: result.pass,
     checks: result.checks,
+    changesTotal: ranDiff ? effective.length : undefined,
+    evidenceCap: 60,
     changes: evidence,
   }
 }
@@ -368,19 +414,24 @@ window.addEventListener('message', (e) => {
       }
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
       node.textContent = JSON.stringify(out)
-      window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId }, '*')
+      // The result rides IN the ready message: the shared DOM slot is a race the
+      // obsId handshake never protected (round 2: reader A consumed reader B's
+      // verdict through the documented boilerplate). The node stays for compat.
+      window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId, result: out }, '*')
     })()
     return
   }
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
     const obsId = e.data.obsId ?? e.data.token ?? null // token kept for old snippets
-    try { runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, obsId }) } catch (err) {
+    let out
+    try { out = runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, obsId }) } catch (err) {
+      out = { error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId }
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
-      node.textContent = JSON.stringify({ error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId })
+      node.textContent = JSON.stringify(out)
     }
-    // Readiness signal (panel round 3): awaiting this instead of a fixed 800ms sleep
-    // cuts the round from ~830ms to ~walk time.
-    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId }, '*')
+    // The result rides IN the ready message (shared-slot race, round 2); the node
+    // write above stays for backward compat.
+    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId, result: out }, '*')
   }
 })
 

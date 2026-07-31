@@ -660,19 +660,33 @@ const HANDLERS = {
       meta = { assert: { pass: false, checks: [{ type: 'spec', expected: 'valid JSON', actual: 'parse error', pass: false }] } }
       return 'FAIL (0/1 checks)\n  ✗ spec · expected valid JSON · actual parse error'
     }
-    const KEYS = new Set(['url', 'urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered', 'settleMs', 'retry', 'keepBaseline'])
+    const CHECK_KEYS = new Set(['url', 'urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'only', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered'])
+    const MOD_KEYS = new Set(['settleMs', 'retry', 'keepBaseline', 'ignore'])
+    const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'selector', 'to'])
+    const KINDS = new Set(['added', 'removed', 'content', 'state', 'style', 'moved', 'resized', 'possible-replacement'])
     const preChecks = []
     const push = (arr, type, expected, actual, pass) => arr.push({ type, expected, actual, pass })
-    const specKeys = Object.keys(spec).filter((k) => k !== 'keepBaseline')
-    if (!specKeys.length) push(preChecks, 'spec', 'at least one check', 'empty spec', false)
-    for (const k of Object.keys(spec)) if (!KEYS.has(k)) push(preChecks, 'spec', 'known key', `unknown key "${k}"`, false)
-    for (const k of ['mustInclude', 'mustNotInclude']) {
-      if (spec[k] !== undefined && !Array.isArray(spec[k])) push(preChecks, 'spec', `${k} is an array`, typeof spec[k], false)
+    for (const k of Object.keys(spec)) if (!CHECK_KEYS.has(k) && !MOD_KEYS.has(k)) push(preChecks, 'spec', 'known key', `unknown key "${k}"`, false)
+    for (const k of ['mustInclude', 'mustNotInclude', 'only']) {
+      if (spec[k] === undefined) continue
+      if (!Array.isArray(spec[k])) { push(preChecks, 'spec', `${k} is an array`, typeof spec[k], false); continue }
+      if (!spec[k].length) push(preChecks, 'spec', `${k} is non-empty`, 'empty array', false)
+      for (const m of spec[k]) {
+        if (typeof m !== 'object' || !m) { push(preChecks, 'spec', `${k} entries are objects`, typeof m, false); continue }
+        for (const f of Object.keys(m)) if (!ENTRY_FIELDS.has(f)) push(preChecks, 'spec', 'known entry field', `unknown field "${f}" in ${k}`, false)
+        if (m.kind !== undefined && !KINDS.has(m.kind)) push(preChecks, 'spec', `kind ∈ ${[...KINDS].join('/')}`, `"${m.kind}"`, false)
+      }
+    }
+    if (spec.retry !== undefined && (typeof spec.retry !== 'object' || !spec.retry || typeof spec.retry.budgetMs !== 'number')) {
+      push(preChecks, 'spec', 'retry is {budgetMs[, intervalMs]}', JSON.stringify(spec.retry), false)
+    }
+    if (spec.ignore !== undefined && (!Array.isArray(spec.ignore) || spec.ignore.some((x) => typeof x !== 'string'))) {
+      push(preChecks, 'spec', 'ignore is an array of CSS selectors', JSON.stringify(spec.ignore), false)
     }
     const urlWant = spec.url ?? spec.urlIncludes
     const hasBaseline = !!(await inPage(() => window.__lastCp || null))
     const needsDiff = spec.changed !== undefined || spec.mustInclude || spec.mustNotInclude ||
-      spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
+      spec.only || spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
     if (needsDiff && !hasBaseline) push(preChecks, 'baseline', 'established (open/verify first)', 'missing', false)
 
     const evalOnce = async () => {
@@ -683,11 +697,25 @@ const HANDLERS = {
         o = await inPage(observe, { previous: prev, changesCap: 2000, peek: true })
         epoch++
       }
-      const changes = (o && o.changes) || []
+      let changes = (o && o.changes) || []
+      if (Array.isArray(spec.ignore) && spec.ignore.length && changes.length) {
+        changes = await inPage(({ chs, sels }) => {
+          const ui = window.__lastUi
+          if (!ui) return chs
+          return chs.filter((c) => {
+            const el = c.id && ui.__snapshot.elements.get(c.id)
+            if (!el || !el.closest) return true
+            return !sels.some((sel) => { try { return !!el.closest(sel) } catch { return false } })
+          })
+        }, { chs: changes, sels: spec.ignore })
+      }
       if (urlWant !== undefined) push(checks, 'url', urlWant, page.url(), page.url().includes(urlWant))
       if (spec.changed !== undefined) {
         if (!hasBaseline) push(checks, 'changed', spec.changed, 'no-baseline', false)
-        else push(checks, 'changed', spec.changed, !!o.changed, !!o.changed === spec.changed)
+        else {
+          const eff = changes.length > 0
+          push(checks, 'changed', spec.changed, eff, eff === spec.changed)
+        }
       }
       const matches = await inPage((mm) => {
         const ui = window.__lastUi
@@ -702,11 +730,12 @@ const HANDLERS = {
         }
         return mm.changes.map((c) => ({ ...c, label: labelOf(c) }))
       }, { changes })
-      const hit = (m) => matches.some((c) =>
+      const hit1 = (c, m) =>
         (!m.kind || c.kind === m.kind) &&
         (!m.role || c.role === m.role) &&
         (!m.name || c.label.toLowerCase().includes(String(m.name).toLowerCase())) &&
-        (!m.to || (c.after && Object.entries(m.to).every(([k, v]) => c.after[k] === v))))
+        (!m.to || (c.after && Object.entries(m.to).every(([k, v]) => c.after[k] === v)))
+      const hit = (m) => matches.some((c) => hit1(c, m))
       for (const m of (Array.isArray(spec.mustInclude) ? spec.mustInclude : [])) {
         const h = hasBaseline && hit(m)
         push(checks, 'mustInclude', m, hasBaseline ? (h ? 'found' : 'absent') : 'no-baseline', h)
@@ -714,6 +743,10 @@ const HANDLERS = {
       for (const m of (Array.isArray(spec.mustNotInclude) ? spec.mustNotInclude : [])) {
         const h = hasBaseline && hit(m)
         push(checks, 'mustNotInclude', m, h ? 'found' : 'absent', hasBaseline && !h)
+      }
+      if (Array.isArray(spec.only) && spec.only.length) {
+        const offender = hasBaseline ? matches.find((c) => !spec.only.some((m) => hit1(c, m))) : null
+        push(checks, 'only', spec.only, offender ? `unmatched: ${offender.kind} "${(offender.label || '').slice(0, 40)}"` : (hasBaseline ? 'all matched' : 'no-baseline'), hasBaseline && !offender)
       }
       if (spec.maxChanges !== undefined) push(checks, 'maxChanges', spec.maxChanges, changes.length, hasBaseline && changes.length <= spec.maxChanges)
       if (spec.becameVisible) {
@@ -745,8 +778,9 @@ const HANDLERS = {
           const off = b.length === 4 && (b[1] - scrollY > innerHeight || b[1] + b[3] - scrollY < 0)
           return { found: true, covered: !!e.covered, off }
         }, spec.notCovered)
-        push(checks, 'notCovered', spec.notCovered, cov && cov.found ? ((cov.covered ? 'covered' : 'clear') + (cov.off ? '·offscreen' : '')) : 'absent', !!(cov && cov.found && !cov.covered))
+        push(checks, 'notCovered', spec.notCovered, cov && cov.found ? ((cov.covered ? 'covered' : 'clear') + (cov.off ? '·offscreen' : '')) : 'absent', !!(cov && cov.found && !cov.covered && !cov.off))
       }
+      if (!checks.some((c) => c.type !== 'spec')) push(checks, 'spec', 'at least one check emitted', 'none', false)
       return { checks, changes: matches, pass: checks.every((c) => c.pass) }
     }
 
@@ -768,7 +802,7 @@ const HANDLERS = {
     const evidence = (needsDiff && hasBaseline)
       ? r.changes.slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: (c.label || '').slice(0, 60) || undefined, id: c.id, from: c.before, to: c.after }))
       : undefined
-    meta = { assert: { pass: r.pass, hasBaseline, attempts, checks: r.checks, ...(evidence ? { changes: evidence } : {}) } }
+    meta = { assert: { pass: r.pass, hasBaseline, attempts, changesTotal: (needsDiff && hasBaseline) ? r.changes.length : undefined, evidenceCap: 60, checks: r.checks, ...(evidence ? { changes: evidence } : {}) } }
     let out = `${r.pass ? 'PASS' : 'FAIL'} (${r.checks.filter((c) => c.pass).length}/${r.checks.length} checks${attempts > 1 ? ` · ${attempts} attempts` : ''})\n` +
       r.checks.map((c) => `  ${c.pass ? '✓' : '✗'} ${c.type} · expected ${JSON.stringify(c.expected)} · actual ${JSON.stringify(c.actual)}`).join('\n')
     if (!r.pass && evidence && evidence.length) {
