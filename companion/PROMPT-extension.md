@@ -35,6 +35,10 @@ Cómo se usa:
 
 1. Verificá que está presente (con tu herramienta de ejecutar JavaScript):
    `!!document.querySelector('meta[name="__snapdom_companion"]')`
+   Y verificá la VERSIÓN DEL CONTRATO: todo resultado (observe/assert) trae
+   `contract: 3`. Si no aparece, el bundle cargado es viejo — reportalo y pedí
+   recargar la extensión antes de sacar conclusiones (cuatro rondas de feedback
+   se contaminaron por evaluar bundles desactualizados).
 
 2. Pedí una observación y esperá la señal de listo (no un sleep fijo):
    ```js

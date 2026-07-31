@@ -180,6 +180,10 @@ async function runObserve(opts = {}) {
     return { kind: c.kind, role: c.role, name: label, id: c.id, selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined }
   }
   const out = {
+    // contract marker: readers verify the loaded bundle matches the documented
+    // protocol (four consumer rounds bitten by stale bundles — result-in-message,
+    // ignore, chunked walk all "missing" because the extension was never reloaded)
+    contract: 3,
     // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
@@ -398,7 +402,7 @@ async function runAssert(spec, obsId) {
     from: c.before, to: c.after,
   })) : undefined
   return {
-    type: 'assert', obsId, ts: Date.now(),
+    type: 'assert', contract: 3, obsId, ts: Date.now(),
     walkMs: Math.round(performance.now() - t0), attempts,
     torn: (lastObs && lastObs.torn) || 0,
     hasBaseline,
