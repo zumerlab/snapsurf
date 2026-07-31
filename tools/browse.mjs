@@ -669,19 +669,30 @@ createServer((req, res) => {
   req.on('end', async () => {
     const t0 = Date.now()
     const urlBefore = (() => { try { return page.url() } catch { return null } })()
-    let cmd, args = [], ok = true, error = null
+    let cmd, args = [], ok = true, error = null, envelope = false, outText = ''
     meta = null
     try {
-      ;({ cmd, args = [] } = JSON.parse(body || '{}'))
+      ;({ cmd, args = [], envelope = false } = JSON.parse(body || '{}'))
       if (!HANDLERS[cmd]) throw new Error(`comando desconocido: ${cmd}`)
       if (READONLY && MUTATING.has(cmd)) {
         meta = { denied: 'readonly' }
         throw new Error(`⛔ denegado por política --readonly: "${cmd}" es un verbo mutante (permitidos: open/look/find/text/snap/shot/cp/rec)`)
       }
-      res.end(await HANDLERS[cmd](args) + '\n')
+      outText = await HANDLERS[cmd](args)
     } catch (e) {
       ok = false
       error = String(e).split('\n')[0]
+    }
+    const urlAfter = (() => { try { return page.url() } catch { return null } })()
+    if (envelope) {
+      // Machine consumers (MCP server, CI): structured contract instead of parsing
+      // localized prose — codex-mcp asked for changed/url/epoch/matches as FIELDS.
+      res.statusCode = ok ? 200 : 500
+      res.setHeader('content-type', 'application/json')
+      res.end(JSON.stringify({ v: 1, ok: ok && !(meta && meta.denied), text: outText, error, epoch, url: urlAfter, meta: meta || {} }))
+    } else if (ok) {
+      res.end(outText + '\n')
+    } else {
       res.statusCode = 500
       res.end(error + '\n')
     }

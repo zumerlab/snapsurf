@@ -23,8 +23,30 @@ que la comparativa CLI:
 Referencia CLI: 5/5 · 20 cmds · 21,2 s. La llamada extra: T4 probó ids del find
 hasta dar con el número (el flujo CLI conocía el id bueno de antemano). Paridad.
 
-## (c) Ronda Codex a ciegas solo-MCP — PENDIENTE
+## (c) Ronda Codex a ciegas solo-MCP — ✅ 2026-07-31
 
-Prompt en `PROMPT-codex-mcp.md`. Criterio: con SOLO las descripciones de las tools
-(sin skill, sin transcript previo del CLI), completar las 5 tareas y evaluar si la
-superficie alcanza.
+`results/codex-mcp.md`: **5/5 · 25 llamadas · 19,98 s puros** (mejor wall que ambas
+referencias), solo con tools/list como documentación. Veredicto: "integrable hoy
+para experimentación y agentes con modelo en el loop; no tal cual para QA
+desatendido" + 9 pedidos.
+
+## Endurecimiento post-(c) — ✅ mismo día
+
+De los 9 pedidos, 6 aplicados y verificados:
+1. **Lifecycle del daemon (blocker CI)**: el server es dueño del daemon que levanta
+   y lo termina en EOF/SIGINT/SIGTERM. Dos landmines medidas en el camino:
+   `ChildProcess.kill()` devuelve true SIN entregar la señal (usar
+   `process.kill(pid)`), y una señal seguida de `process.exit` inmediato tampoco se
+   entrega (el emisor debe sobrevivir al envío) → patrón TERM → 400ms → KILL.
+   Verificado: 0 huérfanos por ambos caminos.
+2. **Envelope v1 del daemon** (`{ok, text, error, epoch, url, meta}` con
+   `envelope:true` en /cmd; el CLI sigue igual) → **structuredContent** en cada
+   respuesta MCP: changed/matches/resolved/settle/epoch/url como CAMPOS, no prosa.
+3. `browser_act` con schema condicional (oneOf por acción).
+4. CLI-ismos traducidos al dialecto MCP en el borde ("corré look" → browser_verify…).
+5. `browser_page {view:"zoom", id}` — el zoom regional que faltaba.
+6. Negativo `changed:false` ahora estructurado (verificado en fixture).
+
+Diferidos a F2 (features, no fixes): `browser_assert` determinista, causalidad
+target-vs-ambiente en verify, `browser_query` con orderBy, redacción auditable
+(ya es F3). Gate (b) re-corrido tras el endurecimiento: 5/5 · 21 · 21,8 s.

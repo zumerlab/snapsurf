@@ -36,22 +36,67 @@ async function browsePath() {
   throw new Error('browse.mjs no encontrado (¿rama agent-lab o install-global corrido?)')
 }
 
+// Envelope v1 del daemon: {ok, text, error, epoch, url, meta} — contrato para
+// máquinas en vez de prosa parseada (pedido codex-mcp).
 async function cmd(name, args = []) {
   const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ cmd: name, args }),
+    body: JSON.stringify({ cmd: name, args, envelope: true }),
   })
-  const text = (await res.text()).trim()
-  if (!res.ok) throw new Error(text)
-  return text
+  const env = await res.json()
+  if (!env.ok && env.error) throw new Error(env.error)
+  return env
 }
+
+// La salida del daemon habla el dialecto del CLI ("corré look", "map <offset>") —
+// un cliente MCP ciego puede inventar tools inexistentes (lo hizo notar codex-mcp).
+// Traducción al dialecto MCP en el borde.
+function mcpDialect(text) {
+  return (text || '')
+    .replaceAll('corré look para ver qué cambió', 'llamá browser_verify para ver qué cambió')
+    .replaceAll('corré look', 'llamá browser_verify')
+    .replaceAll('(zoom con look <id>)', '(zoom con browser_page {view:"zoom", id})')
+    .replaceAll('(detalle: outline · map <offset> · find <texto> · look <id>)', '(detalle: browser_page {view:"outline"|"map"} · browser_find · browser_page {view:"zoom", id})')
+    .replaceAll('el resto vía find/map', 'el resto vía browser_find o browser_page {view:"map"}')
+    .replaceAll('el resto vía find', 'el resto vía browser_find')
+    .replaceAll('re-find', 're-browser_find')
+    .replaceAll('usá find', 'usá browser_find')
+}
+
+// Ownership del daemon (blocker CI de codex-mcp: quedaba un serve huérfano con
+// PPID 1): si LO LEVANTAMOS NOSOTROS, es nuestro hijo no-detached y lo matamos en
+// EOF/SIGINT/SIGTERM. Si ya corría (el user lo tenía), no lo tocamos.
+let spawnedDaemon = null
+let shuttingDown = false
+function shutdown(code = 0) {
+  if (shuttingDown) return
+  shuttingDown = true
+  if (!spawnedDaemon) process.exit(code)
+  const pid = spawnedDaemon.pid
+  // Two measured landmines behind this shape (both produced codex-mcp's PPID-1
+  // orphan): (1) ChildProcess.kill() returns true WITHOUT delivering here — use
+  // process.kill(pid); (2) a signal followed by immediate process.exit is NOT
+  // delivered either — the sender must outlive the send. So: TERM, wait, KILL
+  // if still alive, then exit.
+  try { process.kill(pid, 'SIGTERM') } catch { process.exit(code) }
+  log('shutdown: SIGTERM al daemon', pid)
+  setTimeout(() => {
+    try { process.kill(pid, 0); process.kill(pid, 'SIGKILL'); log('shutdown: SIGKILL al daemon', pid) } catch { /* ya murió */ }
+    process.exit(code)
+  }, 400)
+}
+process.on('SIGINT', () => shutdown(0))
+process.on('SIGTERM', () => shutdown(0))
+process.stdin.on('end', () => shutdown(0))
+process.stdin.on('close', () => shutdown(0))
 
 async function ensureDaemon() {
   try { await cmd('status'); return } catch { /* levantar */ }
   const p = await browsePath()
-  log('levantando daemon:', p)
-  spawn(process.execPath, [p, 'serve'], { detached: true, stdio: 'ignore' }).unref()
+  log('levantando daemon (hijo propio):', p)
+  spawnedDaemon = spawn(process.execPath, [p, 'serve'], { stdio: 'ignore' })
+  spawnedDaemon.on('exit', () => { spawnedDaemon = null })
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500))
     try { await cmd('status'); return } catch { /* aún no */ }
@@ -84,6 +129,11 @@ const TOOLS = [
         text: { type: 'string', description: 'texto a tipear (solo type)' },
       },
       required: ['action'],
+      oneOf: [
+        { properties: { action: { const: 'click' } }, required: ['action', 'target'] },
+        { properties: { action: { const: 'type' } }, required: ['action', 'text'] },
+        { properties: { action: { const: 'enter' } }, required: ['action'] },
+      ],
     },
     run: async ({ action, target, text }) => {
       if (action === 'click') {
@@ -123,16 +173,29 @@ const TOOLS = [
   },
   {
     name: 'browser_page',
-    description: 'Vistas ampliadas de la observación actual cuando el digest no alcanza: outline (estructura completa recortada a 12KB) o map con offset (pagina los actionables más allá del top). Escalación explícita — el digest primero.',
+    description: 'Vistas ampliadas cuando el digest no alcanza: outline (estructura completa recortada a 12KB), map con offset (pagina los actionables más allá del top), o zoom con id (observa SOLO ese subtree — el detalle de una región/card; renueva ids, baseline global intacto). Escalación explícita — el digest primero.',
     inputSchema: {
       type: 'object',
       properties: {
-        view: { type: 'string', enum: ['outline', 'map'] },
+        view: { type: 'string', enum: ['outline', 'map', 'zoom'] },
         offset: { type: 'number', description: 'solo map: desde qué índice' },
+        id: { type: 'string', description: 'solo zoom: id de la región/elemento' },
       },
       required: ['view'],
+      oneOf: [
+        { properties: { view: { const: 'outline' } }, required: ['view'] },
+        { properties: { view: { const: 'map' } }, required: ['view'] },
+        { properties: { view: { const: 'zoom' } }, required: ['view', 'id'] },
+      ],
     },
-    run: async ({ view, offset }) => view === 'outline' ? cmd('outline') : cmd('map', [String(offset || 0)]),
+    run: async ({ view, offset, id }) => {
+      if (view === 'outline') return cmd('outline')
+      if (view === 'zoom') {
+        if (!id) throw new Error('zoom requiere id')
+        return cmd('look', [id])
+      }
+      return cmd('map', [String(offset || 0)])
+    },
   },
   {
     name: 'browser_screenshot',
@@ -140,9 +203,9 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'opcional: elemento a centrar' } } },
     run: async ({ id }) => {
       const file = `/tmp/snapdom-mcp-${Date.now()}.png`
-      const out = await cmd('snap', id ? [id, file] : [file])
+      const env = await cmd('snap', id ? [id, file] : [file])
       const data = (await readFile(file)).toString('base64')
-      return { text: out, image: { data, mimeType: 'image/png' } }
+      return { ...env, image: { data, mimeType: 'image/png' } }
     },
   },
 ]
@@ -176,11 +239,16 @@ rl.on('line', async (line) => {
     if (!tool) return replyErr(id, -32602, `tool desconocida: ${params?.name}`)
     try {
       await ensureDaemon()
-      const out = await tool.run(params?.arguments || {})
-      const content = typeof out === 'string'
-        ? [{ type: 'text', text: out }]
-        : [{ type: 'text', text: out.text }, { type: 'image', data: out.image.data, mimeType: out.image.mimeType }]
-      return reply(id, { content })
+      const env = await tool.run(params?.arguments || {})
+      const content = [{ type: 'text', text: mcpDialect(env.text) }]
+      if (env.image) content.push({ type: 'image', data: env.image.data, mimeType: env.image.mimeType })
+      // structuredContent: los campos que un integrador NO debería parsear de prosa
+      // (changed, matches, resolved, epoch, url…) — pedido central de codex-mcp
+      return reply(id, {
+        content,
+        structuredContent: { v: 1, ok: env.ok, epoch: env.epoch, url: env.url, ...env.meta },
+        isError: !env.ok,
+      })
     } catch (e) {
       return reply(id, { content: [{ type: 'text', text: String(e.message || e) }], isError: true })
     }
