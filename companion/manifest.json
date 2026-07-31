@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "snapDOM Agent Companion (local)",
+  "version": "0.1.0",
+  "description": "Inyecta el oráculo semántico de snapDOM en cada página (isolated world, inmune a CSP) y publica digests bajo demanda en el DOM para que cualquier agente los lea. USO LOCAL — nunca publicar.",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.bundle.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

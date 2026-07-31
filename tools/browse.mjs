@@ -43,11 +43,19 @@
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { writeFile, appendFile, mkdir } from 'node:fs/promises'
+import { writeFile, appendFile, mkdir, readFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+// Standalone install (~/.claude/snapdom-agent via install-global.mjs): paths.json
+// points back at the repo (for node_modules) and sdk.js is prebuilt — the daemon
+// then runs machine-wide regardless of which branch the repo is sitting on.
+let REPO = join(HERE, '..', '..', '..')
+let STANDALONE = false
+try {
+  REPO = JSON.parse(await readFile(join(HERE, 'paths.json'), 'utf8')).repo
+  STANDALONE = true
+} catch { /* dev mode: running from the repo tree */ }
 const PORT = 8377
 const [, , CMD, ...ARGS] = process.argv
 
@@ -79,10 +87,15 @@ if (CMD !== 'serve') {
 
 // ── Daemon mode ──────────────────────────────────────────────────────────────────────
 const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'))
-const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 
-const entry = join(HERE, 'sdk-entry.mjs')
-await writeFile(entry, `import { observe, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+let SDK
+try {
+  // standalone install: prebuilt bundle written by install-global.mjs
+  SDK = await readFile(join(HERE, 'sdk.js'), 'utf8')
+} catch {
+  const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
+  const entry = join(HERE, 'sdk-entry.mjs')
+  await writeFile(entry, `import { observe, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
 import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
 import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'
@@ -93,12 +106,13 @@ window.__snapdom = snapdom
 window.__snapdomVideo = videoExport
 window.__snapdomGif = gifExport
 `)
-const SDK = (await esbuild.build({
-  entryPoints: [entry], bundle: true, minify: true, format: 'iife', write: false,
-  platform: 'browser', absWorkingDir: REPO,
-  // the official plugins import the published name; point it at the live source
-  alias: { '@zumer/snapdom': join(REPO, 'src/api/snapdom.js') },
-})).outputFiles[0].text
+  SDK = (await esbuild.build({
+    entryPoints: [entry], bundle: true, minify: true, format: 'iife', write: false,
+    platform: 'browser', absWorkingDir: REPO,
+    // the official plugins import the published name; point it at the live source
+    alias: { '@zumer/snapdom': join(REPO, 'src/api/snapdom.js') },
+  })).outputFiles[0].text
+}
 
 // ── Policy: the verbs become an actual permission boundary, not just intent ──────────
 // --readonly: the observer verbs stay; the mutating ones (click/type/enter) are refused
@@ -137,7 +151,7 @@ context.on('page', (p) => {
 
 // ── Session log: one JSONL line per command, durable, typed text redacted ────────────
 const SESSION = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '').replace('T', '-')
-const LOGDIR = join(HERE, '..', 'logs')
+const LOGDIR = STANDALONE ? join(HERE, 'logs') : join(HERE, '..', 'logs')
 await mkdir(LOGDIR, { recursive: true })
 const LOGFILE = join(LOGDIR, `${SESSION}.jsonl`)
 let seq = 0
