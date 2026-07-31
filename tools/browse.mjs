@@ -194,6 +194,7 @@ const inFind = (query) => {
     if (!norm(name).includes(q)) return
     const el = ui.__snapshot.elements.get(id)
     const href = el && el.getAttribute ? el.getAttribute('href') : null
+    const area = b ? b[2] * b[3] : 0
     let s = 0
     if (r === 'link' || r === 'button') s += 2
     if (href && href.length > 1 && !href.startsWith('#')) s += 1
@@ -201,7 +202,11 @@ const inFind = (query) => {
     if (name.length >= 25) s += 2
     else if (name.length <= 16) s -= 1
     try { if (el && el.closest && el.closest(NAVISH)) s -= 3 } catch { /* selector support */ }
-    if (b && b[2] * b[3] > 8000) s += 1
+    // cards get a bump; page-wide wrappers (whose accessible name concatenates the
+    // whole page and matches everything) get buried
+    if (area > 8000 && area <= 600000) s += 1
+    if (area > 600000) s -= 3
+    if (r === 'generic' || r === 'table' || r === 'row' || r === 'cell' || r === 'rowgroup') s -= 2
     cands.set(id, { id, r, n: name.slice(0, 80), b, href: href && !href.startsWith('#') ? href.slice(-48) : null, s })
   }
   for (const e of ui.agentMap.map) add(e.id, e.r, e.n, e.b)
@@ -209,7 +214,13 @@ const inFind = (query) => {
     const n = ui.__snapshot.nodes.get(id)
     add(id, n.role, n.name || n.text, n.bbox)
   }
-  return [...cands.values()].sort((a, b) => b.s - a.s).slice(0, 12)
+  // nested wrapper chains share one accessible name — keep the most specific box per name
+  const byName = new Map()
+  for (const c of cands.values()) {
+    const prev = byName.get(c.n)
+    if (!prev || (c.b && prev.b && c.b[2] * c.b[3] < prev.b[2] * prev.b[3])) byName.set(c.n, c)
+  }
+  return [...byName.values()].sort((a, b) => b.s - a.s).slice(0, 12)
 }
 const inLocate = (id) => {
   const ui = window.__lastUi
