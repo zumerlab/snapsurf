@@ -122,6 +122,10 @@ function runObserve(opts = {}) {
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
     ts: Date.now(),
+    token: opts.token ?? undefined,
+    // Coordinate contract (panel round 3): vbox is CSS px of THIS viewport; readers
+    // whose screenshots are scaled (dpr) compute scale = screenshotWidth / viewport.width.
+    viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
     walkMs: Math.round(performance.now() - t0),
     actionables: ui.agentMap.map.length,
     unobservable: ui.unobservable.length,
@@ -144,10 +148,14 @@ function runObserve(opts = {}) {
 
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
-    try { runObserve({ top: e.data.top, heads: e.data.heads }) } catch (err) {
+    const token = e.data.token ?? null
+    try { runObserve({ top: e.data.top, heads: e.data.heads, token }) } catch (err) {
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
-      node.textContent = JSON.stringify({ error: String(err), url: location.href, ts: Date.now() })
+      node.textContent = JSON.stringify({ error: String(err), url: location.origin + location.pathname, ts: Date.now(), token })
     }
+    // Readiness signal (panel round 3): awaiting this instead of a fixed 800ms sleep
+    // cuts the round from ~830ms to ~walk time.
+    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', token }, '*')
   }
 })
 

@@ -12,12 +12,19 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
 1. Verificá que está presente (con tu herramienta de ejecutar JavaScript):
    `!!document.querySelector('meta[name="__snapdom_companion"]')`
 
-2. Pedí una observación y leé el resultado:
+2. Pedí una observación y esperá la señal de listo (no un sleep fijo):
    ```js
-   window.postMessage({ type: 'SNAPDOM_OBSERVE' }, '*');
-   await new Promise(r => setTimeout(r, 800));
+   const token = Date.now();
+   const ready = new Promise(r => {
+     const h = e => { if (e.data && e.data.type === 'SNAPDOM_DIGEST_READY' && e.data.token === token) { removeEventListener('message', h); r(); } };
+     addEventListener('message', h);
+     setTimeout(r, 2000); // red de seguridad
+   });
+   window.postMessage({ type: 'SNAPDOM_OBSERVE', token }, '*');
+   await ready;
    JSON.parse(document.getElementById('__snapdom_digest').textContent)
    ```
+   El JSON ecoa tu `token`, así verificás que es TU observación y no una vieja.
 
 3. El JSON trae: `actionables` (total), `digest.marks` (regiones landmark),
    `digest.heads` (títulos), `digest.top` (mejores elementos interactivos con id,
@@ -41,5 +48,9 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
    solapamiento). Si no tenés herramienta de JavaScript disponible, avisá y seguí
    con tus herramientas normales.
 
-Nota: los bbox son [x, y, ancho, alto] en coordenadas de página. Los ids (n_xxx) son
-de la última observación; si observás de nuevo, se renuevan.
+Nota: los bbox son [x, y, ancho, alto] en coordenadas de página; `vbox` en px CSS del
+viewport. El JSON trae `viewport: {width, height, dpr, scrollX, scrollY}` — si tus
+screenshots vienen reescalados, tu factor es `anchoDeTuScreenshot / viewport.width`;
+multiplicá el centro del vbox por ese factor antes de clickear por coordenadas (o
+mejor: usá el `selector`). Los ids (n_xxx) son de la última observación; si observás
+de nuevo, se renuevan.
