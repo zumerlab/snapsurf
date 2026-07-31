@@ -35,7 +35,16 @@ const inflatedBaseline = async () =>
 // round 6: 3/6 relative selectors matched 24-134 elements and querySelector returned
 // the WRONG headline; acting on that clicks the wrong thing). Full nth-of-type path
 // up to the nearest #id ancestor or the root, then VERIFIED against the element.
-function selectorOf(el) {
+// prof detail (panel ask): selectorOf/sectionOf are the digest's per-entry live-DOM
+// reads — accumulate them separately so a supra-linear digest is attributable.
+const timed = (fn, key) => (...a) => {
+  const P = window.__SD_PROF
+  if (!P) return fn(...a)
+  const t = performance.now()
+  try { return fn(...a) } finally { P[key] = (P[key] || 0) + (performance.now() - t) }
+}
+
+function selectorOfRaw(el) {
   if (!el) return null
   if (el.id) return '#' + CSS.escape(el.id)
   const parts = []
@@ -64,7 +73,7 @@ const inViewOf = (v) => !!v && v[0] < innerWidth && v[0] + v[2] > 0 && v[1] < in
 // without it, placing a heading required an extra DOM query. Climbs to the nearest
 // sectioning ancestor and returns its own heading text (or aria-label). If that
 // heading IS the element we're describing, keep climbing.
-function sectionOf(el) {
+function sectionOfRaw(el) {
   const ownText = el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) : ''
   let cur = el && el.parentElement
   let depth = 0
@@ -94,6 +103,9 @@ function sectionOf(el) {
   }
   return undefined
 }
+
+const selectorOf = timed(selectorOfRaw, 'selectorOf')
+const sectionOf = timed(sectionOfRaw, 'sectionOf')
 
 // async + time-sliced: selectorOf/sectionOf are live-DOM reads (querySelector per
 // entry) and used to run as one task — on 3.5k-node pages the digest alone was a
@@ -250,8 +262,8 @@ async function runObserve(opts = {}) {
     // contract marker: readers verify the loaded bundle matches the documented
     // protocol (four consumer rounds bitten by stale bundles — result-in-message,
     // ignore, chunked walk all "missing" because the extension was never reloaded)
-    // v5: sliced+cached inflate, timer-queue-bounded yields, external-probe parity
-    contract: 5,
+    // v6: prof breaks out selectorOf/sectionOf (digest detail, panel ask)
+    contract: 6,
     // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
@@ -500,7 +512,7 @@ async function runAssert(spec, obsId, profFlag) {
     pacc('evidence', t)
   }
   return {
-    type: 'assert', contract: 5, obsId, ts: Date.now(),
+    type: 'assert', contract: 6, obsId, ts: Date.now(),
     walkMs: Math.round(performance.now() - t0), attempts,
     torn: (lastObs && lastObs.torn) || 0,
     hasBaseline,

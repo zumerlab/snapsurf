@@ -79,7 +79,7 @@ const first = await page.evaluate(async () => {
 check('ready message carries result', !!first, first ? '' : 'no ready/result within 60s')
 if (!first) { await ctx.close(); process.exit(1) }
 const r1 = first.result
-check('contract === 5', r1.contract === 5, `contract: ${r1.contract}`)
+check('contract === 6', r1.contract === 6, `contract: ${r1.contract}`)
 check('torn/changesTotal-class fields present', 'torn' in r1, `torn: ${r1.torn}`)
 check('walk wall-time sane (< 8s)', first.wallMs < 8000, `${first.wallMs}ms for ${r1.actionables} actionables`)
 check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
@@ -116,6 +116,8 @@ check('with-baseline observe: max block < 300ms', !!second.result && second.maxG
 check('with-baseline observe: timer-queue block < 300ms (external-probe parity)', !!second.result && second.maxTimerGap < 300, `${second.maxTimerGap}ms`)
 check('prof covers the post-walk stages', !!second.result?.prof && 'diff' in second.result.prof && 'digest' in second.result.prof,
   JSON.stringify(second.result?.prof || null))
+check('prof breaks out digest detail (selectorOf/sectionOf)', !!second.result?.prof && 'selectorOf' in second.result.prof && 'sectionOf' in second.result.prof,
+  `selectorOf: ${second.result?.prof?.selectorOf}ms · sectionOf: ${second.result?.prof?.sectionOf}ms`)
 
 // ── throttled-environment pass (panel ask: measure where CDP/automation lives) ───────
 const cdp = await ctx.newCDPSession(page)

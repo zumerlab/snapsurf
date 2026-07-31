@@ -36,7 +36,7 @@ Cómo se usa:
 1. Verificá que está presente (con tu herramienta de ejecutar JavaScript):
    `!!document.querySelector('meta[name="__snapdom_companion"]')`
    Y verificá la VERSIÓN DEL CONTRATO: todo resultado (observe/assert) trae
-   `contract: 5`. Si no aparece o es menor, el bundle cargado es viejo — reportalo
+   `contract: 6`. Si no aparece o es menor, el bundle cargado es viejo — reportalo
    y pedí recargar la extensión antes de sacar conclusiones (cuatro rondas de
    feedback se contaminaron por evaluar bundles desactualizados).
 
@@ -143,7 +143,9 @@ Cómo se usa:
      de 500ms (lectura errónea de una ronda anterior).
    - **Stages de pipeline** (prelude, finish, saltIds, inflate, diff, relabel,
      buildUi, evaluate, checkpoint, evidence, changeLabels, digest): tramos que corren
-     entre yields; un número alto acá SÍ es un candidato a bloque.
+     entre yields; un número alto acá SÍ es un candidato a bloque. `selectorOf` y
+     `sectionOf` vienen además desglosados (acumuladores por entrada del digest,
+     troceados — para atribuir un digest caro sin adivinar).
    Más `slices` (cuántas veces cedió el thread) y `maxSliceMs` (el bloque continuo
    más largo auto-medido). Nota sobre sondas externas: los yields drenan la cola de
    TIMERS a intervalos acotados (~150ms de trabajo); si una sonda setInterval mide
