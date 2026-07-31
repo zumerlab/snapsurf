@@ -17,7 +17,7 @@
  * Core is untouched and knows nothing about this package (§Anti-goals).
  * @module agent/plugin
  */
-import { takeSnapshot, takeSnapshotChunked } from './snapshot.js'
+import { takeSnapshot, takeSnapshotChunked, yieldToLoop } from './snapshot.js'
 import { resolveNoise } from './noise.js'
 import { diffSnapshots } from './diff.js'
 import { makeCheckpoint, inflateCheckpoint } from './checkpoint.js'
@@ -212,24 +212,27 @@ export function probeCapabilities() {
  * @param {Element} root
  * @param {{previous?: object, noise?: any}} options
  */
-function finishObserve(snapshot, options, noise) {
+function* finishObserveStages(snapshot, options, noise, run) {
   // capture before applyStableIds rebuilds the snapshot object
   const torn = snapshot.torn || 0
   // Namespace this run's ids so unmatched (added) nodes can never collide with a
-  // previous checkpoint's ids after relabeling.
-  const salt = runCounter.toString(36) + 'r'
+  // previous checkpoint's ids after relabeling. `run` is captured at observe start:
+  // reading the live counter here would collide two interleaved chunked observes.
+  const salt = run.toString(36) + 'r'
   {
     const idMap = new Map()
     for (const id of snapshot.order) idMap.set(id, 'n_' + salt + id.slice(2))
     snapshot = applyStableIds(snapshot, idMap)
   }
-
+  yield 'saltIds'
   let diff = null
   if (options.previous) {
     const prev = options.previous.nodes instanceof Map || options.previous.__inflated
       ? options.previous
       : inflateCheckpoint(options.previous)
+    yield 'inflate'
     diff = diffSnapshots(prev, snapshot)
+    yield 'diff'
     snapshot = applyStableIds(snapshot, diff.idMap)
   }
   return { snapshot, diff, noise, torn }
@@ -237,16 +240,32 @@ function finishObserve(snapshot, options, noise) {
 
 export function observe(root, options = {}) {
   const noise = resolveNoise(options.noise)
-  runCounter++
-  return finishObserve(takeSnapshot(root, noise), options, noise)
+  const run = ++runCounter
+  const gen = finishObserveStages(takeSnapshot(root, noise), options, noise, run)
+  let r = gen.next()
+  while (!r.done) r = gen.next()
+  return r.value
 }
 
 /** Chunked observe: same result shape plus `torn` (see takeSnapshotChunked). */
 export async function observeChunked(root, options = {}) {
   const noise = resolveNoise(options.noise)
-  runCounter++
+  const run = ++runCounter
   const snap = await takeSnapshotChunked(root, noise, { budgetMs: options.budgetMs })
-  return finishObserve(snap, options, noise)
+  // The post-walk stages yield between one another: with a baseline present,
+  // inflate + diff + relabel used to run as ONE task and blocked ~1s on 3.5k-node
+  // pages (panel probe round) — the walk sliced, its bookends didn't.
+  const P = typeof window !== 'undefined' && window.__SD_PROF
+  const gen = finishObserveStages(snap, options, noise, run)
+  let t = performance.now()
+  let r = gen.next()
+  while (!r.done) {
+    if (P) P[r.value] = (P[r.value] || 0) + (performance.now() - t)
+    await yieldToLoop()
+    t = performance.now()
+    r = gen.next()
+  }
+  return r.value
 }
 
 /** Most recent walk — the fallback table `agent.resolve()` uses for bare node ids. */

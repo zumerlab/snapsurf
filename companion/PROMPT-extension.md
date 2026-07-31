@@ -36,9 +36,9 @@ Cómo se usa:
 1. Verificá que está presente (con tu herramienta de ejecutar JavaScript):
    `!!document.querySelector('meta[name="__snapdom_companion"]')`
    Y verificá la VERSIÓN DEL CONTRATO: todo resultado (observe/assert) trae
-   `contract: 3`. Si no aparece, el bundle cargado es viejo — reportalo y pedí
-   recargar la extensión antes de sacar conclusiones (cuatro rondas de feedback
-   se contaminaron por evaluar bundles desactualizados).
+   `contract: 4`. Si no aparece o es menor, el bundle cargado es viejo — reportalo
+   y pedí recargar la extensión antes de sacar conclusiones (cuatro rondas de
+   feedback se contaminaron por evaluar bundles desactualizados).
 
 2. Pedí una observación y esperá la señal de listo (no un sleep fijo):
    ```js
@@ -128,8 +128,18 @@ Cómo se usa:
    ADVERTENCIAS HONESTAS: `changed:true` a secas es una señal de humo, no una
    aserción (un scroll ambiental la satisface — usá mustInclude con selector, o only);
    `notCovered` con matches múltiples resuelve por orden DOM (el actual reporta el
-   count); el walk es síncrono y congela el tab (1-7s en páginas grandes — subí tu
-   timeout de seguridad acorde y no corras asserts en paralelo).
+   count); el walk y su pipeline ceden el thread por presupuesto de tiempo, pero
+   siguen tomando 1-7s de reloj en páginas grandes — subí tu timeout de seguridad
+   acorde y no corras asserts en paralelo.
+
+4c. **PROF — desglose de tiempos por fase** (observe Y assert): agregá `prof: true`
+   al MENSAJE (nivel mensaje, no dentro de `spec` — el spec lo rechazaría como clave
+   desconocida). El resultado trae `prof` con ms por fase: las del walk por nodo
+   (styleSubset, relativeBBox, computeName, …) y las de pipeline (prelude, finish,
+   saltIds, inflate, diff, buildUi, evaluate, checkpoint, evidence, changeLabels,
+   digest), más `slices` (cuántas veces cedió el thread) y `maxSliceMs` (el bloque
+   continuo más largo — si tu sonda ve bloques mucho mayores que este, el bloqueo
+   no es nuestro).
    Para LEER contenido largo (artículos, hilos), tu get_page_text sigue siendo mejor:
    el digest es mapa y cambios, no texto completo.
 

@@ -79,10 +79,34 @@ const first = await page.evaluate(async () => {
 check('ready message carries result', !!first, first ? '' : 'no ready/result within 60s')
 if (!first) { await ctx.close(); process.exit(1) }
 const r1 = first.result
-check('contract === 3', r1.contract === 3, `contract: ${r1.contract}`)
+check('contract === 4', r1.contract === 4, `contract: ${r1.contract}`)
 check('torn/changesTotal-class fields present', 'torn' in r1, `torn: ${r1.torn}`)
 check('walk wall-time sane (< 8s)', first.wallMs < 8000, `${first.wallMs}ms for ${r1.actionables} actionables`)
 check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
+
+// ── with-baseline pass: the post-walk pipeline (inflate+diff+relabel+checkpoint+digest)
+// only runs when a baseline exists — the first-walk probe above never saw it, which is
+// how 1-1.6s blocks reached the panel while this gate stayed green (panel probe round).
+const probed = (msg, tmo = 60000) => page.evaluate(async ({ m, tmo }) => {
+  let maxGap = 0, last = performance.now(), running = true
+  const tick = () => { const now = performance.now(); maxGap = Math.max(maxGap, now - last); last = now; if (running) requestAnimationFrame(tick) }
+  requestAnimationFrame(tick)
+  const obsId = 'probe' + Math.random()
+  const res = new Promise((r) => {
+    const h = (e) => { if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) { removeEventListener('message', h); r(e.data.result) } }
+    addEventListener('message', h)
+    setTimeout(() => r(null), tmo)
+  })
+  window.postMessage({ ...m, obsId }, '*')
+  const result = await res
+  running = false
+  return { result, maxGap: Math.round(maxGap) }
+}, { m: msg, tmo })
+
+const second = await probed({ type: 'SNAPDOM_OBSERVE', prof: true })
+check('with-baseline observe: max block < 300ms', !!second.result && second.maxGap < 300, `${second.maxGap}ms`)
+check('prof covers the post-walk stages', !!second.result?.prof && 'diff' in second.result.prof && 'digest' in second.result.prof,
+  JSON.stringify(second.result?.prof || null))
 
 // ── throttled-environment pass (panel ask: measure where CDP/automation lives) ───────
 const cdp = await ctx.newCDPSession(page)
@@ -104,10 +128,13 @@ check('walk under 4x CPU throttle < 4s', thr !== null && thr < 4000, `${thr}ms`)
 // ── assert reply channel: EXPLICIT check, message-only, no node fallback ─────────────
 // (panel field report: asserts arrived node-only in its env while observes messaged
 // 16/16 — this check must never be masked by another assertion's purpose)
-const chan = await ask({ type: 'SNAPDOM_ASSERT', spec: { exists: 'Wikipedia' } }, 15000)
+const chan = await probed({ type: 'SNAPDOM_ASSERT', spec: { exists: 'Wikipedia' }, prof: true }, 15000)
 check('ASSERT reply arrives via SNAPDOM_DIGEST_READY with result payload',
-  chan.ready && chan.result && chan.result.type === 'assert' && 'pass' in chan.result,
-  chan.ready ? `result.type: ${chan.result?.type}` : 'NO message within 15s (node-only channel — panel blindspot reproduced)')
+  chan.result && chan.result.type === 'assert' && 'pass' in chan.result,
+  chan.result ? `result.type: ${chan.result?.type}` : 'NO message within 15s (node-only channel — panel blindspot reproduced)')
+check('assert: max block < 300ms', !!chan.result && chan.maxGap < 300, `${chan.maxGap}ms`)
+check('assert result carries prof (panel ask)', !!chan.result?.prof && 'evaluate' in chan.result.prof,
+  JSON.stringify(chan.result?.prof || null))
 
 // ── fail-loud + ignore ───────────────────────────────────────────────────────────────
 const bad = await ask({ type: 'SNAPDOM_ASSERT', spec: { mustInclud: [] } })

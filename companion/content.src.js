@@ -15,6 +15,7 @@
  * document — the Claude extension stops paying screenshots to know what changed.
  */
 import { observeChunked, buildUi } from '../src/plugin.js'
+import { yieldToLoop, makeSlicer } from '../src/snapshot.js'
 
 const NODE_ID = '__snapdom_digest'
 let prev = null
@@ -86,11 +87,17 @@ function sectionOf(el) {
   return undefined
 }
 
-function digestOf(ui, topN, headsN) {
+// async + time-sliced: selectorOf/sectionOf are live-DOM reads (querySelector per
+// entry) and used to run as one task — on 3.5k-node pages the digest alone was a
+// main-thread block the walk's own slicing never covered (panel probe round).
+async function digestOf(ui, topN, headsN) {
+  const pause = makeSlicer(40)
   const marks = []
   const heads = []
   const LANDMARKS = { navigation: 1, main: 1, banner: 1, contentinfo: 1, search: 1, form: 1, complementary: 1 }
   for (const id of ui.__snapshot.order) {
+    const p = pause()
+    if (p) await p
     const n = ui.__snapshot.nodes.get(id)
     if (!n) continue
     if (n.role === 'heading' && heads.length < headsN) {
@@ -98,7 +105,10 @@ function digestOf(ui, topN, headsN) {
       heads.push({ id, text: (n.name || n.text || '').slice(0, 120), section: sectionOf(el) })
     } else if (LANDMARKS[n.role] && marks.length < 10) marks.push({ id, role: n.role, name: (n.name || '').slice(0, 60), bbox: n.bbox })
   }
-  const top = ui.agentMap.map.slice(0, topN).map((e) => {
+  const top = []
+  for (const e of ui.agentMap.map.slice(0, topN)) {
+    const p = pause()
+    if (p) await p
     const el = ui.__snapshot.elements.get(e.id)
     // href: the panel's read_page gave hrefs without names, our digest names without
     // hrefs — neither sufficed alone (lanacion buscador). Together the digest does.
@@ -108,15 +118,15 @@ function digestOf(ui, topN, headsN) {
       if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search).slice(0, 300) }
     } catch { /* noop */ }
     const v = vboxOf(e.b)
-    return {
+    top.push({
       id: e.id, role: e.r, name: (e.n || '').slice(0, 120),
       bbox: e.b, vbox: v, inView: inViewOf(v),
       selector: selectorOf(el),
       href: href || undefined,
       section: sectionOf(el),
       covered: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined,
-    }
-  })
+    })
+  }
   return { marks, heads, top }
 }
 
@@ -124,7 +134,8 @@ function digestOf(ui, topN, headsN) {
 // top-N window. Panel round 5: lanacion's front page outran top:100/heads:60 (38kB
 // and still not found) while a text match is one call and ~2kB. Full text up to
 // 300 chars — its native find and read_page both truncate at 100.
-function findMatches(ui, query) {
+async function findMatches(ui, query) {
+  const pause = makeSlicer(40)
   const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   const q = norm(query)
   const out = new Map()
@@ -150,9 +161,15 @@ function findMatches(ui, query) {
       bbox: n && n.bbox, vbox: v, inView: inViewOf(v),
     })
   }
-  for (const e of ui.agentMap.map) add(e.id, e.r, e.n)
+  for (const e of ui.agentMap.map) {
+    const p = pause()
+    if (p) await p
+    add(e.id, e.r, e.n)
+  }
   for (const id of ui.__snapshot.order) {
     if (out.size >= 20) break
+    const p = pause()
+    if (p) await p
     const n = ui.__snapshot.nodes.get(id)
     add(id, n.role, n.name || n.text)
   }
@@ -162,13 +179,20 @@ function findMatches(ui, query) {
 async function runObserve(opts = {}) {
   const t0 = performance.now()
   if (opts.prof) window.__SD_PROF = {}
+  const pacc = (k, t) => { const p = window.__SD_PROF; if (opts.prof && p) p[k] = (p[k] || 0) + (performance.now() - t) }
   const obs = await observeChunked(document.body, prev ? { previous: prev } : {})
+  let t = performance.now()
   const ui = buildUi(obs, {})
+  pacc('buildUi', t)
+  await yieldToLoop()
+  t = performance.now()
   prev = ui.checkpoint()
+  pacc('checkpoint', t)
+  await yieldToLoop()
   // Every change carries a readable label: name, else the node's own text, else the
   // subtree text — 29/30 anonymous `generic` changes made the panel's first diff
   // useless. Named changes sort first.
-  const describeChange = (c) => {
+  const labelOfChange = (c) => {
     let label = c.name && String(c.name).slice(0, 60)
     if (!label && c.id) {
       const n = ui.__snapshot.nodes.get(c.id)
@@ -178,13 +202,43 @@ async function runObserve(opts = {}) {
         if (el) label = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) || undefined
       }
     }
-    return { kind: c.kind, role: c.role, name: label, id: c.id, selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined }
+    return label
   }
+  // walkMs keeps its field meaning (walk + diff + checkpoint); change labeling and
+  // the digest were never inside it.
+  const walkMs = Math.round(performance.now() - t0)
+  let changes
+  if (ui.changes) {
+    t = performance.now()
+    const pause = makeSlicer(40)
+    // label first (cheap), THEN sort, THEN cut to 40, and only those 40 pay
+    // selectorOf — the old path ran a verified querySelector for EVERY change
+    // before the cut, which on a big diff was its own main-thread monolith.
+    const labeled = []
+    for (const c of ui.changes) {
+      const p = pause()
+      if (p) await p
+      labeled.push({ c, label: labelOfChange(c) })
+    }
+    labeled.sort((a, b) => (b.label ? 1 : 0) - (a.label ? 1 : 0))
+    changes = []
+    for (const { c, label } of labeled.slice(0, 40)) {
+      const p = pause()
+      if (p) await p
+      changes.push({ kind: c.kind, role: c.role, name: label, id: c.id, selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined })
+    }
+    pacc('changeLabels', t)
+  }
+  t = performance.now()
+  const matches = opts.match ? await findMatches(ui, opts.match) : undefined
+  const digest = opts.match ? undefined : await digestOf(ui, Math.min(100, opts.top || 25), Math.min(60, opts.heads || 15))
+  pacc('digest', t)
   const out = {
     // contract marker: readers verify the loaded bundle matches the documented
     // protocol (four consumer rounds bitten by stale bundles — result-in-message,
     // ignore, chunked walk all "missing" because the extension was never reloaded)
-    contract: 3,
+    // v4: sliced post-walk pipeline + full-stage prof + prof on asserts
+    contract: 4,
     // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
@@ -199,7 +253,7 @@ async function runObserve(opts = {}) {
     // Coordinate contract (panel round 3): vbox is CSS px of THIS viewport; readers
     // whose screenshots are scaled (dpr) compute scale = screenshotWidth / viewport.width.
     viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
-    walkMs: Math.round(performance.now() - t0),
+    walkMs,
     // chunked walk: the tab stays responsive; torn counts DOM mutations that landed
     // WHILE the walk was parked — a non-zero torn means re-observe if it matters
     torn: obs.torn || 0,
@@ -207,14 +261,12 @@ async function runObserve(opts = {}) {
     actionables: ui.agentMap.map.length,
     unobservable: ui.unobservable.length,
     changed: ui.changed,
-    changes: ui.changes
-      ? ui.changes.map(describeChange).sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0)).slice(0, 40)
-      : undefined,
+    changes,
     actionabilityDelta: ui.actionabilityDelta,
     // match present → matches only (~2kB); digest only otherwise (a 38kB top:100
     // digest that still misses the target is the wrong tool for long front pages)
-    matches: opts.match ? findMatches(ui, opts.match) : undefined,
-    digest: opts.match ? undefined : digestOf(ui, Math.min(100, opts.top || 25), Math.min(60, opts.heads || 15)),
+    matches,
+    digest,
   }
   let node = document.getElementById(NODE_ID)
   if (!node) {
@@ -239,8 +291,12 @@ const MOD_KEYS = new Set(['settleMs', 'retry', 'keepBaseline', 'ignore'])
 const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'nameExact', 'selector', 'to'])
 const KINDS = new Set(['added', 'removed', 'content', 'state', 'style', 'moved', 'resized', 'possible-replacement'])
 
-async function runAssert(spec, obsId) {
+// profFlag rides at MESSAGE level ({type:'SNAPDOM_ASSERT', spec, prof:true}), never
+// inside spec: the strict spec validator must keep rejecting unknown keys.
+async function runAssert(spec, obsId, profFlag) {
   const t0 = performance.now()
+  if (profFlag) window.__SD_PROF = {}
+  const pacc = (k, t) => { const p = window.__SD_PROF; if (profFlag && p) p[k] = (p[k] || 0) + (performance.now() - t) }
   spec = spec || {}
   const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   const preChecks = []
@@ -297,7 +353,7 @@ async function runAssert(spec, obsId) {
     if (!el || !el.closest) return false
     return spec.ignore.some((sel) => { try { return !!el.closest(sel) } catch { return false } })
   }
-  const evaluate = (ui) => {
+  const evaluate = async (ui) => {
     const checks = [...preChecks]
     // ignore: the measuring apparatus must be excludable — the panel caught the
     // Claude toolbar's own show/hide transition contaminating changed:false
@@ -350,7 +406,7 @@ async function runAssert(spec, obsId) {
     }
     if (spec.exists) {
       // accessible names AND page text (panel 3i: paragraph prose must be findable)
-      const ms = findMatches(ui, spec.exists)
+      const ms = await findMatches(ui, spec.exists)
       const inProse = !ms.length && norm(document.body.innerText || '').includes(norm(spec.exists))
       push(checks, 'exists', spec.exists, ms.length ? `${ms.length} match(es)` : (inProse ? 'in page text' : 'absent'), ms.length > 0 || inProse)
     }
@@ -389,27 +445,49 @@ async function runAssert(spec, obsId) {
   for (;;) {
     attempts++
     lastObs = await observeChunked(document.body, baseline ? { previous: baseline } : {})
+    let t = performance.now()
     ui = buildUi(lastObs, {})
-    result = evaluate(ui)
+    pacc('buildUi', t)
+    await yieldToLoop()
+    t = performance.now()
+    result = await evaluate(ui)
+    pacc('evaluate', t)
     if (result.pass || performance.now() - t0 >= budget) break
     await new Promise((r) => setTimeout(r, interval))
   }
+  await yieldToLoop()
+  let t = performance.now()
   if (!spec.keepBaseline) prev = ui.checkpoint()
+  pacc('checkpoint', t)
 
   const ranDiff = hasBaseline && needsDiff
   const effective = result.changes || []
-  const evidence = ranDiff ? effective.slice(0, 60).map((c) => ({
-    kind: c.kind, role: c.role, name: labelOf(ui, c).slice(0, 60) || undefined,
-    selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined,
-    from: c.before, to: c.after,
-  })) : undefined
+  let evidence
+  if (ranDiff) {
+    t = performance.now()
+    const pause = makeSlicer(40)
+    evidence = []
+    for (const c of effective.slice(0, 60)) {
+      const p = pause()
+      if (p) await p
+      evidence.push({
+        kind: c.kind, role: c.role, name: labelOf(ui, c).slice(0, 60) || undefined,
+        selector: selectorOf(ui.__snapshot.elements.get(c.id)) || undefined,
+        from: c.before, to: c.after,
+      })
+    }
+    pacc('evidence', t)
+  }
   return {
-    type: 'assert', contract: 3, obsId, ts: Date.now(),
+    type: 'assert', contract: 4, obsId, ts: Date.now(),
     walkMs: Math.round(performance.now() - t0), attempts,
     torn: (lastObs && lastObs.torn) || 0,
     hasBaseline,
     pass: result.pass,
     checks: result.checks,
+    // the panel's profiling round could not break down the assert pipeline because
+    // prof came back null here — same shape as the observe prof, per stage
+    prof: profFlag ? Object.fromEntries(Object.entries(window.__SD_PROF || {}).map(([k, v]) => [k, Math.round(v)])) : undefined,
     changesTotal: ranDiff ? effective.length : undefined,
     evidenceCap: 60,
     changes: evidence,
@@ -421,7 +499,7 @@ window.addEventListener('message', (e) => {
     const obsId = e.data.obsId ?? null
     ;(async () => {
       let out
-      try { out = await runAssert(e.data.spec || {}, obsId) } catch (err) {
+      try { out = await runAssert(e.data.spec || {}, obsId, e.data.prof) } catch (err) {
         // a malformed spec is STILL a failed assertion with a pass field — a result
         // without pass reads as success to `if (r.pass === false)` harnesses (panel 3f)
         out = { type: 'assert', obsId, ts: Date.now(), pass: false, checks: [{ type: 'error', expected: 'valid spec/execution', actual: String(err), pass: false }], error: String(err) }
