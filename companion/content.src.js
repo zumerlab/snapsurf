@@ -22,12 +22,17 @@ let prev = null
 // CSS selector the READER can act with (its own click tools) — feedback from the
 // Claude-extension panel: our n_xxx ids aren't actionable from outside the oracle.
 // Read-only: no DOM stamping, no self-inflicted diff noise.
+// UNIQUE or ABSENT — never a selector that resolves to a different element (panel
+// round 6: 3/6 relative selectors matched 24-134 elements and querySelector returned
+// the WRONG headline; acting on that clicks the wrong thing). Full nth-of-type path
+// up to the nearest #id ancestor or the root, then VERIFIED against the element.
 function selectorOf(el) {
   if (!el) return null
   if (el.id) return '#' + CSS.escape(el.id)
   const parts = []
   let cur = el
-  while (cur && cur !== document.body && parts.length < 5) {
+  while (cur && cur !== document.documentElement) {
+    if (cur.id) { parts.unshift('#' + CSS.escape(cur.id)); break }
     let p = cur.localName
     const parent = cur.parentElement
     if (parent) {
@@ -35,13 +40,16 @@ function selectorOf(el) {
       if (sibs.length > 1) p += `:nth-of-type(${sibs.indexOf(cur) + 1})`
     }
     parts.unshift(p)
-    if (parent && parent.id) { parts.unshift('#' + CSS.escape(parent.id)); break }
     cur = parent
   }
-  return parts.join(' > ')
+  const sel = parts.join(' > ')
+  try { if (document.querySelector(sel) === el) return sel } catch { /* invalid sel */ }
+  return null
 }
 
 const vboxOf = (b) => b ? [b[0] - Math.round(scrollX), b[1] - Math.round(scrollY), b[2], b[3]] : undefined
+// out-of-viewport vbox is numerically valid but useless for clicking — flag it
+const inViewOf = (v) => !!v && v[0] < innerWidth && v[0] + v[2] > 0 && v[1] < innerHeight && v[1] + v[3] > 0
 
 // Parent-section context ("belongs to MÁS LEÍDAS") — panel feedback on lanacion:
 // without it, placing a heading required an extra DOM query. Climbs to the nearest
@@ -97,11 +105,12 @@ function digestOf(ui, topN, headsN) {
     let href = null
     try {
       const raw = el && el.getAttribute && el.getAttribute('href')
-      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 80) }
+      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 300) }
     } catch { /* noop */ }
+    const v = vboxOf(e.b)
     return {
       id: e.id, role: e.r, name: (e.n || '').slice(0, 120),
-      bbox: e.b, vbox: vboxOf(e.b),
+      bbox: e.b, vbox: v, inView: inViewOf(v),
       selector: selectorOf(el),
       href: href || undefined,
       section: sectionOf(el),
@@ -126,13 +135,19 @@ function findMatches(ui, query) {
     let href = null
     try {
       const raw = el && el.getAttribute && el.getAttribute('href')
-      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 100) }
+      // navigable, not a teaser: 100 chars cut "…nid28072026/" mid-id (panel round 6)
+      if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 500) }
     } catch { /* noop */ }
-    const full = (((n && (n.name || n.text)) || (el && el.textContent) || name)).replace(/\s+/g, ' ').trim().slice(0, 300)
+    // snapshot name/text arrive pre-truncated (~80c) — take the LONGER of snapshot
+    // vs live DOM text so the 300c contract holds (the h2 was 127c, arrived 80c)
+    const fromSnap = ((n && (n.name || n.text)) || name || '').replace(/\s+/g, ' ').trim()
+    const fromDom = el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''
+    const full = (fromDom.length > fromSnap.length ? fromDom : fromSnap).slice(0, 300)
+    const v = vboxOf(n && n.bbox)
     out.set(id, {
       id, role, text: full, href: href || undefined,
       selector: selectorOf(el), section: sectionOf(el),
-      bbox: n && n.bbox, vbox: vboxOf(n && n.bbox),
+      bbox: n && n.bbox, vbox: v, inView: inViewOf(v),
     })
   }
   for (const e of ui.agentMap.map) add(e.id, e.r, e.n)

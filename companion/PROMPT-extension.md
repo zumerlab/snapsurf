@@ -46,9 +46,13 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
    Cada entrada de `heads` y `top` trae además `section`: el título del contenedor
    acotado más cercano (heurística — en portadas con bloques mezclados puede agrupar
    de más; confiá en ella para ubicar, verificá si el dato es crítico).
-   Cada link de `top` trae también `href` (pathname+query) — con name+href+selector el
-   digest alcanza solo para listas de resultados. `section` puede venir ausente en
-   listas planas (mejor ausente que equivocada).
+   Cada link de `top` trae también `href` (pathname+query, navegable) — con
+   name+href+selector el digest alcanza solo para listas de resultados. Garantías:
+   el `selector` viene VERIFICADO (resuelve único y exacto al nodo) o viene ausente
+   — si está, podés clickearlo sin miedo; `section` puede venir ausente en listas
+   planas (mejor ausente que equivocada); `inView: false` te avisa que el elemento
+   está fuera de pantalla (no intentes click por coordenadas ahí: scrolleá primero
+   o usá el selector).
    Podés pedir más: `postMessage({type:'SNAPDOM_OBSERVE', top: 60, heads: 40}, '*')`
    (tope 100/60), y `fullUrl: true` si necesitás la URL con query (p. ej. saber qué
    se buscó) — el default viene saneado.
