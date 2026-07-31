@@ -16,8 +16,9 @@
  *   node packages/agent/tools/browse.mjs text <id>            # visible text of one node
  *   node packages/agent/tools/browse.mjs shot <file.jpg>      # native screenshot → file
  *   node packages/agent/tools/browse.mjs snap [id] [file.png] # snapdom render (product path)
- *   node packages/agent/tools/browse.mjs rec start [f.webm]   # record session (snapdom frames)
- *   node packages/agent/tools/browse.mjs rec stop             # assemble the webm
+ *   node packages/agent/tools/browse.mjs rec <s> [id] [file]  # record N seconds of the element
+ *                                                             # (.gif/.webm/.mp4 — snapdom's own
+ *                                                             # gifExport/videoExport plugins)
  *   node packages/agent/tools/browse.mjs cp save <name>       # name the current baseline
  *   node packages/agent/tools/browse.mjs cp list              # named checkpoints this session
  *   node packages/agent/tools/browse.mjs cp diff <name>       # what changed vs a named baseline
@@ -37,7 +38,7 @@
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { writeFile, appendFile, mkdir, readdir, readFile } from 'node:fs/promises'
+import { writeFile, appendFile, mkdir } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -68,14 +69,20 @@ const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 const entry = join(HERE, 'sdk-entry.mjs')
 await writeFile(entry, `import { observe, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
+import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
+import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'
 window.__agentObserve = observe
 window.__agentBuildUi = buildUi
 window.__agentOracle = agentOracle
 window.__snapdom = snapdom
+window.__snapdomVideo = videoExport
+window.__snapdomGif = gifExport
 `)
 const SDK = (await esbuild.build({
   entryPoints: [entry], bundle: true, minify: true, format: 'iife', write: false,
   platform: 'browser', absWorkingDir: REPO,
+  // the official plugins import the published name; point it at the live source
+  alias: { '@zumer/snapdom': join(REPO, 'src/api/snapdom.js') },
 })).outputFiles[0].text
 
 // ── Policy: the verbs become an actual permission boundary, not just intent ──────────
@@ -254,22 +261,18 @@ const settle = async (cap = 1500, floor = 300) => {
 // `restore`. Saved per-session in memory + serialized next to the log.
 const CHECKPOINTS = new Map()
 
-// ── Recorder: the session as VIDEO, out of snapdom itself ────────────────────────────
-// Frames are snapdom clip:'viewport' captures (the same product path as `snap`), taken
-// on a serialized daemon-side loop so recording survives navigations (a tick that lands
-// mid-navigation just skips). `rec stop` pipes the PNGs through Playwright's bundled
-// ffmpeg (image2pipe → VP8; that build has no GIF encoder, so webm it is) at the
-// effective fps, so playback approximates wall-clock and frames correlate with the
-// JSONL log by timestamp.
-const pwCache = join(process.env.HOME || '', 'Library/Caches/ms-playwright')
-const ffDir = (await readdir(pwCache).catch(() => [])).filter((d) => d.startsWith('ffmpeg-')).sort().pop()
-const FFMPEG = ffDir ? join(pwCache, ffDir, 'ffmpeg-mac') : null
-let REC = null
+// ── Recorder: video/GIF out of snapdom's own official plugins ────────────────────────
+// videoExport = MediaRecorder over re-captures (native browser encoder, zero codecs
+// shipped); gifExport = median-cut + LZW GIF89a in pure JS. Both re-capture the live
+// element per frame, riding the engine's memoization/differential recapture. The
+// recording runs IN the page for a fixed duration — clicks issued meanwhile land and
+// get recorded; a navigation kills the page context and aborts it (semantic limit,
+// not a bug: the plugin records an element, and the element dies with the document).
 
 // ── Command handlers ─────────────────────────────────────────────────────────────────
 const HANDLERS = {
   async open([url]) {
-    const full = url.startsWith('http') ? url : 'https://' + url
+    const full = /^(https?|file|data):/.test(url) ? url : 'https://' + url
     if (ALLOW && !hostAllowed(full)) {
       meta = { denied: 'allowlist' }
       return `⛔ denegado por política --allow: ${new URL(full).hostname} no está en [${ALLOW.join(', ')}]`
@@ -394,77 +397,49 @@ const HANDLERS = {
     }
     return 'uso: cp save <nombre> | cp list | cp diff <nombre>'
   },
-  async rec([sub, file]) {
-    if (sub === 'start') {
-      if (REC) return `ya grabando → ${REC.file} (${REC.frames.length} frames)`
-      const out = file || join(LOGDIR, `${SESSION}-rec.webm`)
-      if (!/\.webm$/.test(out)) return 'el ffmpeg de Playwright solo trae encoder VP8 — pedí <archivo>.webm (GIF: instalá ffmpeg de sistema y lo agregamos)'
-      const dir = join(LOGDIR, `${SESSION}-frames`)
-      await mkdir(dir, { recursive: true })
-      const rec = { dir, file: out, frames: [], stop: false, timer: null }
-      REC = rec
-      const tick = async () => {
-        if (rec.stop) return
-        try {
-          // JPEG, not PNG: Playwright's ffmpeg build only decodes MJPEG (it exists to
-          // mux CDP screencast frames) — PNG frames make it fail with "no decoder".
-          const src = await page.evaluate(async () => {
-            const r = await window.__snapdom(document.body, { clip: 'viewport' })
-            return (await r.toJpg({ quality: 0.8 })).src
-          })
-          if (!rec.stop) {
-            const p = join(dir, `f${String(rec.frames.length).padStart(4, '0')}.jpg`)
-            await writeFile(p, Buffer.from(src.split(',')[1], 'base64'))
-            rec.frames.push({ p, ts: Date.now() })
-          }
-        } catch { /* mid-navegación o página sin SDK: frame perdido, la grabación sigue */ }
-        if (!rec.stop) rec.timer = setTimeout(tick, 600)
-      }
-      tick()
-      meta = { rec: out }
-      return `grabando (frames snapdom clip:'viewport' cada ~0,6 s+captura) → ${out}\ncerrá con: rec stop`
+  async rec(args) {
+    // rec <segundos> [id] [archivo.gif|.webm|.mp4] — records the element (or the whole
+    // body) for N seconds using snapdom's OWN export plugins. .gif → gifExport; video →
+    // videoExport (the browser's MediaRecorder picks the real container: Chromium=webm).
+    const seconds = parseFloat(args[0])
+    if (!seconds || seconds <= 0 || seconds > 60) return 'uso: rec <segundos ≤60> [id] [archivo.gif|.webm|.mp4]'
+    let target = null, file = null
+    for (const x of args.slice(1)) {
+      if (/\.(gif|webm|mp4)$/.test(x)) file = x
+      else target = x
     }
-    if (sub === 'stop') {
-      if (!REC) return 'no hay grabación activa'
-      const rec = REC
-      REC = null
-      rec.stop = true
-      clearTimeout(rec.timer)
-      if (rec.frames.length < 2) return `grabación descartada: ${rec.frames.length} frame(s) — muy corta`
-      if (!FFMPEG) return `sin ffmpeg (ni de Playwright): quedaron los ${rec.frames.length} frames PNG en ${rec.dir}`
-      const durS = (rec.frames[rec.frames.length - 1].ts - rec.frames[0].ts) / 1000
-      const fps = Math.max(1, Math.round(rec.frames.length / Math.max(durS, 1)))
-      const { spawn } = await import('node:child_process')
-      const { once } = await import('node:events')
-      // -c:v mjpeg on the INPUT is mandatory: this minimal build doesn't probe piped
-      // frames, it reports "no stream" without the explicit decoder hint.
-      const ff = spawn(FFMPEG, ['-y', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', String(fps), '-i', 'pipe:0',
-        '-c:v', 'libvpx', '-b:v', '2M', rec.file],
-      { stdio: ['pipe', 'ignore', 'pipe'] })
-      let ffErr = ''
-      ff.stderr.on('data', (c) => { ffErr += c })
-      ff.stdin.on('error', () => {}) // EPIPE si ffmpeg muere temprano: el exit code ya lo reporta
-      for (const f of rec.frames) {
-        if (!ff.stdin.write(await readFile(f.p))) await once(ff.stdin, 'drain')
-      }
-      ff.stdin.end()
-      const code = await new Promise((r) => ff.on('close', r))
-      if (code !== 0) return `ffmpeg falló (${code}): ${ffErr.slice(-300)}\nframes sueltos en ${rec.dir}`
-      const buf = await readFile(rec.file)
-      meta = { rec: rec.file, frames: rec.frames.length, seconds: Math.round(durS * 10) / 10, image: { path: rec.file, sha256: sha256(buf) } }
-      return `video listo → ${rec.file} (${rec.frames.length} frames · ${Math.round(durS)} s reales · ${fps} fps)\nframes correlacionables con el log por timestamp en ${rec.dir}`
+    file = file || join(LOGDIR, `${SESSION}-rec.webm`)
+    const wantGif = /\.gif$/.test(file)
+    const r = await inPage(async ({ nid, ms, wantGif }) => {
+      const el = nid ? (window.__lastUi && window.__lastUi.__snapshot.elements.get(nid)) : document.body
+      if (!el) return { err: 'badId' }
+      const plug = wantGif ? window.__snapdomGif() : window.__snapdomVideo()
+      const cap = await window.__snapdom(el, { plugins: [plug] })
+      // GIF quantizes full-res ImageData per frame — keep its fps humble
+      const blob = wantGif ? await cap.toGif({ duration: ms, fps: 5 }) : await cap.toMp4({ duration: ms, fps: 10 })
+      const b64 = await new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(blob) })
+      return { b64, type: blob.type }
+    }, { nid: target, ms: seconds * 1000, wantGif })
+    if (r.err) return `id desconocido: ${target} — los ids caducan por observación, re-find`
+    // Honesty about the container: the extension follows what MediaRecorder ACTUALLY
+    // produced (this build emits mp4; others emit webm), never what was asked.
+    let out = file
+    if (!wantGif) {
+      const realExt = r.type.includes('mp4') ? '.mp4' : '.webm'
+      out = out.replace(/\.(mp4|webm)$/, realExt)
     }
-    return 'uso: rec start [archivo.webm] | rec stop'
+    const buf = Buffer.from(r.b64.split(',')[1], 'base64')
+    await writeFile(out, buf)
+    meta = { rec: out, seconds, ...(target && { resolved: { id: target } }), image: { path: out, sha256: sha256(buf) } }
+    return `grabación lista → ${out} (${seconds} s · ${r.type} · ${target || 'body'} · plugins ${wantGif ? 'gifExport' : 'videoExport'} de snapdom)${out !== file ? `\n(el MediaRecorder de este browser produce ${r.type}; la extensión sigue al container real)` : ''}`
   },
   async status() {
     const policy = [READONLY && 'readonly', ALLOW && `allow=[${ALLOW.join(', ')}]`].filter(Boolean).join(' · ') || '(sin restricciones)'
-    return `daemon ok · URL: ${page.url()} · obs #${epoch} · sesión ${SESSION}\npolítica: ${policy}\nlog: ${LOGFILE}\ncheckpoints: ${CHECKPOINTS.size ? [...CHECKPOINTS.keys()].join(', ') : '(ninguno)'}${REC ? `\n⏺ grabando → ${REC.file} (${REC.frames.length} frames)` : ''}`
+    return `daemon ok · URL: ${page.url()} · obs #${epoch} · sesión ${SESSION}\npolítica: ${policy}\nlog: ${LOGFILE}\ncheckpoints: ${CHECKPOINTS.size ? [...CHECKPOINTS.keys()].join(', ') : '(ninguno)'}`
   },
   async stop() {
-    const note = REC ? ` · grabación abierta descartada (frames en ${REC.dir} — cerrala con rec stop antes si la querés)` : ''
-    if (REC) { REC.stop = true; clearTimeout(REC.timer); REC = null }
     setTimeout(() => process.exit(0), 250)
-    return 'daemon detenido' + note
+    return 'daemon detenido'
   },
 }
 
