@@ -25,7 +25,11 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
    CSS accionable, y si están tapados), y — si ya habías observado antes en esta
    misma página — `changed` + `changes` (QUÉ cambió: added/removed/state/style/moved,
    siempre con nombre o texto del nodo, y su selector) y `actionabilityDelta`.
-   Podés pedir más elementos: `postMessage({type:'SNAPDOM_OBSERVE', top: 60}, '*')`.
+   Cada entrada de `heads` y `top` trae además `section`: el título del contenedor
+   acotado más cercano (heurística — en portadas con bloques mezclados puede agrupar
+   de más; confiá en ella para ubicar, verificá si el dato es crítico).
+   Podés pedir más: `postMessage({type:'SNAPDOM_OBSERVE', top: 60, heads: 40}, '*')`
+   (tope 100/60).
 
 4. Flujo recomendado: observá → actuá usando el `selector` de cada elemento (con tu
    herramienta de click, o `document.querySelector(sel).click()`) → volvé a observar

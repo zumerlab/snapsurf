@@ -43,22 +43,58 @@ function selectorOf(el) {
 
 const vboxOf = (b) => b ? [b[0] - Math.round(scrollX), b[1] - Math.round(scrollY), b[2], b[3]] : undefined
 
-function digestOf(ui, topN) {
+// Parent-section context ("belongs to MÁS LEÍDAS") — panel feedback on lanacion:
+// without it, placing a heading required an extra DOM query. Climbs to the nearest
+// sectioning ancestor and returns its own heading text (or aria-label). If that
+// heading IS the element we're describing, keep climbing.
+function sectionOf(el) {
+  const ownText = el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40) : ''
+  let cur = el && el.parentElement
+  let depth = 0
+  while (cur && cur !== document.body && depth < 12) {
+    if (/^(section|article|aside|nav|main|header|footer)$/.test(cur.localName) || cur.getAttribute('role') === 'region') {
+      // page-wide wrappers make EVERYTHING report the lead story as its section
+      // (lanacion) — a real section box ("MÁS LEÍDAS") is bounded; keep climbing
+      // past huge ancestors without taking their heading.
+      const tall = cur.getBoundingClientRect().height > 8000
+      if (!tall) {
+        const h = cur.querySelector('h1,h2,h3,h4,[role="heading"]')
+        if (h && h !== el && !h.contains(el) && !el.contains(h)) {
+          const t = (h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40)
+          if (t && t !== ownText) return t
+        }
+        const al = cur.getAttribute('aria-label')
+        if (al) return al.slice(0, 40)
+      }
+    }
+    cur = cur.parentElement
+    depth++
+  }
+  return undefined
+}
+
+function digestOf(ui, topN, headsN) {
   const marks = []
   const heads = []
   const LANDMARKS = { navigation: 1, main: 1, banner: 1, contentinfo: 1, search: 1, form: 1, complementary: 1 }
   for (const id of ui.__snapshot.order) {
     const n = ui.__snapshot.nodes.get(id)
     if (!n) continue
-    if (n.role === 'heading' && heads.length < 15) heads.push({ id, text: (n.name || n.text || '').slice(0, 90) })
-    else if (LANDMARKS[n.role] && marks.length < 10) marks.push({ id, role: n.role, name: (n.name || '').slice(0, 60), bbox: n.bbox })
+    if (n.role === 'heading' && heads.length < headsN) {
+      const el = ui.__snapshot.elements.get(id)
+      heads.push({ id, text: (n.name || n.text || '').slice(0, 90), section: sectionOf(el) })
+    } else if (LANDMARKS[n.role] && marks.length < 10) marks.push({ id, role: n.role, name: (n.name || '').slice(0, 60), bbox: n.bbox })
   }
-  const top = ui.agentMap.map.slice(0, topN).map((e) => ({
-    id: e.id, role: e.r, name: (e.n || '').slice(0, 90),
-    bbox: e.b, vbox: vboxOf(e.b),
-    selector: selectorOf(ui.__snapshot.elements.get(e.id)),
-    covered: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined,
-  }))
+  const top = ui.agentMap.map.slice(0, topN).map((e) => {
+    const el = ui.__snapshot.elements.get(e.id)
+    return {
+      id: e.id, role: e.r, name: (e.n || '').slice(0, 90),
+      bbox: e.b, vbox: vboxOf(e.b),
+      selector: selectorOf(el),
+      section: sectionOf(el),
+      covered: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined,
+    }
+  })
   return { marks, heads, top }
 }
 
@@ -94,7 +130,7 @@ function runObserve(opts = {}) {
       ? ui.changes.map(describeChange).sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0)).slice(0, 40)
       : undefined,
     actionabilityDelta: ui.actionabilityDelta,
-    digest: digestOf(ui, Math.min(100, opts.top || 25)),
+    digest: digestOf(ui, Math.min(100, opts.top || 25), Math.min(60, opts.heads || 15)),
   }
   let node = document.getElementById(NODE_ID)
   if (!node) {
@@ -108,7 +144,7 @@ function runObserve(opts = {}) {
 
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
-    try { runObserve({ top: e.data.top }) } catch (err) {
+    try { runObserve({ top: e.data.top, heads: e.data.heads }) } catch (err) {
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
       node.textContent = JSON.stringify({ error: String(err), url: location.href, ts: Date.now() })
     }
