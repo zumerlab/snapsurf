@@ -60,6 +60,20 @@ página o saber qué cambió después de una acción, USALA EN VEZ DE SCREENSHOT
 4. Flujo recomendado: observá → actuá usando el `selector` de cada elemento (con tu
    herramienta de click, o `document.querySelector(sel).click()`) → volvé a observar
    y leé `changes` para confirmar el efecto. Eso reemplaza comparar screenshots.
+
+4b. **ASSERT — verificación determinista sobre el diff** (mismo patrón de espera):
+   ```js
+   window.postMessage({ type: 'SNAPDOM_ASSERT', obsId, spec: {
+     changed: true,                                  // o false: "mi acción no hizo nada" es asertable
+     mustInclude: [{ kind: 'state', name: 'Menú' }], // kinds: added/removed/content/state/style/moved/resized
+     exists: 'texto en la página',
+     notCovered: 'texto de un botón',
+     urlIncludes: '/wiki/'
+   }}, '*');
+   // → { type:'assert', pass, checks:[{type, expected, actual, pass}] }
+   ```
+   El FAIL es un resultado estructurado, no un error. Consume el baseline del diff
+   (como una observación): un mensaje cubre actuar → asertar.
    Para LEER contenido largo (artículos, hilos), tu get_page_text sigue siendo mejor:
    el digest es mapa y cambios, no texto completo.
 

@@ -216,7 +216,69 @@ function runObserve(opts = {}) {
   node.textContent = JSON.stringify(out)
 }
 
+// SNAPDOM_ASSERT — the QA vocabulary in the user's own tabs (same contract as the
+// MCP browser_assert): deterministic checks built on the diff. Runs its own observe
+// (advances the baseline), so one message covers act → assert.
+function runAssert(spec, obsId) {
+  const t0 = performance.now()
+  const ui = buildUi(observe(document.body, prev ? { previous: prev } : {}), {})
+  prev = ui.checkpoint()
+  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const labelOf = (c) => {
+    if (c.name) return String(c.name)
+    const n = c.id && ui.__snapshot.nodes.get(c.id)
+    if (n && (n.name || n.text)) return String(n.name || n.text)
+    const el = c.id && ui.__snapshot.elements.get(c.id)
+    return el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''
+  }
+  const checks = []
+  const push = (type, expected, actual, pass) => checks.push({ type, expected, actual, pass })
+  if (spec.urlIncludes !== undefined) {
+    const here = location.origin + location.pathname + location.search
+    push('urlIncludes', spec.urlIncludes, location.origin + location.pathname, here.includes(spec.urlIncludes))
+  }
+  if (spec.changed !== undefined) push('changed', spec.changed, !!ui.changed, !!ui.changed === spec.changed)
+  for (const m of spec.mustInclude || []) {
+    const hit = (ui.changes || []).some((c) =>
+      (!m.kind || c.kind === m.kind) &&
+      (!m.role || c.role === m.role) &&
+      (!m.name || norm(labelOf(c)).includes(norm(m.name))))
+    push('mustInclude', m, hit ? 'found' : 'absent', hit)
+  }
+  if (spec.exists) {
+    const ms = findMatches(ui, spec.exists)
+    push('exists', spec.exists, ms.length ? `${ms.length} match(es)` : 'absent', ms.length > 0)
+  }
+  if (spec.notCovered) {
+    const e = ui.agentMap.map.find((x) => norm(x.n).includes(norm(spec.notCovered)))
+    push('notCovered', spec.notCovered, e ? (e.covered ? 'covered' : 'clear') : 'absent', !!(e && !e.covered))
+  }
+  const out = {
+    type: 'assert', obsId, ts: Date.now(),
+    walkMs: Math.round(performance.now() - t0),
+    pass: checks.every((c) => c.pass),
+    checks,
+  }
+  let node = document.getElementById(NODE_ID)
+  if (!node) {
+    node = document.createElement('script')
+    node.type = 'application/json'
+    node.id = NODE_ID
+    document.documentElement.appendChild(node)
+  }
+  node.textContent = JSON.stringify(out)
+}
+
 window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SNAPDOM_ASSERT') {
+    const obsId = e.data.obsId ?? null
+    try { runAssert(e.data.spec || {}, obsId) } catch (err) {
+      const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
+      node.textContent = JSON.stringify({ type: 'assert', error: String(err), obsId, ts: Date.now() })
+    }
+    window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId }, '*')
+    return
+  }
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
     const obsId = e.data.obsId ?? e.data.token ?? null // token kept for old snippets
     try { runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, obsId }) } catch (err) {
