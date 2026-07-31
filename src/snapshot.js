@@ -152,6 +152,15 @@ function occluderAt(el, rect) {
  */
 function makeWalker(root, noise) {
   const animated = noise.ignoreAnimations ? collectAnimatedProps(root) : new Map()
+  // one label[for] scan per walk — computeName used to run a full-document
+  // querySelector for every element with an id
+  const labelFor = new Map()
+  try {
+    for (const l of (root.ownerDocument || document).querySelectorAll('label[for]')) {
+      const f = l.getAttribute('for')
+      if (f && !labelFor.has(f)) labelFor.set(f, l)
+    }
+  } catch { /* no doc */ }
   const nodes = new Map()
   const order = []
   const byElement = new Map()
@@ -161,16 +170,25 @@ function makeWalker(root, noise) {
   let seq = 0
 
   /** @returns {string|null} node id */
+  const P = typeof window !== 'undefined' && window.__SD_PROF
+  const pnow = P ? () => performance.now() : () => 0
+  const pacc = (k, t) => { if (P) P[k] = (P[k] || 0) + (performance.now() - t) }
   function* visit(el, parentId, semanticPath, ordinalKeyCounts, depth, frozenGeo) {
     if (el.nodeType !== 1 || SKIP_TAGS.has(el.tagName)) return null
     if (isIgnored(el, noise)) return null
+    let _t = pnow()
     const cs = getComputedStyle(el)
+    pacc('getComputedStyle', _t)
     if (cs.display === 'none') return null
 
     const id = 'n_' + (++seq).toString(36)
     const tag = el.localName
+    _t = pnow()
     const role = computeRole(el)
-    const { name, explicit: nameExplicit } = computeName(el)
+    pacc('computeRole', _t)
+    _t = pnow()
+    const { name, explicit: nameExplicit } = computeName(el, labelFor)
+    pacc('computeName', _t)
     // Identity may only trust the name when it's authored, or when the role takes its
     // name from content per ARIA. A content-derived name on a generic container is
     // unstable: move the content and two wrappers would swap identities.
@@ -183,7 +201,9 @@ function makeWalker(root, noise) {
     const ordinal = (ordinalKeyCounts[ordKey] = (ordinalKeyCounts[ordKey] || 0) + 1)
     const path = semanticPath + '/' + tag + (role !== 'generic' ? `[${role}]` : '')
 
+    _t = pnow()
     const bbox = relativeBBox(el, root, noise.geometryTolerance)
+    pacc('relativeBBox', _t)
     let visible = cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0 &&
       bbox.viewport[2] > 0 && bbox.viewport[3] > 0
     // Hidden-input proxy (FIELD.md visual pass): design systems render the native
@@ -202,7 +222,9 @@ function makeWalker(root, noise) {
     }
     const interactive = INTERACTIVE_ROLES.has(role) ||
       el.hasAttribute('onclick') || el.tabIndex >= 0
+    _t = pnow()
     const occluder = interactive && visible ? occluderAt(el, bbox.viewport) : null
+    pacc('occluderAt', _t)
     const covered = !!occluder
     if (occluder) occluders.set(id, occluder)
 
@@ -212,7 +234,9 @@ function makeWalker(root, noise) {
       if (c.nodeType === 3) ownText += c.nodeValue
     }
     const normText = normalizeText(ownText, el, noise)
+    _t = pnow()
     const { state, valueHash } = interactionState(el)
+    pacc('interactionState', _t)
 
     const isCanvas = tag === 'canvas'
     const isBlockedIframe = tag === 'iframe' && (() => { try { return !el.contentDocument } catch { return true } })()
@@ -226,7 +250,9 @@ function makeWalker(root, noise) {
     // fonts — the resize is the same non-change as the digits; codex assert round).
     const rawTextHash = ownText === normText ? textHash : hash('t', ownText)
     const stateHash = hash('s', JSON.stringify(state), valueHash)
+    _t = pnow()
     const sHash = hash('y', styleSubset(el, cs, animated.get(el)))
+    pacc('styleSubset', _t)
     const contentHash = hash('c', tag, role, testid || '', textHash, stateHash, sHash)
     // A running animation on a layout/transform property moves the box every frame.
     // §5 demands zero-config suppression, so the geometry signature is FROZEN while
@@ -306,7 +332,7 @@ function makeWalker(root, noise) {
     const n = hitId ? nodes.get(hitId) : null
     // The occluding element's full text is the label an agent can act on ("the bar that
     // says Usamos cookies…"); a bare overlay div has no role and no accessible name.
-    const label = visibleText(el).replace(/\s+/g, ' ').trim().slice(0, 60)
+    const label = visibleText(el, 600).replace(/\s+/g, ' ').trim().slice(0, 60)
     const name = n && n.name ? n.name : ''
     nodes.get(id).coveredBy = {
       ...(hitId ? { id: hitId } : {}),

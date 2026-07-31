@@ -80,13 +80,19 @@ const NON_TEXTUAL = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'])
  * as "(function() { if (false) { var firstViewUrl = …". Walk text nodes and skip those.
  * @param {Element} el
  */
-export function visibleText(el) {
+export function visibleText(el, maxRaw = Infinity) {
+  // maxRaw: names are capped at 80 normalized chars, yet this walked ENTIRE subtrees
+  // — 72% of the whole walk went here (perf round profile, 13k-node article). A raw
+  // cap of ~1000 yields identical first-80 normalized chars except in pathological
+  // all-whitespace subtrees, and turns O(document) per container into O(cap).
   let out = ''
   const walk = (node) => {
     for (let c = node.firstChild; c; c = c.nextSibling) {
+      if (out.length >= maxRaw) return true
       if (c.nodeType === 3) out += c.nodeValue
-      else if (c.nodeType === 1 && !NON_TEXTUAL.has(c.tagName)) walk(c)
+      else if (c.nodeType === 1 && !NON_TEXTUAL.has(c.tagName)) { if (walk(c)) return true }
     }
+    return out.length >= maxRaw
   }
   walk(el)
   return out
@@ -98,7 +104,7 @@ export function visibleText(el) {
  *   authored source (aria-label/labelledby, <label>, alt, title, value), not from
  *   subtree text.
  */
-export function computeName(el) {
+export function computeName(el, labelFor) {
   const ariaLabel = el.getAttribute('aria-label')
   if (ariaLabel) return { name: norm(ariaLabel), explicit: true }
 
@@ -114,14 +120,21 @@ export function computeName(el) {
   }
 
   if (el.id) {
-    try {
-      const label = el.ownerDocument.querySelector(`label[for="${CSS.escape(el.id)}"]`)
-      if (label) return { name: norm(visibleText(label)), explicit: true }
-    } catch { }
+    // labelFor: one document scan per walk instead of one full-document
+    // querySelector per id'd element (thousands on a large article)
+    if (labelFor) {
+      const label = labelFor.get(el.id)
+      if (label) return { name: norm(visibleText(label, 1000)), explicit: true }
+    } else {
+      try {
+        const label = el.ownerDocument.querySelector(`label[for="${CSS.escape(el.id)}"]`)
+        if (label) return { name: norm(visibleText(label)), explicit: true }
+      } catch { }
+    }
   }
   const wrappingLabel = el.closest && el.closest('label')
   if (wrappingLabel && wrappingLabel !== el) {
-    const t = norm(visibleText(wrappingLabel))
+    const t = norm(visibleText(wrappingLabel, 1000))
     if (t) return { name: t, explicit: true }
   }
 
@@ -139,6 +152,6 @@ export function computeName(el) {
   if (title) return { name: norm(title), explicit: true }
 
   // Content-derived name, capped: identity wants a fingerprint, not a transcript.
-  const text = norm(visibleText(el))
+  const text = norm(visibleText(el, 1000))
   return { name: text.length > 80 ? text.slice(0, 80) : text, explicit: false }
 }

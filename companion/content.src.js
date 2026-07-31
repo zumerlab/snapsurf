@@ -161,6 +161,7 @@ function findMatches(ui, query) {
 
 async function runObserve(opts = {}) {
   const t0 = performance.now()
+  if (opts.prof) window.__SD_PROF = {}
   const obs = await observeChunked(document.body, prev ? { previous: prev } : {})
   const ui = buildUi(obs, {})
   prev = ui.checkpoint()
@@ -202,6 +203,7 @@ async function runObserve(opts = {}) {
     // chunked walk: the tab stays responsive; torn counts DOM mutations that landed
     // WHILE the walk was parked — a non-zero torn means re-observe if it matters
     torn: obs.torn || 0,
+    prof: opts.prof ? Object.fromEntries(Object.entries(window.__SD_PROF || {}).map(([k, v]) => [k, Math.round(v)])) : undefined,
     actionables: ui.agentMap.map.length,
     unobservable: ui.unobservable.length,
     changed: ui.changed,
@@ -437,7 +439,7 @@ window.addEventListener('message', (e) => {
     const obsId = e.data.obsId ?? e.data.token ?? null // token kept for old snippets
     ;(async () => {
       let out
-      try { out = await runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, obsId }) } catch (err) {
+      try { out = await runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, prof: e.data.prof, obsId }) } catch (err) {
         out = { error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId }
         const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
         node.textContent = JSON.stringify(out)

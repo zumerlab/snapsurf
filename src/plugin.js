@@ -279,10 +279,16 @@ export function buildUi(observation, options = {}) {
     }
   }
 
-  return {
+  const ui = {
     rootHash: viewSnapshot.rootHash,
     unobservable,
-    context: renderContext(viewSnapshot),
+    // context is LAZY: the outline is pure string building over every node (13k on a
+    // large article) and the assert path never reads it — rendering it eagerly was
+    // measurable dead weight in throttled environments (panel perf round).
+    get context() {
+      if (this.__context === undefined) this.__context = renderContext(viewSnapshot)
+      return this.__context
+    },
     agentMap: renderAgentMap(viewSnapshot),
 
     changed: viewDiff ? viewDiff.changed : undefined,
@@ -298,6 +304,7 @@ export function buildUi(observation, options = {}) {
 
     __snapshot: querySnapshot,
   }
+  return ui
 }
 
 /**

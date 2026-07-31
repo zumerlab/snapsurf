@@ -84,6 +84,23 @@ check('torn/changesTotal-class fields present', 'torn' in r1, `torn: ${r1.torn}`
 check('walk wall-time sane (< 8s)', first.wallMs < 8000, `${first.wallMs}ms for ${r1.actionables} actionables`)
 check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
 
+// ── throttled-environment pass (panel ask: measure where CDP/automation lives) ───────
+const cdp = await ctx.newCDPSession(page)
+await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+const thr = await page.evaluate(async () => {
+  const obsId = 'gate-thr'
+  const t0 = performance.now()
+  const res = new Promise((r) => {
+    addEventListener('message', (e) => { if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) r(e.data.result) })
+    setTimeout(() => r(null), 60000)
+  })
+  window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId }, '*')
+  const result = await res
+  return result ? Math.round(performance.now() - t0) : null
+})
+await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+check('walk under 4x CPU throttle < 4s', thr !== null && thr < 4000, `${thr}ms`)
+
 // ── fail-loud + ignore ───────────────────────────────────────────────────────────────
 const bad = await ask({ type: 'SNAPDOM_ASSERT', spec: { mustInclud: [] } })
 check('fail-loud: unknown key → pass:false', bad.ready && bad.result.pass === false, JSON.stringify(bad.result?.checks?.[0]?.actual))
