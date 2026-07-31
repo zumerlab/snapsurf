@@ -9,7 +9,9 @@
  *   node packages/agent/tools/browse.mjs serve [--headed] [--readonly] [--allow d1,d2]
  *   node packages/agent/tools/browse.mjs open <url>           # navigate + first outline
  *   node packages/agent/tools/browse.mjs look [id]            # what changed · with id: zoom
- *   node packages/agent/tools/browse.mjs find <text…>         # search WHOLE page → ids
+ *   node packages/agent/tools/browse.mjs find <text…>         # search WHOLE page → ids (ranked, con href)
+ *   node packages/agent/tools/browse.mjs parent <id>          # climb to the CARD around a node
+ *   node packages/agent/tools/browse.mjs map [offset]         # page the actionables map past 40
  *   node packages/agent/tools/browse.mjs click <id|x,y>       # click (auto-scrolls to id)
  *   node packages/agent/tools/browse.mjs type <text…>         # type into focused element
  *   node packages/agent/tools/browse.mjs enter                # press Enter
@@ -136,17 +138,29 @@ let meta = null
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 16)
 
 // ── In-page protocol (same shapes the realloop experiments validated) ────────────────
-const observe = ({ previous, scopeId } = {}) => {
+const observe = ({ previous, scopeId, parentOfId } = {}) => {
   // Walk-only (§lite): an agent with a mission needs semantics every turn but pixels
   // almost never — the full capture cost per look was Codex's top complaint (20s on
   // wikipedia). Pixels are requested explicitly and SCOPED via `snap <id>`.
   // scopeId = zoom: walk only that subtree (agent-browser's `-s` insight — the first-turn
   // outline was more expensive than a screenshot on 31/35 sweep sites; scoping is the fix).
+  // parentOfId = climb: walk the nearest CARD around that node (T5 lesson — found the
+  // "Pre-Owned" span inside an eBay listing, no way up to the sibling title link).
   let root = document.body
   if (scopeId) {
     const el = window.__lastUi && window.__lastUi.__snapshot.elements.get(scopeId)
     if (!el) return { badScope: true }
     root = el
+  }
+  if (parentOfId) {
+    const el = window.__lastUi && window.__lastUi.__snapshot.elements.get(parentOfId)
+    if (!el) return { badScope: true }
+    // climb to the nearest container holding ≥2 actionables — the "card" around the node
+    let cur = el.parentElement, depth = 0
+    const actionables = (n) => n.querySelectorAll('a[href],button,[role="button"]').length
+    while (cur && cur !== document.body && depth < 10 && actionables(cur) < 2) { cur = cur.parentElement; depth++ }
+    if (!cur || cur === document.body) return { noParent: true }
+    root = cur
   }
   const ui = window.__agentBuildUi(window.__agentObserve(root, previous ? { previous } : {}), {})
   window.__lastUi = ui
@@ -164,21 +178,38 @@ const observe = ({ previous, scopeId } = {}) => {
   }
 }
 const inFind = (query) => {
+  // Ranked, not DOM-ordered (T5 lesson: DOM order returned eBay's related-search CHIPS
+  // before the actual listing titles). Detail links with real hrefs, long names and
+  // main-region placement outrank short chips and nav items; href tail is shown so the
+  // model can tell /itm/ from /sch/ BEFORE clicking.
   const ui = window.__lastUi
   if (!ui) return []
   const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   const q = norm(query)
-  const out = []
-  const seen = new Set()
-  for (const e of ui.agentMap.map) {
-    if (norm(e.n).includes(q) && out.length < 12) { out.push({ id: e.id, r: e.r, n: e.n, b: e.b }); seen.add(e.id) }
+  const NAVISH = 'nav,header,footer,aside,[role="navigation"],[role="banner"],[role="contentinfo"],[role="complementary"]'
+  const cands = new Map()
+  const add = (id, r, n, b) => {
+    if (!n || cands.has(id)) return
+    const name = String(n)
+    if (!norm(name).includes(q)) return
+    const el = ui.__snapshot.elements.get(id)
+    const href = el && el.getAttribute ? el.getAttribute('href') : null
+    let s = 0
+    if (r === 'link' || r === 'button') s += 2
+    if (href && href.length > 1 && !href.startsWith('#')) s += 1
+    if (href && (href.match(/\//g) || []).length >= 3) s += 1
+    if (name.length >= 25) s += 2
+    else if (name.length <= 16) s -= 1
+    try { if (el && el.closest && el.closest(NAVISH)) s -= 3 } catch { /* selector support */ }
+    if (b && b[2] * b[3] > 8000) s += 1
+    cands.set(id, { id, r, n: name.slice(0, 80), b, href: href && !href.startsWith('#') ? href.slice(-48) : null, s })
   }
+  for (const e of ui.agentMap.map) add(e.id, e.r, e.n, e.b)
   for (const id of ui.__snapshot.order) {
-    if (out.length >= 12) break
     const n = ui.__snapshot.nodes.get(id)
-    if (!seen.has(id) && n.text && norm(n.text).includes(q)) out.push({ id: n.id, r: n.role, n: n.name || n.text.slice(0, 50), b: n.bbox })
+    add(id, n.role, n.name || n.text, n.bbox)
   }
-  return out
+  return [...cands.values()].sort((a, b) => b.s - a.s).slice(0, 12)
 }
 const inLocate = (id) => {
   const ui = window.__lastUi
@@ -302,8 +333,36 @@ const HANDLERS = {
     const matches = await inPage(inFind, args.join(' '))
     meta = { matches: matches.map((m) => m.id) }
     return matches.length
-      ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 60)}"` : ''} [${m.b.join(',')}]`).join('\n'))
+      ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 60)}"` : ''} [${m.b.join(',')}]${m.href ? ` → …${m.href}` : ''}`).join('\n'))
       : 'sin resultados'
+  },
+  async parent([id]) {
+    // Climb from an inner node to its CARD (nearest container with ≥2 actionables) and
+    // observe just that: the way from "found the price/condition text" to "here is the
+    // clickable title". Fresh ids; the global look baseline stays untouched.
+    if (!id) return 'uso: parent <id>'
+    const o = await inPage(observe, { parentOfId: id })
+    if (o.badScope) return `id desconocido: ${id} — los ids caducan por observación, re-find`
+    if (o.noParent) return `sin contenedor con ≥2 actionables sobre ${id} (llegué a body)`
+    epoch++
+    meta = { parentOf: id }
+    return `CARD alrededor de ${id} (baseline global intacto)\n${fmtFirst(o, page.url())}`
+  },
+  async map([offset]) {
+    // Page through the actionables map beyond the first 40 (T5: listing links lived
+    // past the cutoff and there was no way to see them without a full re-observe).
+    const off = Math.max(0, parseInt(offset) || 0)
+    const o = await inPage((from) => {
+      const ui = window.__lastUi
+      if (!ui) return null
+      return {
+        total: ui.agentMap.map.length,
+        slice: ui.agentMap.map.slice(from, from + 40).map((e) => ({ id: e.id, r: e.r, n: e.n, b: e.b, c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })),
+      }
+    }, off)
+    if (!o) return 'no hay observación todavía — corré open/look primero'
+    if (!o.slice.length) return `mapa: ${o.total} actionables — offset ${off} está más allá del final`
+    return `MAPA ${off}–${off + o.slice.length - 1} de ${o.total} (obs #${epoch}):\n${fence(fmtMap(o.slice.length ? { map: o.slice } : o))}`
   },
   async click([target]) {
     let point = null
