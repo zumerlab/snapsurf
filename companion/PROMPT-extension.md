@@ -36,7 +36,7 @@ Cómo se usa:
 1. Verificá que está presente (con tu herramienta de ejecutar JavaScript):
    `!!document.querySelector('meta[name="__snapdom_companion"]')`
    Y verificá la VERSIÓN DEL CONTRATO: todo resultado (observe/assert) trae
-   `contract: 6`. Si no aparece o es menor, el bundle cargado es viejo — reportalo
+   `contract: 7`. Si no aparece o es menor, el bundle cargado es viejo — reportalo
    y pedí recargar la extensión antes de sacar conclusiones (cuatro rondas de
    feedback se contaminaron por evaluar bundles desactualizados).
 
@@ -131,6 +131,17 @@ Cómo se usa:
    count); el walk y su pipeline ceden el thread por presupuesto de tiempo, pero
    siguen tomando 1-7s de reloj en páginas grandes — subí tu timeout de seguridad
    acorde y no corras asserts en paralelo.
+
+4b-bis. **NAVEGACIÓN SPA (soft nav): leé `navigated` antes de confiar en el diff.**
+   En sitios con routing client-side (GitHub, SPAs React) el documento sobrevive a la
+   navegación y el baseline TAMBIÉN. Todo resultado con baseline trae `baselineUrl`
+   (URL donde se tomó) y `navigated: true` si la URL actual difiere: ese diff cruza
+   dos "páginas" del mismo documento — no lo uses para juzgar el efecto de tu acción;
+   `urlIncludes` sigue siendo válido. Protocolo tras soft nav (regla salida de la
+   ronda de campo en GitHub): (1) esperá hidratación estable — `actionables` no-cero
+   y constante en 2 observes seguidos (una SPA a medio montar puede dar
+   `actionables: 0` o `changed: false` fieles pero inútiles); (2) re-baselineá con un
+   observe sobre el contenido estable; (3) recién ahí asertá cambios.
 
 4c. **PROF — desglose de tiempos por fase** (observe Y assert): agregá `prof: true`
    al MENSAJE (nivel mensaje, no dentro de `spec` — el spec lo rechazaría como clave

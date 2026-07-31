@@ -24,7 +24,13 @@ let prev = null
 // node (480ms on wikipedia in the panel's env) and used to run again on every
 // observe AND every assert retry attempt. The matcher/differ never mutate it.
 let prevInflated = null
-const setBaseline = (cp) => { prev = cp; prevInflated = null }
+// URL the baseline was taken on (origin+pathname, same sanitization as `url`):
+// after a soft/SPA navigation the document — and therefore the baseline — survives,
+// and a cross-page diff reads as a confusing changed:false while content is still
+// mounting (panel field round on github). `navigated: true` in the result makes
+// that explicit instead of a deduction the reader has to make.
+let prevUrl = null
+const setBaseline = (cp) => { prev = cp; prevInflated = null; prevUrl = location.origin + location.pathname }
 const inflatedBaseline = async () =>
   prev ? (prevInflated || (prevInflated = await inflateCheckpointChunked(prev, makeSlicer(40)))) : null
 
@@ -203,6 +209,9 @@ async function runObserve(opts = {}) {
   let t = performance.now()
   const baseline = await inflatedBaseline()
   pacc('inflate', t)
+  // capture BEFORE setBaseline overwrites them: these describe the baseline the
+  // diff below actually ran against
+  const baseUrl = baseline ? prevUrl : null
   const obs = await observeChunked(document.body, baseline ? { previous: baseline } : {})
   const pause = makeSlicer(40)
   t = performance.now()
@@ -262,8 +271,8 @@ async function runObserve(opts = {}) {
     // contract marker: readers verify the loaded bundle matches the documented
     // protocol (four consumer rounds bitten by stale bundles — result-in-message,
     // ignore, chunked walk all "missing" because the extension was never reloaded)
-    // v6: prof breaks out selectorOf/sectionOf (digest detail, panel ask)
-    contract: 6,
+    // v7: navigated/baselineUrl signal for SPA soft navigations (panel field ask)
+    contract: 7,
     // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
@@ -285,6 +294,11 @@ async function runObserve(opts = {}) {
     prof: opts.prof ? Object.fromEntries(Object.entries(window.__SD_PROF || {}).map(([k, v]) => [k, Math.round(v)])) : undefined,
     actionables: ui.agentMap.map.length,
     unobservable: ui.unobservable.length,
+    // navigated: the URL moved since the baseline was taken (SPA soft nav) — the
+    // diff below spans two "pages" of one document; re-baseline on settled content
+    // before trusting change-based checks (see the prompt's SPA guidance)
+    baselineUrl: baseUrl || undefined,
+    navigated: baseUrl ? (location.origin + location.pathname) !== baseUrl : undefined,
     changed: ui.changed,
     changes,
     actionabilityDelta: ui.actionabilityDelta,
@@ -351,6 +365,7 @@ async function runAssert(spec, obsId, profFlag) {
   }
 
   const hasBaseline = !!prev
+  const baseUrl = hasBaseline ? prevUrl : null
   const pause = makeSlicer(40)
   const tInf = performance.now()
   const baseline = await inflatedBaseline()
@@ -433,9 +448,11 @@ async function runAssert(spec, obsId, profFlag) {
       push(checks, 'becameCovered', spec.becameCovered, hit ? 'found' : 'absent', hit)
     }
     if (spec.exists) {
-      // accessible names AND page text (panel 3i: paragraph prose must be findable)
+      // accessible names AND page text (panel 3i: paragraph prose must be findable).
+      // innerText arrives with line breaks — collapse whitespace on BOTH sides or a
+      // query spanning a wrap point reads absent ("Switch branches/tags", github round)
       const ms = await findMatches(ui, spec.exists)
-      const inProse = !ms.length && norm(document.body.innerText || '').includes(norm(spec.exists))
+      const inProse = !ms.length && norm((document.body.innerText || '').replace(/\s+/g, ' ')).includes(norm(String(spec.exists).replace(/\s+/g, ' ')))
       push(checks, 'exists', spec.exists, ms.length ? `${ms.length} match(es)` : (inProse ? 'in page text' : 'absent'), ms.length > 0 || inProse)
     }
     if (spec.notCovered) {
@@ -512,10 +529,12 @@ async function runAssert(spec, obsId, profFlag) {
     pacc('evidence', t)
   }
   return {
-    type: 'assert', contract: 6, obsId, ts: Date.now(),
+    type: 'assert', contract: 7, obsId, ts: Date.now(),
     walkMs: Math.round(performance.now() - t0), attempts,
     torn: (lastObs && lastObs.torn) || 0,
     hasBaseline,
+    baselineUrl: baseUrl || undefined,
+    navigated: baseUrl ? (location.origin + location.pathname) !== baseUrl : undefined,
     pass: result.pass,
     checks: result.checks,
     // the panel's profiling round could not break down the assert pipeline because

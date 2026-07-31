@@ -79,7 +79,7 @@ const first = await page.evaluate(async () => {
 check('ready message carries result', !!first, first ? '' : 'no ready/result within 60s')
 if (!first) { await ctx.close(); process.exit(1) }
 const r1 = first.result
-check('contract === 6', r1.contract === 6, `contract: ${r1.contract}`)
+check('contract === 7', r1.contract === 7, `contract: ${r1.contract}`)
 check('torn/changesTotal-class fields present', 'torn' in r1, `torn: ${r1.torn}`)
 check('walk wall-time sane (< 8s)', first.wallMs < 8000, `${first.wallMs}ms for ${r1.actionables} actionables`)
 check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
@@ -118,6 +118,7 @@ check('prof covers the post-walk stages', !!second.result?.prof && 'diff' in sec
   JSON.stringify(second.result?.prof || null))
 check('prof breaks out digest detail (selectorOf/sectionOf)', !!second.result?.prof && 'selectorOf' in second.result.prof && 'sectionOf' in second.result.prof,
   `selectorOf: ${second.result?.prof?.selectorOf}ms · sectionOf: ${second.result?.prof?.sectionOf}ms`)
+check('same-page observe: navigated === false', second.result?.navigated === false, `navigated: ${second.result?.navigated}`)
 
 // ── throttled-environment pass (panel ask: measure where CDP/automation lives) ───────
 const cdp = await ctx.newCDPSession(page)
@@ -171,6 +172,15 @@ await page.waitForTimeout(500)
 await ask({ type: 'SNAPDOM_OBSERVE' }) // settle baseline
 const noop = await ask({ type: 'SNAPDOM_ASSERT', spec: { changed: false, retry: { budgetMs: 1500 } } })
 check('faithful no-op (changed:false passes)', noop.ready && noop.result.pass === true, `attempts: ${noop.result?.attempts}`)
+
+// ── SPA soft-navigation signal (panel github round: a cross-page diff read as a
+// confusing changed:false — the baseline survives the document, so the reader needs
+// an explicit flag, not a deduction). pushState = same document, new URL.
+await page.evaluate(() => history.pushState({}, '', '/wiki/__snapdom_spa_probe'))
+const nav = await ask({ type: 'SNAPDOM_OBSERVE' })
+check('navigated:true + baselineUrl after SPA pushState',
+  nav.ready && nav.result?.navigated === true && (nav.result?.baselineUrl || '').includes('/wiki/Buenos_Aires'),
+  `navigated: ${nav.result?.navigated} · baselineUrl: ${nav.result?.baselineUrl}`)
 
 await ctx.close()
 const failed = results.filter((r) => !r.pass)
