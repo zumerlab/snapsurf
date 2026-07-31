@@ -426,12 +426,19 @@ window.addEventListener('message', (e) => {
         // without pass reads as success to `if (r.pass === false)` harnesses (panel 3f)
         out = { type: 'assert', obsId, ts: Date.now(), pass: false, checks: [{ type: 'error', expected: 'valid spec/execution', actual: String(err), pass: false }], error: String(err) }
       }
+      // The result rides IN the ready message: the shared DOM slot is a race the
+      // obsId handshake never protected (round 2). The node stays for compat.
+      // If postMessage itself fails, the failure is RECORDED in the node payload
+      // (messageError) instead of leaving a silent channel asymmetry — the panel
+      // measured 10/10 asserts arriving node-only in its environment while the
+      // gate sees the message in ours; whichever it is, now it self-reports.
+      let messageError = null
+      try {
+        window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId, result: out }, '*')
+      } catch (err) { messageError = String(err) }
+      if (messageError) out.messageError = messageError
       const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
       node.textContent = JSON.stringify(out)
-      // The result rides IN the ready message: the shared DOM slot is a race the
-      // obsId handshake never protected (round 2: reader A consumed reader B's
-      // verdict through the documented boilerplate). The node stays for compat.
-      window.postMessage({ type: 'SNAPDOM_DIGEST_READY', obsId, result: out }, '*')
     })()
     return
   }

@@ -112,6 +112,11 @@ Cómo se usa:
    }}, '*');
    // → { type:'assert', obsId, pass, hasBaseline, attempts, checks:[...], changes:[...] }
    ```
+   OJO CON EL TIPO DEL MENSAJE: la respuesta del assert llega como
+   `SNAPDOM_DIGEST_READY` (igual que el observe) con `result.type === 'assert'`
+   ADENTRO del payload — NO existe un mensaje `type: 'assert'`. Si tu listener
+   filtra por tipo 'assert', no vas a ver ninguna respuesta. Si el canal por
+   mensaje fallara, el nodo trae `messageError` con la causa.
    **Contrato fail-loud**: claves desconocidas, spec vacío, baseline ausente y specs
    malformados son TODOS pass:false con razón — la confusión nunca se ve verde.
    Verificá `obsId` en el resultado (guardia de staleness) y `hasBaseline`. La

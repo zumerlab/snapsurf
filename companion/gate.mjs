@@ -101,6 +101,14 @@ const thr = await page.evaluate(async () => {
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
 check('walk under 4x CPU throttle < 4s', thr !== null && thr < 4000, `${thr}ms`)
 
+// ── assert reply channel: EXPLICIT check, message-only, no node fallback ─────────────
+// (panel field report: asserts arrived node-only in its env while observes messaged
+// 16/16 — this check must never be masked by another assertion's purpose)
+const chan = await ask({ type: 'SNAPDOM_ASSERT', spec: { exists: 'Wikipedia' } }, 15000)
+check('ASSERT reply arrives via SNAPDOM_DIGEST_READY with result payload',
+  chan.ready && chan.result && chan.result.type === 'assert' && 'pass' in chan.result,
+  chan.ready ? `result.type: ${chan.result?.type}` : 'NO message within 15s (node-only channel — panel blindspot reproduced)')
+
 // ── fail-loud + ignore ───────────────────────────────────────────────────────────────
 const bad = await ask({ type: 'SNAPDOM_ASSERT', spec: { mustInclud: [] } })
 check('fail-loud: unknown key → pass:false', bad.ready && bad.result.pass === false, JSON.stringify(bad.result?.checks?.[0]?.actual))
