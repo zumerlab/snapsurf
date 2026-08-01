@@ -1,0 +1,983 @@
+[
+  {
+    "task": "m1",
+    "kind": "extracción acumulada",
+    "arm": "free",
+    "answer": "Tabla de las 5 historias más comentadas de la portada de Hacker News (según la portada al momento de la consulta):\n\n| # | Título | Comentarios |\n|---|--------|-------------|\n| 1 | Elevators | 373 |\n| 2 | Ten advances in mathematics and theoretical computer science | 185 |\n| 3 | Software for One | 185 |\n| 4 | How to Exist | 179 |\n| 5 | Increasing the lifespan of a bulb makes it worse in every other way | 154 |\n\nNotas:\n- Los puestos 2 y 3 están empatados en 185 comentarios (al abrir la discusión, \"Software for One\" ya mostraba 186, por lo que crece más rápido).\n- La siguiente historia en la lista, \"qm – Multiplayer agent harness for work\" (141 comentarios), quedó fuera del top 5.\n- Los conteos son dinámicos y pueden variar en minutos.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 2,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      },
+      {
+        "turn": 3,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 9,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 10,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 11,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 12,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 13,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 14,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      }
+    ],
+    "turns": 15,
+    "tokensIn": 197644,
+    "tokensOut": 5682,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1433,
+        "out": 77,
+        "cumIn": 1433
+      },
+      {
+        "turn": 2,
+        "in": 2237,
+        "out": 61,
+        "cumIn": 3670
+      },
+      {
+        "turn": 3,
+        "in": 7188,
+        "out": 220,
+        "cumIn": 10858
+      },
+      {
+        "turn": 4,
+        "in": 7817,
+        "out": 1492,
+        "cumIn": 18675
+      },
+      {
+        "turn": 5,
+        "in": 10651,
+        "out": 250,
+        "cumIn": 29326
+      },
+      {
+        "turn": 6,
+        "in": 11950,
+        "out": 1043,
+        "cumIn": 41276
+      },
+      {
+        "turn": 7,
+        "in": 13555,
+        "out": 500,
+        "cumIn": 54831
+      },
+      {
+        "turn": 8,
+        "in": 14368,
+        "out": 513,
+        "cumIn": 69199
+      },
+      {
+        "turn": 9,
+        "in": 15613,
+        "out": 129,
+        "cumIn": 84812
+      },
+      {
+        "turn": 10,
+        "in": 16454,
+        "out": 116,
+        "cumIn": 101266
+      },
+      {
+        "turn": 11,
+        "in": 17366,
+        "out": 295,
+        "cumIn": 118632
+      },
+      {
+        "turn": 12,
+        "in": 18403,
+        "out": 88,
+        "cumIn": 137035
+      },
+      {
+        "turn": 13,
+        "in": 18499,
+        "out": 130,
+        "cumIn": 155534
+      },
+      {
+        "turn": 14,
+        "in": 18637,
+        "out": 28,
+        "cumIn": 174171
+      },
+      {
+        "turn": 15,
+        "in": 23473,
+        "out": 740,
+        "cumIn": 197644
+      }
+    ],
+    "wallMs": 111673
+  },
+  {
+    "task": "m2",
+    "kind": "formulario + validación",
+    "arm": "free",
+    "answer": "**No, la suscripción NO se agregó a la lista.**\n\n**Qué hice**\n1. Registré el estado inicial: la lista (`ul`) de la sección \"F2 · Suscribirse\" estaba vacía (0 ítems, altura 690x0).\n2. Hice click en el campo Email y escribí `sin-arroba`. Verifiqué con captura de pantalla que el texto quedó efectivamente cargado en el input (se veía \"sin-arroba\", con el campo enfocado).\n3. Hice click en \"Suscribirme\".\n\n**Cómo lo comprobé (4 verificaciones independientes, todas negativas)**\n- **Diff de la página tras el click:** el único cambio detectado fue el movimiento del texto decorativo del banner (\"ofertas · envíos · novedades\"), que es una marquesina animada, no un cambio funcional.\n- **Estado de la lista:** el `ul` de F2 sigue vacío después del click (`ul[list] [295,354 690x0]`, sin ningún `li`).\n- **Búsqueda en toda la página:** buscar \"sin-arroba\" no devuelve ninguna coincidencia en el DOM.\n- **Aserciones explícitas:** la comprobación de que se agregara un `listitem` falló (0/1), y la de que el texto existiera en la página también falló (0/1).\n\n**Observación importante sobre el comportamiento**\nEl click sí tuvo un efecto: el campo Email quedó **limpio** (volvió a mostrar el placeholder `tu@email.com`). Es decir, el formulario se reseteó pero **no agregó nada a la lista y no mostró ningún mensaje de error ni de validación**.\n\nEsto es coherente con que la app rechaza el valor por ser inválido (`sin-arroba` no tiene \"@\"), lo cual es correcto como validación, pero el comportamiento es engañoso para el usuario: al borrar el campo sin mostrar ningún cartel, visualmente parece que la acción se procesó con éxito cuando en realidad la suscripción se descartó silenciosamente. Ojo: no pude confirmar la causa exacta del rechazo (no hay mensaje visible); lo que sí está verificado es el resultado, que la suscripción no se agregó.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 1,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 2,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      },
+      {
+        "turn": 3,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "type_text",
+        "channel": "neutral"
+      },
+      {
+        "turn": 5,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 8,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 9,
+        "tool": "type_text",
+        "channel": "neutral"
+      },
+      {
+        "turn": 10,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 11,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 12,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 12,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      },
+      {
+        "turn": 13,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 13,
+        "tool": "check_effect",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 14,
+    "tokensIn": 75390,
+    "tokensOut": 2017,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1456,
+        "out": 100,
+        "cumIn": 1456
+      },
+      {
+        "turn": 2,
+        "in": 2418,
+        "out": 65,
+        "cumIn": 3874
+      },
+      {
+        "turn": 3,
+        "in": 3494,
+        "out": 137,
+        "cumIn": 7368
+      },
+      {
+        "turn": 4,
+        "in": 3679,
+        "out": 52,
+        "cumIn": 11047
+      },
+      {
+        "turn": 5,
+        "in": 3749,
+        "out": 51,
+        "cumIn": 14796
+      },
+      {
+        "turn": 6,
+        "in": 3850,
+        "out": 27,
+        "cumIn": 18646
+      },
+      {
+        "turn": 7,
+        "in": 3978,
+        "out": 169,
+        "cumIn": 22624
+      },
+      {
+        "turn": 8,
+        "in": 5651,
+        "out": 232,
+        "cumIn": 28275
+      },
+      {
+        "turn": 9,
+        "in": 5931,
+        "out": 52,
+        "cumIn": 34206
+      },
+      {
+        "turn": 10,
+        "in": 6001,
+        "out": 29,
+        "cumIn": 40207
+      },
+      {
+        "turn": 11,
+        "in": 7383,
+        "out": 97,
+        "cumIn": 47590
+      },
+      {
+        "turn": 12,
+        "in": 7530,
+        "out": 54,
+        "cumIn": 55120
+      },
+      {
+        "turn": 13,
+        "in": 9991,
+        "out": 190,
+        "cumIn": 65111
+      },
+      {
+        "turn": 14,
+        "in": 10279,
+        "out": 762,
+        "cumIn": 75390
+      }
+    ],
+    "wallMs": 62485
+  },
+  {
+    "task": "m3",
+    "kind": "navegación profunda + fold",
+    "arm": "free",
+    "answer": "Confirmado: llegué al artículo.\n\n**URL final: `https://es.wikipedia.org/wiki/Mar_del_Plata`**\n\nCómo lo hice:\n1. Abrí `https://es.wikipedia.org/wiki/Argentina`.\n2. Busqué el enlace dentro del artículo: lo encontré en la sección de ciudades más pobladas (aparecía como \"6. Mar del Plata\"), apuntando a `/wiki/Mar_del_Plata`.\n3. Hice clic en ese enlace del propio artículo (no usé el buscador ni navegué directo a la URL).\n4. Verifiqué la página resultante: el encabezado principal es \"Mar del Plata\", con secciones propias del artículo (Historia, siglo XVI, Fundación de Mar del Plata y creación del Partido de General Pueyrredon, Demografía, etc.).\n\nUna aclaración sobre la verificación: al comprobar el efecto del clic, dos de los cuatro chequeos dieron \"FAIL\", pero fue un artefacto de mi procedimiento, no un problema real: no había tomado una observación de referencia (baseline) antes de hacer clic, así que el chequeo de \"cambió la página\" no tenía con qué comparar. Los chequeos sustantivos sí pasaron (URL contiene `Mar_del_Plata` y el texto está presente), y la observación posterior de la página confirma de forma independiente que el artículo cargado es el de Mar del Plata.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 1,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 2,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 5,
+    "tokensIn": 14848,
+    "tokensOut": 998,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1444,
+        "out": 140,
+        "cumIn": 1444
+      },
+      {
+        "turn": 2,
+        "in": 2616,
+        "out": 87,
+        "cumIn": 4060
+      },
+      {
+        "turn": 3,
+        "in": 2763,
+        "out": 111,
+        "cumIn": 6823
+      },
+      {
+        "turn": 4,
+        "in": 3024,
+        "out": 100,
+        "cumIn": 9847
+      },
+      {
+        "turn": 5,
+        "in": 5001,
+        "out": 560,
+        "cumIn": 14848
+      }
+    ],
+    "wallMs": 24901
+  },
+  {
+    "task": "m4",
+    "kind": "ruido ambiental / verificación",
+    "arm": "free",
+    "answer": "No, la aplicación NO cambió de estado.\n\nQué hice:\n1. Cargué http://127.0.0.1:8399/app.html y tomé una captura del estado inicial (sección \"F1 · Actualizar\" mostraba \"Última sincronización: hace un rato\").\n2. Hice click en el botón \"Actualizar datos\" (el click se registró correctamente sobre el botón, en 356,189).\n3. Comparé el DOM antes/después, volví a chequear tras una espera (por si la actualización era diferida) y repetí el click una segunda vez.\n\nResultado de la comparación: el único cambio detectado en cada iteración fue \"moved generic 'ofertas · envíos · novedades…'\" (la marquesina animada del encabezado) y el avance del reloj (11:58:17 → 11:58:26), que según tu indicación no cuentan como cambio de estado.\n\nEvidencia de que nada cambió realmente:\n- El texto de F1 sigue siendo exactamente \"Última sincronización: hace un rato\" (no cambió a una fecha/hora ni a \"actualizado\").\n- No apareció ningún toast, mensaje de estado, spinner ni región aria-live nueva.\n- El resto del panel quedó idéntico: \"Carrito: 0 items\", \"Borradores guardados: 0\", listas de F2 y F7 vacías, botón \"Enviar\" seguía deshabilitado, \"listado inicial\" en F8.\n- La URL no cambió y no hubo navegación.\n\nAclaración importante: una verificación genérica de tipo \"¿la página cambió?\" da PASS, pero solo por el ruido de la animación y el reloj. Al filtrar ese ruido, no hay ningún cambio de contenido ni de estado atribuible al botón: el botón parece no tener efecto (handler ausente o roto).",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 1,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 2,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      },
+      {
+        "turn": 6,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "observe_page",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 9,
+    "tokensIn": 50439,
+    "tokensOut": 1649,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1463,
+        "out": 102,
+        "cumIn": 1463
+      },
+      {
+        "turn": 2,
+        "in": 3726,
+        "out": 123,
+        "cumIn": 5189
+      },
+      {
+        "turn": 3,
+        "in": 3900,
+        "out": 63,
+        "cumIn": 9089
+      },
+      {
+        "turn": 4,
+        "in": 5459,
+        "out": 220,
+        "cumIn": 14548
+      },
+      {
+        "turn": 5,
+        "in": 5938,
+        "out": 168,
+        "cumIn": 20486
+      },
+      {
+        "turn": 6,
+        "in": 7268,
+        "out": 100,
+        "cumIn": 27754
+      },
+      {
+        "turn": 7,
+        "in": 7419,
+        "out": 82,
+        "cumIn": 35173
+      },
+      {
+        "turn": 8,
+        "in": 7569,
+        "out": 27,
+        "cumIn": 42742
+      },
+      {
+        "turn": 9,
+        "in": 7697,
+        "out": 764,
+        "cumIn": 50439
+      }
+    ],
+    "wallMs": 41969
+  },
+  {
+    "task": "m5",
+    "kind": "SPA + hidratación",
+    "arm": "free",
+    "answer": "Hice click en \"Ver detalle\" (sección \"F8 · Ir a detalle (SPA)\") y la navegación quedó A MEDIAS.\n\nQué pasó exactamente:\n- URL: sí cambió. Pasó de http://127.0.0.1:8399/app.html a http://127.0.0.1:8399/detalle/42 (cambio tipo SPA / pushState, sin recarga real del documento).\n- Contenido: NO cambió al detalle. Donde antes decía \"listado inicial\", ahora quedó el texto \"cargando…\" y se quedó ahí. Verifiqué en varias observaciones sucesivas: el DOM está estable, sin más cambios, y nunca apareció contenido del detalle (ni título, ni datos del ítem 42).\n- Además, todo el resto de la página sigue siendo el \"Panel de pruebas\" original (F1 a F8 con sus botones: Actualizar datos, Suscribirme, Comprar ahora, Guardar borrador, Agregar fila, Validar formulario/Enviar, Agregar item). O sea, la vista jamás se reemplazó por una vista de detalle.\n\nConclusión: es una navegación inconsistente/rota. La URL \"miente\": indica /detalle/42 como si la navegación se hubiera completado, pero la vista quedó trabada en el estado de carga (\"cargando…\") y el contenido del detalle nunca se renderizó. Si alguien compartiera o recargara esa URL, o si un test validara sólo por URL, parecería exitosa cuando en realidad no lo fue.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 1,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 2,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 5,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      },
+      {
+        "turn": 8,
+        "tool": "check_effect",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 9,
+    "tokensIn": 34848,
+    "tokensOut": 1351,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1434,
+        "out": 100,
+        "cumIn": 1434
+      },
+      {
+        "turn": 2,
+        "in": 2396,
+        "out": 69,
+        "cumIn": 3830
+      },
+      {
+        "turn": 3,
+        "in": 2571,
+        "out": 73,
+        "cumIn": 6401
+      },
+      {
+        "turn": 4,
+        "in": 2697,
+        "out": 53,
+        "cumIn": 9098
+      },
+      {
+        "turn": 5,
+        "in": 4321,
+        "out": 94,
+        "cumIn": 13419
+      },
+      {
+        "turn": 6,
+        "in": 4519,
+        "out": 73,
+        "cumIn": 17938
+      },
+      {
+        "turn": 7,
+        "in": 4792,
+        "out": 86,
+        "cumIn": 22730
+      },
+      {
+        "turn": 8,
+        "in": 5894,
+        "out": 229,
+        "cumIn": 28624
+      },
+      {
+        "turn": 9,
+        "in": 6224,
+        "out": 574,
+        "cumIn": 34848
+      }
+    ],
+    "wallMs": 36126
+  },
+  {
+    "task": "m6",
+    "kind": "recuperación de acción bloqueada",
+    "arm": "free",
+    "answer": "NO funcionó: el carrito sigue en \"Carrito: 0 items\". La compra no se registró.\n\n## Qué hice\n1. Clickeé \"Comprar ahora\" (vía el elemento y también por coordenadas), 3 veces en total.\n2. Verifiqué el estado real del texto del carrito después de cada click → siempre \"Carrito: 0 items\".\n3. Test de control: clickeé \"Agregar item\" (F7) y ahí SÍ se agregaron ítems a la lista. O sea, el JavaScript de la página funciona; el problema es específico de F3.\n\n## Por qué no funciona\nHay un elemento invisible superpuesto que intercepta el click. El outline del DOM lo muestra claramente en la sección F3:\n\n```\nspan                                      [295,416  116x30]   ← wrapper\n  button \"Comprar ahora\"  ⊘covered by generic\n  span                                    [295,416  116x30]   ← overlay, MISMA geometría exacta\n```\n\nEl `<span>` hermano del botón tiene exactamente la misma posición y tamaño (295,416 · 116x30) y está después en el orden del DOM, por lo que queda arriba en el stacking order y se come todos los eventos de puntero. El click llega al span, nunca al `<button>`, así que el handler de compra jamás se dispara. Por eso el propio inspector marca el botón como `⊘covered by generic`.\n\nComparado con los botones que sí andan (ej. F7 \"Agregar item\", o F4 \"Guardar borrador\"), esos están sueltos en la sección, sin wrapper ni overlay encima.\n\n## Por qué no lo pude sortear\nComo el overlay cubre el botón píxel por píxel, no queda ninguna zona clickeable libre (probé también la esquina superior izquierda). Un click en cualquier punto del botón cae sobre el span.\n\n## Aclaración\nDetecté dos cosas más que conviene mencionar aunque no eran parte del pedido: los clicks en \"Actualizar datos\" (F1) y \"Guardar borrador\" (F4) tampoco produjeron ningún cambio visible (\"Última sincronización: hace un rato\" y \"Borradores guardados: 0\" quedaron igual). No investigué la causa de esos dos, pero no comparten el overlay de F3, así que sería un problema distinto.\n\n## Sugerencia de fix para F3\nQuitar el span superpuesto, o darle `pointer-events: none`, para que el click llegue al `<button>`.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 1,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 2,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "take_screenshot",
+        "channel": "pixels"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "click_at",
+        "channel": "pixels"
+      },
+      {
+        "turn": 6,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      },
+      {
+        "turn": 8,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 9,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 10,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 11,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 12,
+        "tool": "read_page_text",
+        "channel": "pixels"
+      },
+      {
+        "turn": 13,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 13,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 14,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 15,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 16,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 17,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 17,
+        "tool": "click_at",
+        "channel": "pixels"
+      },
+      {
+        "turn": 18,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 19,
+        "tool": "check_effect",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 20,
+    "tokensIn": 163779,
+    "tokensOut": 4387,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1447,
+        "out": 102,
+        "cumIn": 1447
+      },
+      {
+        "turn": 2,
+        "in": 3710,
+        "out": 187,
+        "cumIn": 5157
+      },
+      {
+        "turn": 3,
+        "in": 3948,
+        "out": 105,
+        "cumIn": 9105
+      },
+      {
+        "turn": 4,
+        "in": 5510,
+        "out": 187,
+        "cumIn": 14615
+      },
+      {
+        "turn": 5,
+        "in": 5945,
+        "out": 288,
+        "cumIn": 20560
+      },
+      {
+        "turn": 6,
+        "in": 6273,
+        "out": 79,
+        "cumIn": 26833
+      },
+      {
+        "turn": 7,
+        "in": 6469,
+        "out": 163,
+        "cumIn": 33302
+      },
+      {
+        "turn": 8,
+        "in": 7643,
+        "out": 631,
+        "cumIn": 40945
+      },
+      {
+        "turn": 9,
+        "in": 8325,
+        "out": 58,
+        "cumIn": 49270
+      },
+      {
+        "turn": 10,
+        "in": 8430,
+        "out": 78,
+        "cumIn": 57700
+      },
+      {
+        "turn": 11,
+        "in": 8616,
+        "out": 163,
+        "cumIn": 66316
+      },
+      {
+        "turn": 12,
+        "in": 8830,
+        "out": 28,
+        "cumIn": 75146
+      },
+      {
+        "turn": 13,
+        "in": 9869,
+        "out": 233,
+        "cumIn": 85015
+      },
+      {
+        "turn": 14,
+        "in": 10367,
+        "out": 94,
+        "cumIn": 95382
+      },
+      {
+        "turn": 15,
+        "in": 10510,
+        "out": 49,
+        "cumIn": 105892
+      },
+      {
+        "turn": 16,
+        "in": 10591,
+        "out": 27,
+        "cumIn": 116483
+      },
+      {
+        "turn": 17,
+        "in": 10969,
+        "out": 777,
+        "cumIn": 127452
+      },
+      {
+        "turn": 18,
+        "in": 11937,
+        "out": 154,
+        "cumIn": 139389
+      },
+      {
+        "turn": 19,
+        "in": 12142,
+        "out": 57,
+        "cumIn": 151531
+      },
+      {
+        "turn": 20,
+        "in": 12248,
+        "out": 927,
+        "cumIn": 163779
+      }
+    ],
+    "wallMs": 111937
+  }
+]

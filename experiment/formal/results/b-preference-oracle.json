@@ -1,0 +1,846 @@
+[
+  {
+    "task": "m1",
+    "kind": "extracción acumulada",
+    "arm": "oracle",
+    "answer": "Top 5 historias más comentadas de la portada de https://news.ycombinator.com:\n\n| # | Título | Comentarios |\n|---|--------|-------------|\n| 1 | Elevators (john.fun) | 373 |\n| 2 | Ten advances in mathematics and theoretical computer science (openai.com) | 191 |\n| 3 | Software for One (ajwaxman.com) | 190 |\n| 4 | How to Exist (raptitude.com) | 181 |\n| 5 | qm – Multiplayer agent harness for work (github.com/yc-software) | 143 |\n\nNotas: revisé los 30 ítems de la portada; el puesto 14 es un aviso de contratación (Kontigo, YC S24) sin comentarios, y tres historias aún no tienen comentarios (\"discuss\"). La sexta más comentada quedó en 133 comentarios, por lo que el corte del top 5 es claro. Los datos corresponden al momento de la consulta y pueden cambiar.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 2,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "find_element",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 9,
+    "tokensIn": 50073,
+    "tokensOut": 5967,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1208,
+        "out": 74,
+        "cumIn": 1208
+      },
+      {
+        "turn": 2,
+        "in": 1998,
+        "out": 69,
+        "cumIn": 3206
+      },
+      {
+        "turn": 3,
+        "in": 2478,
+        "out": 145,
+        "cumIn": 5684
+      },
+      {
+        "turn": 4,
+        "in": 2668,
+        "out": 374,
+        "cumIn": 8352
+      },
+      {
+        "turn": 5,
+        "in": 3939,
+        "out": 1456,
+        "cumIn": 12291
+      },
+      {
+        "turn": 6,
+        "in": 6839,
+        "out": 982,
+        "cumIn": 19130
+      },
+      {
+        "turn": 7,
+        "in": 8749,
+        "out": 1078,
+        "cumIn": 27879
+      },
+      {
+        "turn": 8,
+        "in": 10539,
+        "out": 1016,
+        "cumIn": 38418
+      },
+      {
+        "turn": 9,
+        "in": 11655,
+        "out": 773,
+        "cumIn": 50073
+      }
+    ],
+    "wallMs": 94850
+  },
+  {
+    "task": "m2",
+    "kind": "formulario + validación",
+    "arm": "oracle",
+    "answer": "**No, la suscripción NO se agregó a ninguna lista.** Escribí \"sin-arroba\" en el campo Email y hice click en \"Suscribirme\", y el click no produjo ningún efecto observable.\n\n**Cómo lo comprobé (4 verificaciones independientes):**\n\n1. **Comparación del DOM antes/después del click:** la única diferencia detectada fue el movimiento del ticker del banner (\"ofertas · envíos · novedades…\"), que es una animación continua e independiente de mi acción, más un cambio de estado del propio campo Email (su valor). No apareció ningún elemento nuevo.\n\n2. **Búsqueda de un item agregado:** verifiqué explícitamente la expectativa \"se agregó un listitem\" y falló (`absent`). No se creó ninguna fila ni entrada.\n\n3. **Búsqueda del texto ingresado:** busqué \"sin-arroba\" en toda la página y **no hay ninguna coincidencia**. El valor no quedó reflejado en ningún lugar del documento.\n\n4. **Reconsulta diferida:** volví a observar la página después del click para descartar una actualización asíncrona (fetch/timeout) y no hubo cambios nuevos.\n\n**Dos aclaraciones importantes sobre el alcance de esta conclusión:**\n\n- **En la sección F2 no existe ninguna lista de suscriptores.** Esa sección contiene solamente el título, el campo Email y el botón \"Suscribirme\". Las únicas listas de la página pertenecen a F5 (\"fila inicial\") y F8 (\"listado inicial\"), que no tienen relación con el formulario. Es decir, la premisa de \"la lista\" de suscripciones no tiene un destino visible donde pudiera haberse agregado.\n- **Tampoco apareció ningún mensaje de confirmación ni de error de validación** (busqué textos tipo \"válido\"/\"inválido\" y no hay coincidencias). Así que la página no informa al usuario por qué no pasó nada, pese a que \"sin-arroba\" no es un email válido (no tiene \"@\").\n\nLo esperable sería un mensaje de validación visible; el comportamiento real es un fallo silencioso. Una salvedad: solo puedo constatar el estado observable en el navegador, así que no puedo descartar al 100% que se haya registrado algo en un servidor sin reflejarlo en la interfaz; pero en la UI no hay evidencia alguna de que la suscripción se haya agregado.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 1,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 2,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 2,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "type_text",
+        "channel": "neutral"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 9,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 9,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 10,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 11,
+        "tool": "check_effect",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 12,
+    "tokensIn": 39393,
+    "tokensOut": 2866,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1231,
+        "out": 103,
+        "cumIn": 1231
+      },
+      {
+        "turn": 2,
+        "in": 2196,
+        "out": 148,
+        "cumIn": 3427
+      },
+      {
+        "turn": 3,
+        "in": 2557,
+        "out": 101,
+        "cumIn": 5984
+      },
+      {
+        "turn": 4,
+        "in": 2676,
+        "out": 27,
+        "cumIn": 8660
+      },
+      {
+        "turn": 5,
+        "in": 2819,
+        "out": 78,
+        "cumIn": 11479
+      },
+      {
+        "turn": 6,
+        "in": 2947,
+        "out": 27,
+        "cumIn": 14426
+      },
+      {
+        "turn": 7,
+        "in": 3090,
+        "out": 231,
+        "cumIn": 17516
+      },
+      {
+        "turn": 8,
+        "in": 3533,
+        "out": 237,
+        "cumIn": 21049
+      },
+      {
+        "turn": 9,
+        "in": 3878,
+        "out": 448,
+        "cumIn": 24927
+      },
+      {
+        "turn": 10,
+        "in": 4574,
+        "out": 229,
+        "cumIn": 29501
+      },
+      {
+        "turn": 11,
+        "in": 4851,
+        "out": 76,
+        "cumIn": 34352
+      },
+      {
+        "turn": 12,
+        "in": 5041,
+        "out": 1161,
+        "cumIn": 39393
+      }
+    ],
+    "wallMs": 72657
+  },
+  {
+    "task": "m3",
+    "kind": "navegación profunda + fold",
+    "arm": "oracle",
+    "answer": "Llegué correctamente. Encontré el enlace \"Mar del Plata\" dentro del artículo https://es.wikipedia.org/wiki/Argentina (apuntaba a /wiki/Mar_del_Plata), lo abrí y la página cargada corresponde al artículo de esa ciudad (título \"Mar del Plata\", con secciones como Historia, Fundación de Mar del Plata y creación del Partido de General Pueyrredon, Demografía y Transporte urbano).\n\nURL final: https://es.wikipedia.org/wiki/Mar_del_Plata",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 1,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 2,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 5,
+    "tokensIn": 13677,
+    "tokensOut": 903,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1219,
+        "out": 133,
+        "cumIn": 1219
+      },
+      {
+        "turn": 2,
+        "in": 2384,
+        "out": 78,
+        "cumIn": 3603
+      },
+      {
+        "turn": 3,
+        "in": 2522,
+        "out": 111,
+        "cumIn": 6125
+      },
+      {
+        "turn": 4,
+        "in": 2783,
+        "out": 109,
+        "cumIn": 8908
+      },
+      {
+        "turn": 5,
+        "in": 4769,
+        "out": 472,
+        "cumIn": 13677
+      }
+    ],
+    "wallMs": 22727
+  },
+  {
+    "task": "m4",
+    "kind": "ruido ambiental / verificación",
+    "arm": "oracle",
+    "answer": "No, la aplicación NO cambió de estado al hacer click en \"Actualizar datos\".\n\nQué hice y qué observé:\n1. Estado inicial del panel F1: el botón \"Actualizar datos\" con el texto \"Última sincronización: hace un rato\".\n2. Hice click en el botón. La observación inmediata posterior no reportó ningún cambio.\n3. Verifiqué directamente el texto del panel: sigue diciendo \"Última sincronización: hace un rato\" (sin timestamp, sin spinner, sin mensaje de éxito/error, sin toast).\n4. Repetí el click y la comprobación de cambios dio FAIL (esperaba cambio, resultado: sin cambios).\n\nDescarté explícitamente el ruido visual:\n- El único \"cambio\" detectado en toda la página fue el desplazamiento del marquee \"ofertas · envíos · novedades\" (animación) y el avance del reloj del banner (12:15:22 → 12:15:39 → 12:15:44). Ambos son movimiento autónomo, no estado.\n\nNota importante sobre la validez de la prueba: el reloj avanzando confirma que la página está viva y que mis observaciones sí capturan cambios de texto cuando ocurren. Es decir, la ausencia de cambio no es un falso negativo de la herramienta: el botón realmente es inerte (no actualiza la fecha de sincronización ni muestra feedback alguno). Esto parece un bug del botón \"Actualizar datos\".\n\nLa URL tampoco cambió (siguió en http://127.0.0.1:8399/app.html).",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 2,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 9,
+        "tool": "check_effect",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 10,
+    "tokensIn": 28560,
+    "tokensOut": 2058,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1238,
+        "out": 82,
+        "cumIn": 1238
+      },
+      {
+        "turn": 2,
+        "in": 2087,
+        "out": 91,
+        "cumIn": 3325
+      },
+      {
+        "turn": 3,
+        "in": 2311,
+        "out": 155,
+        "cumIn": 5636
+      },
+      {
+        "turn": 4,
+        "in": 2517,
+        "out": 27,
+        "cumIn": 8153
+      },
+      {
+        "turn": 5,
+        "in": 2592,
+        "out": 194,
+        "cumIn": 10745
+      },
+      {
+        "turn": 6,
+        "in": 2897,
+        "out": 101,
+        "cumIn": 13642
+      },
+      {
+        "turn": 7,
+        "in": 3099,
+        "out": 272,
+        "cumIn": 16741
+      },
+      {
+        "turn": 8,
+        "in": 3557,
+        "out": 482,
+        "cumIn": 20298
+      },
+      {
+        "turn": 9,
+        "in": 4090,
+        "out": 49,
+        "cumIn": 24388
+      },
+      {
+        "turn": 10,
+        "in": 4172,
+        "out": 605,
+        "cumIn": 28560
+      }
+    ],
+    "wallMs": 47800
+  },
+  {
+    "task": "m5",
+    "kind": "SPA + hidratación",
+    "arm": "oracle",
+    "answer": "## Respuesta: la navegación quedó a medias ⚠️\n\nHice click en **\"Ver detalle\"** (sección *F8 · Ir a detalle (SPA)*) y esto es lo que pasó:\n\n**✅ Lo que sí cambió — la URL**\n- Antes: `http://127.0.0.1:8399/app.html`\n- Después: `http://127.0.0.1:8399/detalle/42`\n\n**❌ Lo que no cambió — el contenido**\n- Donde debería estar el detalle aparece solo un placeholder **\"cargando…\"**, y ahí se quedó: hice varias observaciones sucesivas y el estado ya está estable (lo único que se sigue moviendo es la marquesina del banner, que es una animación decorativa).\n- La página sigue siendo el panel original: el encabezado **\"Panel de pruebas\"** y todas las secciones **F1 a F8** continúan presentes en el DOM, incluido el propio botón \"Ver detalle\".\n- No apareció ningún contenido propio de una vista de detalle (ni título, ni datos del ítem 42).\n\n**Diagnóstico extra**\nCargué `http://127.0.0.1:8399/detalle/42` directamente en el navegador y el servidor devuelve otra vez el mismo panel completo (F1–F8), sin ninguna vista de detalle. O sea que la ruta no tiene render propio ni del lado cliente ni del lado servidor.\n\n**Conclusión**\nEs un `pushState` \"huérfano\": el router de la SPA actualizó la barra de direcciones y montó el spinner, pero la vista de destino nunca se resolvió. Clásico caso donde validar solo por URL daría un falso positivo — la URL dice `/detalle/42`, pero el usuario sigue viendo el panel con un \"cargando…\" eterno.\n\nUn detalle a tener en cuenta: al hacer la primera verificación, el chequeo automático de \"hubo cambios\" dio **falso** aun habiendo cambiado la URL, justamente porque el contenido real nunca se reemplazó. Por eso me apoyé en la inspección directa del DOM en lugar de confiar en el cambio de URL.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 2,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "navigate",
+        "channel": "neutral"
+      }
+    ],
+    "turns": 9,
+    "tokensIn": 27322,
+    "tokensOut": 2198,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1209,
+        "out": 79,
+        "cumIn": 1209
+      },
+      {
+        "turn": 2,
+        "in": 2055,
+        "out": 92,
+        "cumIn": 3264
+      },
+      {
+        "turn": 3,
+        "in": 2200,
+        "out": 149,
+        "cumIn": 5464
+      },
+      {
+        "turn": 4,
+        "in": 2682,
+        "out": 116,
+        "cumIn": 8146
+      },
+      {
+        "turn": 5,
+        "in": 2849,
+        "out": 191,
+        "cumIn": 10995
+      },
+      {
+        "turn": 6,
+        "in": 3327,
+        "out": 322,
+        "cumIn": 14322
+      },
+      {
+        "turn": 7,
+        "in": 3842,
+        "out": 58,
+        "cumIn": 18164
+      },
+      {
+        "turn": 8,
+        "in": 4004,
+        "out": 380,
+        "cumIn": 22168
+      },
+      {
+        "turn": 9,
+        "in": 5154,
+        "out": 811,
+        "cumIn": 27322
+      }
+    ],
+    "wallMs": 45528
+  },
+  {
+    "task": "m6",
+    "kind": "recuperación de acción bloqueada",
+    "arm": "oracle",
+    "answer": "No funcionó: el carrito sigue en \"Carrito: 0 items\".\n\nQué hice:\n1. Abrí http://127.0.0.1:8399/app.html. Estado inicial de la sección \"F3 · Comprar\": \"Carrito: 0 items\".\n2. Hice click en el botón \"Comprar ahora\" (el tool confirma el click en las coordenadas (353,431), dentro de los límites del botón).\n3. Verifiqué el resultado: el único cambio detectado en la página fue el movimiento del ticker del banner (\"ofertas · envíos · novedades…\"), que se anima solo. El texto del carrito no cambió.\n4. Reintenté el click una segunda vez y recargué la página para probar de nuevo: mismo resultado, \"Carrito: 0 items\".\n\nPor qué no funciona:\nEl botón \"Comprar ahora\" está tapado por otro elemento. En el mapa de la página aparece marcado de forma consistente como `n_1rl button \"Comprar ahora\" ⊘covered by generic`, es decir, hay un contenedor/overlay (probablemente transparente o con z-index superior) que se superpone al botón y captura el evento de puntero. El click se dispara sobre el overlay y nunca llega al handler del botón, por lo que el contador del carrito nunca se incrementa. No es un problema de que el botón esté deshabilitado (no figura como disabled) ni de JavaScript roto en general: como control hice click en \"Agregar item\" (F7), que sí no está tapado, y la página respondió con un cambio real. El defecto está localizado en el botón de compra, bloqueado por ese elemento superpuesto.\n\nRecomendación para el fix: revisar el z-index/posicionamiento (o agregar `pointer-events: none`) del elemento que se superpone al área [295,416]–[411,446] de la sección F3.",
+    "steps": [
+      {
+        "turn": 1,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 2,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 3,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 3,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 4,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 5,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "observe_page",
+        "channel": "oracle"
+      },
+      {
+        "turn": 6,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 7,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 8,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 9,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 10,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 10,
+        "tool": "find_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 11,
+        "tool": "navigate",
+        "channel": "neutral"
+      },
+      {
+        "turn": 12,
+        "tool": "click_element",
+        "channel": "oracle"
+      },
+      {
+        "turn": 13,
+        "tool": "check_effect",
+        "channel": "oracle"
+      },
+      {
+        "turn": 14,
+        "tool": "find_element",
+        "channel": "oracle"
+      }
+    ],
+    "turns": 15,
+    "tokensIn": 56884,
+    "tokensOut": 2787,
+    "perTurn": [
+      {
+        "turn": 1,
+        "in": 1222,
+        "out": 39,
+        "cumIn": 1222
+      },
+      {
+        "turn": 2,
+        "in": 1312,
+        "out": 131,
+        "cumIn": 2534
+      },
+      {
+        "turn": 3,
+        "in": 2210,
+        "out": 130,
+        "cumIn": 4744
+      },
+      {
+        "turn": 4,
+        "in": 2616,
+        "out": 100,
+        "cumIn": 7360
+      },
+      {
+        "turn": 5,
+        "in": 2767,
+        "out": 79,
+        "cumIn": 10127
+      },
+      {
+        "turn": 6,
+        "in": 2963,
+        "out": 118,
+        "cumIn": 13090
+      },
+      {
+        "turn": 7,
+        "in": 3332,
+        "out": 243,
+        "cumIn": 16422
+      },
+      {
+        "turn": 8,
+        "in": 3731,
+        "out": 208,
+        "cumIn": 20153
+      },
+      {
+        "turn": 9,
+        "in": 3990,
+        "out": 57,
+        "cumIn": 24143
+      },
+      {
+        "turn": 10,
+        "in": 4093,
+        "out": 284,
+        "cumIn": 28236
+      },
+      {
+        "turn": 11,
+        "in": 4626,
+        "out": 235,
+        "cumIn": 32862
+      },
+      {
+        "turn": 12,
+        "in": 5628,
+        "out": 331,
+        "cumIn": 38490
+      },
+      {
+        "turn": 13,
+        "in": 6008,
+        "out": 49,
+        "cumIn": 44498
+      },
+      {
+        "turn": 14,
+        "in": 6089,
+        "out": 103,
+        "cumIn": 50587
+      },
+      {
+        "turn": 15,
+        "in": 6297,
+        "out": 680,
+        "cumIn": 56884
+      }
+    ],
+    "wallMs": 63776
+  }
+]
