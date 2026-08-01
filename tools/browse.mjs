@@ -116,27 +116,9 @@ try {
   // standalone install: prebuilt bundle written by install-global.mjs
   SDK = await readFile(join(HERE, 'sdk.js'), 'utf8')
 } catch {
-  const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
-  const entry = join(HERE, 'sdk-entry.mjs')
-  await writeFile(entry, `import { observe, observeChunked, buildUi, agentOracle, redactString } from '${join(REPO, 'packages/agent/src/plugin.js')}'
-import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
-import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
-import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'
-window.__agentObserve = observe
-window.__agentObserveChunked = observeChunked
-window.__agentBuildUi = buildUi
-window.__agentOracle = agentOracle
-window.__agentRedact = (s) => redactString(s, window.__SD_PRIVACY || null)
-window.__snapdom = snapdom
-window.__snapdomVideo = videoExport
-window.__snapdomGif = gifExport
-`)
-  SDK = (await esbuild.build({
-    entryPoints: [entry], bundle: true, minify: true, format: 'iife', write: false,
-    platform: 'browser', absWorkingDir: REPO,
-    // the official plugins import the published name; point it at the live source
-    alias: { '@zumer/snapdom': join(REPO, 'src/api/snapdom.js') },
-  })).outputFiles[0].text
+  // dev mode: build from the repo tree. Same definition the installer uses — the two
+  // used to be separate copies and drifted (see sdk-bundle.mjs).
+  SDK = await (await import(join(REPO, 'packages/agent/tools/sdk-bundle.mjs'))).buildSdk(REPO)
 }
 
 // ── Policy: the verbs become an actual permission boundary, not just intent ──────────

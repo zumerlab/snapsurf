@@ -214,3 +214,8 @@ console.log(`| Screenshot (pixel-diff) | ${p.ok}/${rows.length} | **${p.fg}** | 
 
 await writeFile(join(AGENT, 'experiment/results/c-false-green.json'), JSON.stringify({ rows, tally: { oracle: o, intentAssert: oi, abAsIs: a1, abStripped: a2, pixel: p } }, null, 2) + '\n')
 console.log('\n→ experiment/results/c-false-green.json')
+// `srv.close()` stops accepting but keeps the process alive while a keep-alive socket
+// lingers: the run finished and wrote its results, then hung for >10 min looking
+// exactly like a stuck benchmark. Drop the sockets and exit on the result.
+srv.closeAllConnections?.()
+process.exit(0)

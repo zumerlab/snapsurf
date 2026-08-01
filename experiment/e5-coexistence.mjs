@@ -110,3 +110,9 @@ await writeFile(join(AGENT, 'experiment/results/e5-coexistence.json'),
   JSON.stringify({ sdkKB: +(SDK.length / 1024).toFixed(0), injected, theirDiff, ourDiff, theyShowClock, weShowClock, weCaughtState }, null, 2) + '\n')
 srv.close()
 console.log('\n→ experiment/results/e5-coexistence.json')
+
+// The fixture server keeps the process alive on a lingering keep-alive socket:
+// the run finishes, writes its results, and then hangs looking like a stuck benchmark
+// (measured: >10 min on a run whose real work took 43 s). Exit on the result.
+srv.closeAllConnections?.()
+process.exit(0)

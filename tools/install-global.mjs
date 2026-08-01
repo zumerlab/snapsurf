@@ -23,26 +23,9 @@ const HOME = process.env.HOME
 const DEST = join(HOME, '.claude', 'snapdom-agent')
 const SKILLDIR = join(HOME, '.claude', 'skills', 'agent-browse')
 
-const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
-const SDK = (await esbuild.build({
-  stdin: {
-    contents: `import { observe, observeChunked, buildUi, agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
-import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
-import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
-import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'
-window.__agentObserve = observe
-window.__agentObserveChunked = observeChunked
-window.__agentBuildUi = buildUi
-window.__agentOracle = agentOracle
-window.__snapdom = snapdom
-window.__snapdomVideo = videoExport
-window.__snapdomGif = gifExport
-`,
-    resolveDir: REPO, loader: 'js',
-  },
-  bundle: true, minify: true, format: 'iife', write: false, platform: 'browser',
-  alias: { '@zumer/snapdom': join(REPO, 'src/api/snapdom.js') },
-})).outputFiles[0].text
+// Same bundle definition the daemon builds in dev mode — one source, no drift.
+const { buildSdk } = await import(join(HERE, 'sdk-bundle.mjs'))
+const SDK = await buildSdk(REPO)
 
 await mkdir(DEST, { recursive: true })
 await mkdir(join(DEST, 'logs'), { recursive: true })

@@ -220,3 +220,9 @@ const costIn = results.reduce((s, r) => s + r.tokensIn, 0) / 1e6 * 5
 const costOut = results.reduce((s, r) => s + r.tokensOut, 0) / 1e6 * 25
 console.log(`\ncosto estimado de esta corrida: $${(costIn + costOut).toFixed(2)} (${MODEL})`)
 console.log(`→ results/b-preference-${ARM}.json`)
+
+// The fixture server keeps the process alive on a lingering keep-alive socket:
+// the run finishes, writes its results, and then hangs looking like a stuck benchmark
+// (measured: >10 min on a run whose real work took 43 s). Exit on the result.
+srv.closeAllConnections?.()
+process.exit(0)

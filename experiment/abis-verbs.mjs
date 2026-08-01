@@ -16,6 +16,12 @@ import { createServer } from 'node:http'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
+// `--daemon <path>`: run the same smoke against ANOTHER install of the daemon. The
+// global install (~/.claude/snapdom-agent) was never exercised by any gate, and that
+// is exactly where the sdk.js bundle went stale and broke find/text/assert.
+const dArg = process.argv.indexOf('--daemon')
+const BROWSE = dArg > -1 && process.argv[dArg + 1] ? process.argv[dArg + 1] : join(AGENT, 'tools/browse.mjs')
+const TAG = dArg > -1 ? 'global' : 'repo'
 const TMP = '/tmp/snapdom-abis'
 await rm(TMP, { recursive: true, force: true })
 await mkdir(TMP, { recursive: true })
@@ -52,7 +58,8 @@ const srv = createServer(async (req, res) => {
 await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
 const URL_ = `http://127.0.0.1:${PORT}/page.html`
 
-const daemon = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'serve'], { stdio: 'ignore' })
+console.log(`daemon under test: ${BROWSE}`)
+const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
 const cmd = (c, args = []) => fetch('http://127.0.0.1:8377/cmd', {
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true }),
@@ -141,13 +148,40 @@ const abortedSize = await sizeOf(join(TMP, 'aborted.gif'))
 check('rec', 'una navegación durante la grabación NO rompe el daemon', !!(await cmd('status')).ok,
   `archivo: ${abortedSize} bytes · mensaje: ${abortMsg.slice(0, 60).replace(/\n/g, ' ')}`)
 
+// ── text / redact: los verbos que dependen de window.__agentRedact ───────────────────
+// Un bundle sin `redactString` deja `__agentRedact` undefined y estos tiran
+// "is not a function" DENTRO de la página: el daemon arranca, `open` funciona, y solo
+// se rompen find/text/assert. Es el fallo mudo que rompió el install global.
+await cmd('open', [URL_])
+const fTitle = await cmd('find', ['Producto destacado'])
+check('find', 'find responde sin excepción en la página', !!fTitle.ok && /n_\w+/.test(fTitle.text || ''),
+  (fTitle.text || fTitle.error || '').slice(0, 70).replace(/\n/g, ' '))
+const titleId = (fTitle.text || '').match(/n_\w+/)?.[0]
+if (titleId) {
+  const t = await cmd('text', [titleId])
+  check('text', 'text devuelve el texto del nodo', !!t.ok && /Producto/.test(t.text || ''),
+    (t.text || t.error || '').slice(0, 70).replace(/\n/g, ' '))
+}
+const setRules = await cmd('redact', ['Producto destacado'])
+check('redact', 'las reglas se aceptan en runtime', !!setRules.ok, (setRules.text || setRules.error || '').slice(0, 60))
+const redacted = await cmd('open', [URL_])
+const leaks = /Producto destacado/.test(redacted.text || '')
+check('redact', 'el término no aparece en el digest', !!redacted.ok && !leaks,
+  leaks ? 'FUGA: el término salió literal' : 'sin fuga')
+check('redact', '[redacted] visible (no descarte silencioso)', /\[redacted\]/.test(redacted.text || ''),
+  (redacted.text || '').includes('[redacted]') ? 'placeholder presente' : 'no aparece el placeholder')
+const probe = await cmd('assert', [JSON.stringify({ exists: 'Producto destacado' })])
+check('redact', 'probing de un término oculto falla fuerte', /blocked by privacy rule/.test(probe.text || ''),
+  (probe.text || '').split('\n')[1]?.slice(0, 70) || '')
+await cmd('redact', ['off'])
+
 // ── cierre ───────────────────────────────────────────────────────────────────────────
-await new Promise((r) => { const s = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
+await new Promise((r) => { const s = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
 try { daemon.kill() } catch { /* ya murió */ }
 srv.close()
 
 const failed = results.filter((r) => !r.pass)
 console.log(`\n${results.length - failed.length}/${results.length} checks OK`)
 if (failed.length) console.log('FALLAN: ' + failed.map((f) => `[${f.verb}] ${f.name}`).join(' · '))
-await writeFile(join(AGENT, 'experiment/results/abis-verbs.json'), JSON.stringify(results, null, 2) + '\n')
+await writeFile(join(AGENT, `experiment/results/abis-verbs${TAG === 'repo' ? '' : '-' + TAG}.json`), JSON.stringify(results, null, 2) + '\n')
 process.exit(failed.length ? 1 : 0)
