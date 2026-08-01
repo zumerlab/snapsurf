@@ -372,6 +372,8 @@ Corrido de forma autónoma en una sesión. Todo determinista, sin gasto de API.
 | **A-bis** verbos sin cobertura | ✅ 13/13 + 2 hallazgos (ranking engaña, doc de `rec` desactualizada) | `results/abis-verbs.md` |
 | **C** false-green diferencial | ✅ **0 vs 6 falsos verdes sobre 8** (criterio pedía ≥30 pts, dio 75) | `results/c-false-green.md` |
 | **E5** coexistencia | ✅ **el oráculo corre DENTRO de agent-browser** por su `eval --stdin` | `results/e5-coexistence.md` |
+| **B** preferencia revelada | ✅ **el modelo elige el oráculo en 78% de los pasos** sin skill que sesgue; tokens 5× | `results/b-preference.md` |
+| **D** benchmark de terceros | ⚠️ **28% en tareas ajenas vs 99% en las nuestras**; brazo de píxeles incompleto | `results/d-third-party.md` |
 
 ### Los tres resultados que cambian el pitch
 
@@ -384,6 +386,14 @@ Corrido de forma autónoma en una sesión. Todo determinista, sin gasto de API.
    confirmación medida del reencuadre a **runtime de postcondiciones**.
 3. **agent-browser puede ser canal, no rival.** 45 KB por su `eval` y su flujo queda
    intacto.
+4. **El modelo prefiere el oráculo cuando puede elegir** — 78% de los pasos, en las seis
+   tareas, sin nada que lo sesgue. Pero también usa píxeles para orientarse: apoya el
+   híbrido, no el reemplazo.
+5. **Nuestras tareas eran fáciles, y ahora está medido.** 99% en nuestro benchmark vs
+   **28% en tareas de terceros** (Mind2Web-Live, sus key nodes). El 119/120 mide el
+   canal en tareas alcanzables, no capacidad. Y en ese corpus ajeno **no hay evidencia
+   de que el canal semántico mejore el éxito** — la ventaja medida está en costo y
+   verificación, no en capacidad.
 
 ### Lo que este ciclo corrigió de nuestras propias afirmaciones
 
@@ -396,12 +406,15 @@ Corrido de forma autónoma en una sesión. Todo determinista, sin gasto de API.
 
 ### Higiene de medición
 
-Cinco bugs de método propios, todos encontrados y corregidos antes de creer ningún
+Siete bugs de método propios, todos encontrados y corregidos antes de creer ningún
 número: `diffPixels` mal invocado (0,000% en todo), click programático que atravesaba
 el overlay, click por coordenadas fuera del viewport, asimetría `eval` vs click real
 contra el rival, y un juez que medía "¿mutó algo?" en vez de "¿se cumplió la
-postcondición?". Más el `execFile`+`input` de E5. **Ningún resultado de este ciclo
-sobrevivió a su primera corrida sin revisión.**
+postcondición?". Más el `execFile`+`input` de E5 y, en la Fase D, un `catch { break }`
+que silenciaba errores de API y hacía leer cinco episodios muertos como "0 key nodes"
+legítimos. **Ningún resultado de este ciclo sobrevivió a su primera corrida sin
+revisión, y el fallo mudo apareció tres veces en mi propio harness** — el mismo patrón
+que el producto persigue en las páginas.
 
 ## 3. Orden propuesto y criterio de corte
 
