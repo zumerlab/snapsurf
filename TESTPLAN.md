@@ -55,11 +55,15 @@ puede confirmar lo que ya creemos no es un test, es una demo.
 | Fail-loud del assert | ✅ tests | ✅ smoke | ✅ codex-assert | ✅ gate | — |
 | Privacidad / redacción | ✅ 8 tests | ✅ smoke | ✅ smoke | ✅ gate ×5 | — |
 | Tarea real end-to-end | — | ✅ benchmark | ✅ benchmark | ✅ rondas panel | ⚠️ uso diario |
-| **Paridad entre superficies** | ❌ **nadie** | ❌ | ❌ | ❌ | ❌ |
+| **Paridad entre superficies** | ✅ Fase A | ✅ | ✅ | ✅ | — |
+| **Verbos rec/parent/snap/cp/map** | — | ❌ **cero** | ❌ cero | — | ❌ |
 | **Preferencia del LLM** | — | ❌ sesgado por skill | ❌ | ❌ | ❌ |
 | **vs frameworks reales** | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-Las tres filas en negrita son este plan.
+Las filas en negrita son este plan. La de verbos huérfanos se verificó con matcher
+sobre `test/`, `experiment/`, `companion/gate.mjs` y `demo-qa/`: `rec` y `parent` no
+aparecen en ningún lado, y `snap`/`cp`/`map` solo en `mcp/server.mjs`, que es la
+implementación y no una prueba.
 
 ---
 
@@ -124,6 +128,109 @@ Caveats declarados (el resultado vale menos de lo que parece si no se dicen):
   consistencia entre vías, **no** corrección en páginas nuevas.
 - `navigated` es contrato de las superficies que rastrean URL; el SDK entrega el diff
   y no participa. Es diseño, no hueco.
+
+---
+
+## Fase A-bis — Features con cobertura CERO
+
+**Hueco detectado en review externo** (verificado con matcher sobre `test/`,
+`experiment/`, `companion/gate.mjs`, `demo-qa/`): los verbos `rec`, `parent`,
+`snap`, `cp` y `map` **no aparecen en ningún gate, test ni benchmark**. Solo figuran
+en `mcp/server.mjs`, que es la implementación, no una prueba. El plan original cubría
+la familia observar/verificar e ignoraba una familia entera.
+
+### Pregunta de producto ANTES de invertir tests en grabación
+
+`rec` (GIF89a en JS puro + MediaRecorder, plugins públicos de snapdom, cero codecs
+externos) no tiene consumidor definido. **Un LLM no mira un GIF cuadro por cuadro a un
+costo razonable.** Si el consumidor es humano, el lugar natural de la grabación es
+**evidencia adjunta a una aserción que falló** — un `assert` rojo que entrega 3
+segundos de lo que realmente pasó. Eso encaja exactamente con el encuadre de "runtime
+de postcondiciones" y además es dogfooding real de los plugins públicos (a diferencia
+del video de Playwright, que depende de ffmpeg).
+
+**Decisión a tomar antes de A-bis-2**: o `rec` se integra al fallo del assert (y
+entonces se testea como parte del contrato), o queda como utilidad de demo (y entonces
+alcanza con un smoke). No testear en profundidad algo cuyo consumidor no está definido.
+
+### A-bis-1 · Smoke de los verbos huérfanos (barato, primero)
+
+Por cada verbo: que corra en el bundle actual, que su salida tenga la forma
+documentada, y el caso borde conocido. En particular:
+- `rec`: formatos (gif/mp4/webm) y tamaños resultantes, límite de duración, overhead
+  sobre el walk, `rec <id>` scopeado a un elemento vs body, y el caso documentado de
+  que **una navegación aborta la grabación** (el elemento muere con el documento).
+- `snap`: región clipeada vs viewport, y el caso de `content-visibility` (bug ya
+  arreglado — vale como test de regresión).
+- `cp save/list/diff`: que el baseline nombrado sobreviva navegaciones y que `diff`
+  contra un checkpoint viejo dé el mismo resultado que el diff en vivo.
+- `parent` / `map`: que `parent` suba a la card con ≥2 actionables y que `map <offset>`
+  pagine sin perder ni duplicar entradas.
+
+**Falsación**: cualquier verbo que falle en el bundle actual es deuda que estamos
+ofreciendo a consumidores sin saberlo.
+
+---
+
+## Fase E — Head-to-head contra `vercel-labs/agent-browser`
+
+**Hueco detectado en review externo**: es el rival más comparable que existe (misma
+categoría: CLI + daemon + refs + find + MCP, repo público) y hasta ahora solo lo
+miramos a nivel documental en `LANDSCAPE.md`. **Nunca corrimos una sola tarea contra
+él.** Comparar leyendo su README no es comparar.
+
+Verificado para este plan: se instala con `npm install -g agent-browser` (también brew
+y cargo; CLI y daemon en Rust, Chrome for Testing auto-descargado), y expone
+`snapshot`, `diff snapshot | screenshot | url`, `eval`, `screenshot`, `click/fill/type`
+y un protocolo de plugins `agent-browser.plugin.v1` por stdio.
+
+### E1 · Diff determinista, sin modelo (la más importante, primero)
+
+Agregar agent-browser como **cuarto brazo en `bench-qa.mjs`**, junto a pixel-diff y
+a11y-diff, sobre las 19 fixtures con truth manual.
+
+Hipótesis a testear (no a asumir — hay que leer qué hace su `diff snapshot` de verdad,
+no fiarse de nuestras notas): que un diff de texto del árbol de accesibilidad **pierde
+los cambios sin delta textual** (el flip de `disabled`, que es justo el caso que
+pixel-diff también pierde) y que **reporta ruido donde el texto se reordena**.
+
+**Falsación, dicha sin eufemismos**: si su diff saca 19/19, nuestra afirmación central
+se cae y tenemos que ser los primeros en saberlo.
+
+### E2 · Los contratos donde afirmamos ventaja
+
+Reusar las fixtures de `parity.mjs`:
+- **Oclusión**: ¿avisa que el botón quedó tapado *antes* del click? (nosotros:
+  proactivo en el mapa; ellos, según su doc: error reactivo post-click).
+- **Identidad**: ¿sus refs `@eN` sobreviven un remount de React o una lista
+  reordenada? Ellos documentan que **no** son estables; nuestros `n_xxx` los medimos
+  deterministas para el mismo DOM. Hay que verificar ambas mitades.
+- **SPA**: qué reporta tras una navegación blanda.
+
+### E3 · Brazo en los benchmarks que ya existen (cuando corra la Fase C)
+
+Sumar `agent-browser` como brazo en `experiment/formal/` (10 tareas, mismo modelo,
+mismo juez externo) y en la app de fallas silenciosas de la Fase C. Es casi gratis
+porque el harness ya está: solo cambia el runner.
+
+**Higiene**: el dato de Reddit (r/AI_Agents `1uc0bbi`: "the worst one in speed…
+couldn't get simple task done") es **una anécdota de un solo usuario**, no un
+resultado. Sirve como hipótesis a verificar, jamás como cita.
+
+### E4 · Auditoría de dónde ELLOS ganan (la parte que da credibilidad)
+
+Capa de permisos (`--action-policy`, `--confirm-actions`, `--content-boundaries`),
+sesiones y multi-tab, auth vault, dashboard, scoping del snapshot. Sale directo a
+nuestro backlog en vez de barrerse bajo la alfombra. Un head-to-head donde el rival no
+gana nada es un head-to-head mal hecho.
+
+### E5 · Prueba de coexistencia (la jugada estratégica)
+
+Tienen `eval` y protocolo de plugins. **¿Se puede inyectar nuestro SDK dentro de su
+flujo y obtener el diff sin reemplazarlos?** Si funciona, dejan de ser rival y pasan a
+ser **canal de distribución** — que es exactamente la debilidad #1 del `LANDSCAPE`
+(distribución inexistente). Es la fase con mejor relación valor/costo de todo el plan
+si E1 sale bien.
 
 ---
 
@@ -256,13 +363,21 @@ por peso invertido, pero va después de C porque C decide si hay producto.
 ## 3. Orden propuesto y criterio de corte
 
 ```
-A (paridad, $0)  →  C (false-green diferencial, decisivo)  →  B (preferencia)  →  D (terceros)
+A ✅  →  E1 ($0, ataca la afirmación central)  →  A-bis  →  C + E3 (misma corrida)  →  E5  →  B  →  D
+                                                              ↑ E2 y E4 acompañan a E1
 ```
 
-- **A primero** porque es gratis y porque mostrarle a un tercero superficies que no
-  concuerdan entre sí quema credibilidad.
-- **C antes que B** porque C decide si hay producto; B refina el pitch. Si C sale
-  mal, B es un ejercicio sobre algo que no importa.
+- **A primero** (hecha): gratis, y mostrarle a un tercero superficies que no concuerdan
+  entre sí quema credibilidad.
+- **E1 inmediatamente después**: es determinista, sin modelo, cuesta $0 y apunta
+  directo a la afirmación de la que cuelga todo el pitch. Si el diff del rival empata,
+  todo lo demás cambia de sentido — mejor saberlo antes de gastar en C.
+- **A-bis antes de C**: barato, y no tiene sentido llevar a un head-to-head un bundle
+  con verbos que nunca se probaron.
+- **C y E3 en la MISMA corrida**: agent-browser entra como brazo de la app de fallas
+  silenciosas en vez de pagar dos veces el setup.
+- **E5 después de C**: si hay diferenciación demostrada, la coexistencia se vuelve
+  canal de distribución; si no la hay, no hay nada que distribuir.
 - **B antes que D** porque B es más barato y su resultado cambia qué se mide en D.
 
 **Criterio de corte honesto**: si C muestra false-green diferencial ≥30 puntos a
@@ -278,5 +393,21 @@ de snapdom / tecnología licenciable — no un producto independiente.
 - Más features del oráculo. La prioridad es validación externa y distribución, no
   superficie nueva.
 - Mejorar el 19/19 o el 119/120: ya no informan nada.
-- Multi-tab, restore, permisos finos: se difieren hasta que un consumidor real los pida.
+- Multi-tab, restore, permisos finos: se difieren hasta que un consumidor real los
+  pida — pero E4 los va a documentar como ventaja del rival, que es distinto a
+  ignorarlos.
 - Publicar cualquier cosa (npm, store, repo público).
+
+## 5. Historial de huecos del plan (para no repetirlos)
+
+Este documento nació cubriendo solo la familia observar/verificar. Un review externo
+encontró dos omisiones que valen como lección de método:
+
+1. **Familia de features entera sin testear** (`rec`/`snap`/`cp`/`parent`/`map`): el
+   plan miró las superficies y no el inventario de verbos. Regla nueva: antes de
+   planificar tests, listar TODO lo que el producto expone y marcar qué no toca ningún
+   gate.
+2. **Rival comparable nunca ejecutado**: agent-browser estaba analizado en
+   `LANDSCAPE.md` a nivel documental y eso se sintió como cobertura. No lo es.
+   Regla nueva: un competidor que no se corrió no está medido, por más prolija que sea
+   la ficha que le escribimos.
