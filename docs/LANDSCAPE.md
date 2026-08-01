@@ -14,8 +14,9 @@ atrás.
 
 Muestra: 954 posts descubiertos (17 subreddits × 16 keywords, post jun-2024) y 32 hilos
 leídos completos (cuerpo + top comments) vía el archivo arctic-shift. IDs de post entre
-paréntesis → `reddit.com/r/<sub>/comments/<id>/`. Datos crudos: `discovered.json` /
-`threads.json` (scratchpad de la sesión).
+paréntesis → `reddit.com/r/<sub>/comments/<id>/`. Datos crudos versionados junto a este
+documento: `landscape-data/discovered.json` y `landscape-data/threads.json` — toda cita
+de esta sección es auditable con grep contra esos archivos.
 
 ### 1.0 Nota de acceso y de higiene (metodológica)
 
@@ -164,12 +165,18 @@ y píxeles bajo demanda.
 
 ### 2.3 Verificación: el eslabón más débil y la mejor palanca
 
-- **False success cuantificado** [medido] (arXiv 2606.09863, 2026): en 9.876
-  trayectorias × 8 familias de modelos frontera, el éxito falso (el agente declara éxito
-  y el estado programático lo desmiente) = **44-52% de todas las fallas** en dominios
-  sin verificador independiente, **75,8%** en AppWorld para arquitecturas con señal
-  explícita de completado — y cae a **~3%** cuando existe verificación independiente
-  del estado. Un orden de magnitud, medido.
+- **False success cuantificado** [medido; VERIFICADO contra la fuente primaria en esta
+  sesión] — Advani, "From Confident Closing to Silent Failure: Characterizing False
+  Success in LLM Agents", **workshop FAGEN@ICML2026** (no main conference — citar como
+  workshop paper), arXiv 2606.09863: sobre 9.876 trayectorias de tau2-bench (8 familias
+  de modelos) + 1.879 de AppWorld (4 familias), el éxito falso (el agente declara éxito
+  y el estado del entorno lo desmiente) = **45-48% de todas las fallas** en dominios
+  tau2 single-control, **75,8%** en AppWorld entre trayectorias con claim explícito de
+  completado — y **3%** en los dominios telecom dual-control, donde un simulador de
+  usuario independiente puede verificar el estado. Un orden de magnitud de diferencia
+  con verificación independiente, medido. (Nota de alcance: tau2/AppWorld son agentes
+  de herramientas/código, no de browser — la extrapolación a web agents es plausible
+  pero es nuestra, no del paper.)
 - [medido] ST-WebAgentBench (IBM, ICML'25): "Completion under Policy" < ⅔ del
   completion nominal — un tercio de los "éxitos" viola políticas.
 - [medido] Tree Search de Koh et al. (2024): value function que puntúa estados
@@ -236,13 +243,26 @@ reps × 10 tareas, 119/120 con juez externo, 0 false-greens), `FIELD.md`,
   la misma métrica que ese paper define, medida con juez externo. Nadie de los vendors
   relevados ofrece verificación programática de efecto como primitive: re-perciben o
   piden aprobación humana.
-- **Diff con identidad y kinds, no diff de texto.** El `diff snapshot` de agent-browser
-  es diff textual del a11y tree (sin identidad entre mutaciones, sin geometría, refs
-  explícitamente inestables); Playwright MCP no diffea — entrega el snapshot nuevo y el
-  modelo compara. Nuestro diff clasifica (added/removed/content/state/moved/resized/
-  possible-replacement) con matching por fingerprints y oclusión proactiva
-  (`coveredBy`). En bench-qa eso da 19/19·0FP contra 13/19·5FP del pixel-diff y
-  16/19·2FP del a11y-diff — pero ver 3.3 sobre quién escribió ese corpus.
+- **Diff con identidad y kinds, no diff de texto — pero ya no somos los únicos
+  explorando la arquitectura.** Entre los actores consolidados: el `diff snapshot` de
+  agent-browser es diff textual del a11y tree (sin identidad entre mutaciones, sin
+  geometría, refs explícitamente inestables); Playwright MCP no diffea — entrega el
+  snapshot nuevo y el modelo compara. Nuestro diff clasifica (added/removed/content/
+  state/moved/resized/possible-replacement) con matching por fingerprints y oclusión
+  proactiva (`coveredBy`). En bench-qa eso da 19/19·0FP contra 13/19·5FP del pixel-diff
+  y 16/19·2FP del a11y-diff — ver 3.3 sobre quién escribió ese corpus. **Corrección
+  verificada en nuestros propios datos crudos**: existe al menos un proyecto chico
+  explorando casi el mismo núcleo — **"Rote"** (r/AI_Agents 1v695rl, 25-jul-2026,
+  score 1 · 5 comentarios): "memory manager for browser agents" que tras un snapshot
+  grounded manda solo el **diff, con ids derivados de hash(role+name+ancestry)** que
+  sobreviven re-renders; [auto-reportado] −37% de crecimiento de tokens en 150 corridas
+  vs Browser Use. Diferencias con lo nuestro: se posiciona como ahorro de memoria/
+  tokens, no como primitive de verificación (sin asserts, sin oclusión, sin kinds
+  declarados, sin contrato fail-loud), y presupone el stack CDP. La afirmación
+  sostenible ya no es "nadie hace diffs con identidad" sino: **ningún actor consolidado
+  ofrece todavía una primitive completa de verificación semántica de efecto — y la
+  arquitectura de base ya se le está ocurriendo a más gente** (ver el riesgo de ventana
+  en 3.3).
 - **El nicho sin CDP existe y nadie lo cubre.** Todo el stack serio relevado (Playwright
   MCP, agent-browser, Stagehand, CUA, Mariner) requiere CDP o browser propio. Extensiones
   MV3 y copilots embebidos no pueden usarlos; nuestro walk en isolated world (3/3 bajo
@@ -289,11 +309,14 @@ reps × 10 tareas, 119/120 con juez externo, 0 false-greens), `FIELD.md`,
   externos, validación por 2 agentes evaluadores (Codex, panel) que nosotros mismos
   orquestamos. El mejor diff del mundo sin distribución pierde contra un diff mediocre
   integrado en el runtime que todos ya usan.
-- **Riesgo de absorción.** Playwright MCP ya hace percibir-actuar-percibir; agregarle un
-  differ semántico es un incremento natural para Microsoft/Google (Chrome DevTools MCP
-  ya se define como "ojos para verificar"). La ventana de "componente integrable antes
-  de que los runtimes absorban la verificación" (nuestro propio análisis estratégico)
-  está respaldada por este relevamiento — pero es una ventana, no un foso.
+- **Riesgo de absorción — y la ventana ya tiene tráfico.** Playwright MCP ya hace
+  percibir-actuar-percibir; agregarle un differ semántico es un incremento natural para
+  Microsoft/Google (Chrome DevTools MCP ya se define como "ojos para verificar"). Y el
+  hallazgo Rote (§3.2) muestra que la idea del diff con identidad ya se le ocurrió al
+  menos a un builder independiente que la benchmarkeó contra Browser Use. La ventana de
+  "componente integrable antes de que los runtimes absorban la verificación" (nuestro
+  propio análisis estratégico) está respaldada por este relevamiento — pero es una
+  ventana con más gente entrando, no un foso.
 - **Riesgo de la apuesta visual.** UGround y la línea CUA muestran progreso real en
   grounding visual entrenado; si en 2-3 años el grounding por píxeles se vuelve fiable
   y barato, el argumento "la semántica es más precisa que los píxeles" se debilita
@@ -335,3 +358,76 @@ nicho sin CDP), y **atrás en todo lo que rodea al core**: escala de evidencia,
 benchmarks de terceros, capacidades de producción, distribución y comunidad. La ciencia
 del pitch está mejor respaldada de lo que sabíamos; el producto alrededor del pitch es
 donde el relevamiento nos deja peor parados.
+
+---
+
+## 4. Referencias
+
+Estado de verificación: **[V]** = fuente primaria re-verificada por nosotros en esta
+sesión (cifra contrastada contra el abstract/página). El resto proviene del pase de
+investigación con URL primaria; las cifras citadas en §2 aún no fueron auditadas
+tabla-por-tabla — hacerlo antes de citar cualquiera en un texto publicable.
+
+### Papers y benchmarks
+
+- WebArena (ICLR 2024) — https://arxiv.org/abs/2307.13854
+- VisualWebArena (ACL 2024) — https://arxiv.org/abs/2401.13649
+- Mind2Web (NeurIPS 2023 spotlight) — https://arxiv.org/abs/2306.06070
+- SeeAct: "GPT-4V(ision) is a Generalist Web Agent, if Grounded" (ICML 2024) — https://arxiv.org/abs/2401.01614
+- WebVoyager (ACL 2024) — https://arxiv.org/abs/2401.13919
+- OSWorld (NeurIPS 2024) — https://arxiv.org/abs/2404.07972 · https://os-world.github.io/
+- Set-of-Mark Prompting (Microsoft, 2023) — https://arxiv.org/abs/2310.11441
+- SeeClick + ScreenSpot (ACL 2024) — https://arxiv.org/abs/2401.10935
+- ScreenSpot-Pro (ACM MM 2025) — https://likaixin2000.github.io/papers/ScreenSpot_Pro.pdf
+- UGround (ICLR 2025 oral) — https://arxiv.org/abs/2410.05243
+- AgentOccam (Amazon, 2024) — https://arxiv.org/abs/2410.13825
+- Region4Web (2026) — https://arxiv.org/html/2605.07134
+- EntWorld (2026) — https://arxiv.org/pdf/2601.17722
+- WebSight (2025) — https://arxiv.org/abs/2508.16987
+- Reflexion (NeurIPS 2023) — https://arxiv.org/abs/2303.11366
+- Tree Search for Language Model Agents (2024) — https://arxiv.org/abs/2407.01476
+- WebCanvas / Mind2Web-Live (2024) — https://arxiv.org/abs/2406.12373
+- "An Illusion of Progress?" / Online-Mind2Web + WebJudge (OSU, 2025) — https://arxiv.org/abs/2504.01382
+- **[V]** Advani, "From Confident Closing to Silent Failure: Characterizing False
+  Success in LLM Agents" (workshop FAGEN@ICML2026) — https://arxiv.org/abs/2606.09863
+  · Cifras verificadas contra el abstract: 9.876 trayectorias tau2-bench (8 familias) +
+  1.879 AppWorld (4 familias); false success = 45-48% de las fallas en dominios tau2
+  single-control · 3% en dominios telecom dual-control · 75,8% en AppWorld entre
+  trayectorias con claim explícito de completado. OJO: dominios de tool-use/código, no
+  browser; workshop paper de autor único — citarlo con ese encuadre.
+- AgentErrorTaxonomy / "Where LLM Agents Fail" (2025) — https://arxiv.org/abs/2509.25370
+- ST-WebAgentBench (IBM, ICML 2025) — https://arxiv.org/abs/2410.06703
+- VerificAgent (2025) — https://arxiv.org/abs/2506.02539
+- OSWorld-Human (2025) — https://arxiv.org/pdf/2506.16042
+- TRAP (2025-26) — https://arxiv.org/pdf/2512.23128
+- Agent-E (2024) — https://arxiv.org/abs/2407.13032
+- "The Complexity Trap" (2025) — https://arxiv.org/pdf/2508.21433
+- Prompt injection vía a11y tree (2025) — https://arxiv.org/abs/2507.14799
+
+### Vendors
+
+- Anthropic computer use (docs) — https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool · blog https://www.anthropic.com/news/developing-computer-use · Claude for Chrome https://claude.com/blog/claude-for-chrome
+- OpenAI CUA/Operator — https://openai.com/index/computer-using-agent/ · Atlas https://openai.com/index/introducing-chatgpt-atlas/
+- Google Project Mariner — https://techcrunch.com/2024/12/11/google-unveils-project-mariner-ai-agents-to-use-the-web-for-you/
+- browser-use — https://github.com/browser-use/browser-use · https://browser-use.com/posts/sota-technical-report
+- Playwright MCP (Microsoft) — https://github.com/microsoft/playwright-mcp · https://playwright.dev/mcp/snapshots
+- Stagehand (Browserbase) — https://www.browserbase.com/blog/ai-web-agent-sdk
+- Chrome DevTools MCP — https://developer.chrome.com/blog/chrome-devtools-mcp · https://developer.chrome.com/blog/devtools-for-agents-v1
+- agent-browser (Vercel) — https://github.com/vercel-labs/agent-browser
+- Firecrawl — https://www.firecrawl.dev/crawl
+- Magnitude — https://magnitude.run/
+
+### Análisis de industria
+
+- Epoch AI sobre OSWorld — https://epoch.ai/blog/what-does-osworld-tell-us-about-ais-ability-to-use-computers
+- OSWorld-Verified (XLANG Lab) — https://xlang.ai/blog/osworld-verified
+- Steel.dev leaderboard — https://leaderboard.steel.dev/
+- Deepsense sobre evaluación de web agents — https://deepsense.ai/blog/evaluations-limitations-and-the-future-of-web-agents-webgpt-webvoyager-agent-e/
+- Alumnium WebVoyager — https://alumnium.ai/blog/webvoyager-benchmark/
+
+### Reddit (datos crudos)
+
+- `landscape-data/discovered.json` (954 posts) · `landscape-data/threads.json` (32 hilos
+  con comentarios) — recolectados vía https://arctic-shift.photon-reddit.com el
+  2026-08-01. **[V]** El post de Rote (r/AI_Agents 1v695rl) fue re-verificado por grep
+  contra estos archivos en esta sesión.
