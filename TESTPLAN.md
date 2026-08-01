@@ -15,7 +15,7 @@ puede confirmar lo que ya creemos no es un test, es una demo.
 
 | # | Superficie | Qué es | Consumidor típico | Requiere CDP | Estado |
 |---|---|---|---|---|---|
-| S1 | **Core SDK** | `snapdom(el,{plugins:[agentOracle()]})` / `inspect()` | Código de producto: extensión MV3, copiloto embebido, webview | No | 58 tests |
+| S1 | **Core SDK** | `snapdom(el,{plugins:[agentOracle()]})` / `inspect()` | Código de producto: extensión MV3, copiloto embebido, webview | No | 50 tests |
 | S2 | **CLI daemon** | `browse.mjs serve` + verbos (open/look/find/click/assert/…) | Agente que encadena N comandos por turno (Claude Code, Codex CLI) | Sí (Playwright propio) | Rondas Codex v2-v5 |
 | S3 | **Servidor MCP** | 10 tools (`browser_open/find/act/verify/assert/…`) | Cualquier cliente MCP, como tools nativas | Sí (vía daemon) | GATE.md, bench-qa |
 | S4 | **Companion MV3** | Content script isolated-world + postMessage | Agente que vive DENTRO del Chrome del usuario (panel Claude) | **No** | gate 27/27 |
@@ -50,7 +50,7 @@ puede confirmar lo que ya creemos no es un test, es una demo.
 
 | Dimensión | S1 SDK | S2 CLI | S3 MCP | S4 Companion | S5 Global |
 |---|---|---|---|---|---|
-| Corrección del diff | ✅ 58 tests | — | ✅ bench-qa 19/19 | ✅ gate | — |
+| Corrección del diff | ✅ 50 tests | — | ✅ bench-qa 19/19 | ✅ gate | — |
 | Performance / bloqueo | ✅ scaling | ⚠️ JSONL | — | ✅ gate throttled | — |
 | Fail-loud del assert | ✅ tests | ✅ smoke | ✅ codex-assert | ✅ gate | — |
 | Privacidad / redacción | ✅ 8 tests | ✅ smoke | ✅ smoke | ✅ gate ×5 | — |
@@ -369,7 +369,7 @@ Corrido de forma autónoma en una sesión. Todo determinista, sin gasto de API.
 | **A** paridad de superficies | ✅ 8/8 fixtures + oclusión + SPA, cuatro superficies de acuerdo | (en este doc) |
 | **E1** agent-browser en bench-qa | ✅ corrido: **11/19 tal cual sale · 17/19 normalizado** vs nuestro 19/19 | `results/e1-agent-browser.md` |
 | **E2** contratos afirmados | ⚠️ **2 ventajas confirmadas, 1 suposición nuestra refutada, 1 límite propio** | `results/e2-contracts.md` |
-| **A-bis** verbos sin cobertura | ✅ 13/13 + 2 hallazgos (ranking engaña, doc de `rec` desactualizada) | `results/abis-verbs.md` |
+| **A-bis** verbos sin cobertura | ✅ 19/19 en las DOS instalaciones (repo y global) + 2 hallazgos (ranking engaña, doc de `rec` desactualizada) | `results/abis-verbs.md` |
 | **C** false-green diferencial | ✅ **0 vs 6 falsos verdes sobre 8** (criterio pedía ≥30 pts, dio 75) | `results/c-false-green.md` |
 | **E5** coexistencia | ✅ **el oráculo corre DENTRO de agent-browser** por su `eval --stdin` | `results/e5-coexistence.md` |
 | **B** preferencia revelada | ✅ **el modelo elige el oráculo en 78% de los pasos** sin skill que sesgue; tokens 5× | `results/b-preference.md` |
@@ -463,7 +463,27 @@ encontró dos omisiones que valen como lección de método:
    plan miró las superficies y no el inventario de verbos. Regla nueva: antes de
    planificar tests, listar TODO lo que el producto expone y marcar qué no toca ningún
    gate.
-2. **Rival comparable nunca ejecutado**: agent-browser estaba analizado en
-   `LANDSCAPE.md` a nivel documental y eso se sintió como cobertura. No lo es.
-   Regla nueva: un competidor que no se corrió no está medido, por más prolija que sea
-   la ficha que le escribimos.
+2. **Comparable nunca ejecutado**: agent-browser estaba analizado en `LANDSCAPE.md` a
+   nivel documental y eso se sintió como cobertura. No lo es. Regla nueva: una
+   herramienta que no se corrió no está medida, por más prolija que sea la ficha que le
+   escribimos.
+
+3. **La instalación que usamos todos los días no estaba en ningún gate** (2026-08-01).
+   Los gates corrían siempre contra el árbol del repo; el install global
+   (`~/.claude/snapdom-agent`) nunca se ejecutó en una prueba. Ahí el bundle `sdk.js`
+   se construía desde una SEGUNDA copia de la fuente de entrada, que nunca recibió
+   `redactString`: `window.__agentRedact` quedaba undefined y `find`, `text` y `assert`
+   tiraban "is not a function" DENTRO de la página. `open` seguía funcionando, así que
+   el daemon parecía sano. Reglas nuevas: (a) toda definición de bundle vive en UN solo
+   archivo (`tools/sdk-bundle.mjs`, con verificación de los globals al construir);
+   (b) los gates aceptan `--daemon <path>` y se corren también contra el install global;
+   (c) el bundle de la companion se re-genera y se compara antes de creer su gate —
+   estaba atrasado respecto de `91daf6d` (las correcciones F3 de privacidad NO estaban
+   en la extensión cargada en Chrome).
+
+4. **Cuatro harnesses terminaban y no salían** (2026-08-01). `e1`, `e2`, `e5`,
+   `c-false-green` y `b-preference` escribían sus resultados y quedaban colgados con el
+   servidor de fixtures vivo por un socket keep-alive. Medido: >10 min de cuelgue sobre
+   un trabajo real de 43 s. Un CI con timeout habría reportado rojo un experimento que
+   salió bien. Regla nueva: todo harness con `createServer` cierra conexiones y sale con
+   `process.exit` sobre el resultado.

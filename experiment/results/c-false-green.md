@@ -13,13 +13,22 @@ estado real del DOM sin pasar por ningún canal— dice la verdad.
 | Canal | Aciertos | **FALSE GREEN** | false red |
 |---|---:|---:|---:|
 | **Oráculo · assert de la postcondición** | **8/8** | **0** | 0 |
-| Oráculo · `look` crudo (¿cambió algo?) | 6/8 | 2 | 0 |
+| Oráculo · `look` crudo (¿cambió algo?) | 4-6/8 † | 2-4 | 0 |
+
 | agent-browser `diff snapshot` (as-is) | 2/8 | 6 | 0 |
 | agent-browser + normalización sin refs | 2/8 | 6 | 0 |
 | Screenshot (pixel-diff perceptual) | 2/8 | 6 | 0 |
 
 **Diferencial: 0 vs 6 falsos positivos de éxito sobre 8 casos.** El criterio de corte
 del TESTPLAN pedía ≥30 puntos; el resultado es de 75.
+
+† **El brazo `look` crudo NO es estable entre corridas.** La primera corrida dio 6/8 · 2
+falsos verdes y la re-corrida del 2026-08-01 dio 4/8 · 4: depende del ruido ambiental que
+la página produzca en ese instante (reloj + spinner + marquesina), que es justamente lo
+que el caso simula. El brazo `assert` dio 8/8 · 0 falsos verdes en las dos corridas. La
+conclusión del documento no cambia — la refuerza: preguntar "¿cambió algo?" es
+intrínsecamente inestable bajo ruido, y por eso la aserción de postcondición es el
+producto y el diff crudo es el insumo.
 
 ## Por caso
 
