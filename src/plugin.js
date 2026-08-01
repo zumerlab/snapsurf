@@ -77,13 +77,15 @@ export function redactString(value, privacy) {
 function redactText(value, rules, tally, field, id) {
   if (typeof value !== 'string' || !value.trim()) return value
   const lower = value.toLowerCase()
+  let matched = false
+  // TODAS las reglas que matchean se contabilizan, no solo la primera: la atribución
+  // first-match hacía que `redact sec,secret` reportara 0 hits para `secret` aunque
+  // matcheara cada aparición (hallazgo medio de Codex — el contrato decía "hits por
+  // regla" y la implementación medía otra cosa). El reemplazo sigue siendo único.
   for (let i = 0; i < rules.length; i++) {
-    if (lower.includes(rules[i])) {
-      recordHit(tally, i, field, id)
-      return '[redacted]'
-    }
+    if (lower.includes(rules[i])) { recordHit(tally, i, field, matched ? null : id); matched = true }
   }
-  return value
+  return matched ? '[redacted]' : value
 }
 
 /** Redact the readable fields of a node/ref/change entry ({name?, label?, coveredBy?}). */

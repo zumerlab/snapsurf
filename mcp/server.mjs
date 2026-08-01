@@ -116,12 +116,14 @@ async function ensureDaemon() {
 const TOOLS = [
   {
     name: 'browser_open',
-    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an auditable `privacy` report (hit counts by rule INDEX — rule text never travels). Input values are never exposed regardless (masked+hashed by design).',
+    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
     inputSchema: { type: 'object', properties: { url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
-    run: async ({ url, redact }) => {
-      if (Array.isArray(redact)) await cmd('redact', [redact.length ? redact.join(',') : 'off'])
-      return cmd('open', [url])
-    },
+    run: async ({ url, redact }) =>
+      // Reglas como JSON y en la MISMA llamada que la navegación. Antes se hacían dos
+      // llamadas y las reglas viajaban unidas por comas: (1) dos requests MCP
+      // concurrentes podían observar bajo la política de la otra, (2) una regla que
+      // contuviera una coma se partía en dos (hallazgos de la ronda F3 de Codex).
+      cmd('open', Array.isArray(redact) ? [url, '--redact-json', JSON.stringify(redact)] : [url]),
   },
   {
     name: 'browser_find',
