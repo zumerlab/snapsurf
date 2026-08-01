@@ -143,6 +143,25 @@ window.__snapdomGif = gifExport
 // --readonly: the observer verbs stay; the mutating ones (click/type/enter) are refused
 // and the refusal is logged. --allow d1,d2: navigation AND every subresource request
 // outside the allowlist is aborted (subdomains implied — es.wikipedia.org ∈ wikipedia.org).
+// Un typo en una bandera de política arrancaba el daemon COMPLETAMENTE PERMISIVO sin
+// avisar: `serve --readonl` daba policy:(unrestricted) y ejecutaba clicks destructivos.
+// Es exactamente el fallo mudo que el contrato de assert prohíbe, cometido en el
+// arranque. Ahora una bandera desconocida es un error duro, no un silencio.
+const KNOWN_FLAGS = new Set(['--headed', '--readonly', '--allow', '--redact'])
+const TAKES_VALUE = new Set(['--allow', '--redact'])
+for (let i = 0; i < ARGS.length; i++) {
+  const a = ARGS[i]
+  if (!a.startsWith('--')) continue
+  if (!KNOWN_FLAGS.has(a)) {
+    console.error(`⛔ unknown flag: ${a}\n   known: ${[...KNOWN_FLAGS].join(' ')}\n   refusing to start — a typo in a policy flag would launch an UNRESTRICTED daemon.`)
+    process.exit(2)
+  }
+  if (TAKES_VALUE.has(a) && (!ARGS[i + 1] || ARGS[i + 1].startsWith('--'))) {
+    console.error(`⛔ ${a} needs a value (comma-separated) — refusing to start.`)
+    process.exit(2)
+  }
+}
+
 const READONLY = ARGS.includes('--readonly')
 const allowIdx = ARGS.indexOf('--allow')
 const ALLOW = allowIdx > -1 && ARGS[allowIdx + 1]

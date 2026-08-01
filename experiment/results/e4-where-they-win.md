@@ -85,3 +85,39 @@ de operación** muy completo; nosotros una **capa de verificación** que ellos n
 mismo browser con un `eval --stdin`. Eso refuerza el encuadre: no competir por
 superficie de harness — que es una carrera perdida — sino ser la capa que decide si la
 acción funcionó, encima del harness que el equipo ya tenga.
+
+---
+
+## Addendum — la misma lente, apuntada a nosotros (y un bug propio arreglado)
+
+La pregunta que dejé sin resolver sobre ellos (¿un typo en la categoría desactiva el
+gate en silencio?) se la hice a **nuestras propias banderas de política**. Resultado:
+
+| bandera | bien escrita | con typo |
+|---|---|---|
+| `--readonly` | `policy: readonly` · el click destructivo **se deniega** | `policy: (unrestricted)` · **el click se ejecuta** |
+| `--allow` | `policy: allow=[example.com]` | `policy: (unrestricted)` |
+| `--redact` | `policy: redact=1 rule(s)` | `policy: (unrestricted)` |
+
+**Las tres fallaban mudas.** `serve --readonl` arrancaba un daemon completamente
+permisivo, sin una sola advertencia, y borraba la cuenta de la página de prueba. Es
+exactamente el fallo mudo que el contrato del `assert` prohíbe — cometido en el arranque
+del propio daemon, donde nadie lo había mirado.
+
+**Arreglado**: una bandera desconocida ahora es un error duro y el daemon **no arranca**.
+
+```
+⛔ unknown flag: --readonl
+   known: --headed --readonly --allow --redact
+   refusing to start — a typo in a policy flag would launch an UNRESTRICTED daemon.
+```
+
+Lo mismo para una bandera con valor faltante (`--redact` sin términos). Las cuatro
+banderas legítimas y sus combinaciones siguen funcionando; vitest 58/58 y paridad 8/8
+verdes tras el cambio.
+
+**Nota de método**: en el camino me mintió el shell. `serve $1` dentro de una función
+zsh pasa `"--redact Secreto"` como **un solo argumento** (zsh no hace word-splitting de
+expansiones sin comillas, a diferencia de bash), lo que me dio cuatro "(unrestricted)"
+falsos y casi me hace reportar un bug inexistente en `--redact`. Se corrigió con `"$@"`.
+Es el mismo patrón otra vez: **medir el instrumento antes de acusar al sistema**.
