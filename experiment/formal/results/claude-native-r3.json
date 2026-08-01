@@ -1,0 +1,110 @@
+{
+  "arm": "claude-native",
+  "runner": "claude",
+  "model": "claude-fable-5",
+  "rep": 3,
+  "date": "2026-07-31",
+  "notesGlobal": "Fresh MCP tab. Settled method from reps 1-2: javascript_tool as primary driver (synthetic ref-clicks verified no-op in r1 AND r2, native find verified fatal on huge pages in r1; not re-tested this rep — recorded as method, actions drop accordingly). This makes r3 a best-case for this arm: it inherits two reps of environment learning.",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Elevators | 224 comments",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 2,
+      "wallMs": 17526,
+      "tokensObserved": null,
+      "notes": "front page rotated: #1 is now Elevators (Tailscale dropped)"
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://github.com/zumerlab/snapdom/blob/main/package.json",
+      "actions": 2,
+      "wallMs": 16748,
+      "tokensObserved": null,
+      "notes": "direct navigate to blob URL (method choice); find reads value from a11y tree (innerText cannot see GitHub code view, learned r2)"
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 3,
+      "wallMs": 26971,
+      "tokensObserved": null,
+      "notes": "js scan+click of 6 body links"
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "23.467.316",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 2,
+      "wallMs": 17270,
+      "tokensObserved": null,
+      "notes": "no Cloudflare again; space-separated to dodge sanitizer JWT false-positive"
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "Bert Kaempfert And His Orchestra The Kaempfert Touch Vinyl LP 1970 Shrink Wrap",
+      "finalUrl": "https://www.ebay.com/itm/156667373874",
+      "actions": 5,
+      "wallMs": 34731,
+      "tokensObserved": null,
+      "notes": "js form.submit; semantic find picked first organic; navigate by pathname (listing clicks open outside MCP group, learned r1)"
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 4,
+      "wallMs": 25196,
+      "tokensObserved": null,
+      "notes": "js clicks through doc hierarchy; regex innerText"
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "Partido General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 14841,
+      "tokensObserved": null,
+      "notes": "js infobox row scan"
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 2,
+      "wallMs": 19295,
+      "tokensObserved": null,
+      "notes": "straight to programmatic set+requestSubmit (synthetic input no-op established r1+r2, not re-tested)"
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 1,
+      "wallMs": 12887,
+      "tokensObserved": null,
+      "notes": "js before/after with 1.2s wait, clock advanced"
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 3,
+      "wallMs": 21903,
+      "tokensObserved": null,
+      "notes": "site search form via js submit"
+    }
+  ]
+}

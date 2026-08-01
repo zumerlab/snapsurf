@@ -1,0 +1,161 @@
+{
+  "arm": "codex-native",
+  "runner": "codex",
+  "model": "GPT-5 (exact model id not exposed)",
+  "rep": 1,
+  "date": "2026-07-31",
+  "notesGlobal": "Native Playwright helper in /tmp; no packages/agent tooling or SnapDOM MCP used. Each helper execution that reached a target site counts as one action. wallMs is accumulated measured browser execution/timeout time across actions; the interface did not expose a continuous task clock spanning reasoning pauses, so those pauses are not included. tokensObserved unavailable.",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 157 comments",
+      "finalUrl": "https://news.ycombinator.com/item?id=49127306",
+      "actions": 1,
+      "wallMs": 798,
+      "tokensObserved": null,
+      "notes": "Method: one Playwright helper execution; opened HN and read the first story row plus its adjacent subtext through the rendered DOM.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "matches live top-10 story: \"Tailscale didn't stop the Hugging Face intrusion\""
+      }
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://raw.githubusercontent.com/zumerlab/snapdom/refs/heads/main/package.json",
+      "actions": 3,
+      "wallMs": 17280,
+      "tokensObserved": null,
+      "notes": "Method: Playwright navigation from repo page to package.json, then its Raw link. Action 1 timed out because the first of 34 matching package.json links was hidden. Action 2 reached the blob page but the text regex returned null. Action 3 followed Raw and parsed JSON successfully.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "version 2.23.1 confirmed against raw.githubusercontent"
+      }
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 3,
+      "wallMs": 60816,
+      "tokensObserved": null,
+      "notes": "Method: Playwright, following an article-body link. Two CSS selector attempts timed out (first output was lost after process completion; second recorded the 30 s locator timeout). Action 3 used the exact accessible link name and landed correctly.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on /wiki/Mar_del_Plata"
+      }
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "27689392",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 3,
+      "wallMs": 2553,
+      "tokensObserved": null,
+      "notes": "Method: Playwright first, then native fetch fallback. npm rendered Cloudflare 'Performing security verification' (Ray ID a240ba8a184cfbf2) in actions 1 and 2, so the page value was unavailable. Action 3 queried the public npm downloads API for last-week/preact and returned 27,689,392.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "27689392 within ±25% of live API value 27689392"
+      }
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "ALL $5.99 Vinyl Records No Limit You Pick & Choose Rock+ LP A-F Flat $6 Shipping",
+      "finalUrl": "https://www.ebay.com/itm/266123534705?_skw=vinyl+records&itmmeta=01KYXBN6SEJZK10WPANCB1C4S9&hash=item3df632e171:g:l1AAAOSwqkdgVg11&itmprp=enc%3AAQALAAAA0GfYFPkwiKCW4ZNSs2u11xCQZgb0cfZUrBUgqB9oTAuUWx2nAUl%2BWhM%2FlxWbRxY07w5Aq8fWMAQoXXYiT52ckCdoQ8AsgPWe72IRJ7UjskaVO2JxZx0tmHqZqpQ9fGQKtNaHvgJADGPuV2nD9k8cV5vZCl1%2FMuYZAQXnSfWuFyiI4soamhGnjpjFrBsqOmNQEujnuOgXPYlgZVCjwE%2BxP1Ps2rSkDhGJVeSlCUAgP2f1%2BnQfeXFMYUprBW0xdqpqiiDDn74ZmzRLRveH%2FosGyXw%3D%7Ctkp%3ABk9SR-Dw1Kv3Zw",
+      "actions": 3,
+      "wallMs": 21200,
+      "tokensObserved": null,
+      "notes": "Method: Playwright search and click. Action 1 failed because eBay replaced li.s-item with su-card-container. Action 2 inspected rendered /itm/ links and exposed two fake Shop on eBay /itm/123456 links before the first real titled card. Action 3 excluded empty/Shop/123456 links, clicked the first remaining result, and followed the new page.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on a listing: /itm/266123534705"
+      }
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 4,
+      "wallMs": 62060,
+      "tokensObserved": null,
+      "notes": "Method: Playwright link navigation from docs home to library/index.html to functools.html. Action 1 timed out on stale accessible name Library Reference. Action 2 navigated but a malformed escaped id selector timed out. Action 3 read the user_function overload without maxsize. Action 4 selected the signature containing maxsize: @functools.lru_cache(maxsize=128, typed=False).",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "functools page + maxsize default 128"
+      }
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 30678,
+      "tokensObserved": null,
+      "notes": "Method: Playwright rendered-DOM extraction. Exact th=Partido selector timed out in action 1. Action 2 inspected table rows containing partido; the infobox row was '• Partido — General Pueyrredón'.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "partido General Pueyrredón"
+      }
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 1,
+      "wallMs": 57,
+      "tokensObserved": null,
+      "notes": "Method: Playwright runtime interaction, not static HTML. Filled New item, clicked Add, then read list items in DOM order. Same page/context continued into T9.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "list is exactly [Bread, Buy milk] in DOM order"
+      }
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 1,
+      "wallMs": 1158,
+      "tokensObserved": null,
+      "notes": "Method: same Playwright page as T8. Clicked Refresh, waited 1.1 s while ambient clock advanced, and compared the semantic grocery list before/after; both were [Bread, Buy milk].",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "correctly reported no semantic change"
+      }
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 1,
+      "wallMs": 1605,
+      "tokensObserved": null,
+      "notes": "Method: Playwright. Opened es.wikipedia.org, used its search input for Obelisco de Buenos Aires, pressed Enter, and observed the final article URL.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on the Obelisco article"
+      }
+    }
+  ],
+  "judgedAt": "2026-08-01T00:34:31.903Z"
+}

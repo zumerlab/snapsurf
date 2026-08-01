@@ -1,0 +1,110 @@
+{
+  "arm": "claude-native",
+  "runner": "claude",
+  "model": "claude-fable-5",
+  "rep": 2,
+  "date": "2026-07-31",
+  "notesGlobal": "Fresh MCP tab, user logged-in Chrome. Method shifted vs r1: javascript_tool as primary driver from the start (r1 established native find dies on huge pages and synthetic ref-clicks no-op in this environment; both re-verified once this rep). Extension sanitizer false-positive: a dotted downloads number returned as [BLOCKED: JWT token]. demo-qa at localhost:8123. T10 end stamped ~15s after T10 start (last js confirm).",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 183",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 2,
+      "wallMs": 21105,
+      "tokensObserved": null,
+      "notes": "js read of first tr.athing row"
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://github.com/zumerlab/snapdom/blob/main/package.json",
+      "actions": 5,
+      "wallMs": 45316,
+      "tokensObserved": null,
+      "notes": "js .click() navigated fine; innerText does NOT see GitHub code view (2 tries) — find (a11y tree) does"
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 3,
+      "wallMs": 20172,
+      "tokensObserved": null,
+      "notes": "straight to js scan+click (native find known-fatal on this page from r1, not retried)"
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "23.467.316",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 3,
+      "wallMs": 25794,
+      "tokensObserved": null,
+      "notes": "no Cloudflare in real Chrome again; sanitizer blocked the dotted number as JWT token, returned space-separated"
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "Bert Kaempfert And His Orchestra The Kaempfert Touch Vinyl LP 1970 Shrink Wrap",
+      "finalUrl": "https://www.ebay.com/itm/156667373874",
+      "actions": 6,
+      "wallMs": 51853,
+      "tokensObserved": null,
+      "notes": "js form.submit for search; js link scan gave y=0 geometry (unreliable) so semantic find picked the first organic; navigate by pathname"
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 4,
+      "wallMs": 32015,
+      "tokensObserved": null,
+      "notes": "js clicks navigated the doc hierarchy (synthetic clicks failed here in r1); regex on innerText"
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "Partido General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 15239,
+      "tokensObserved": null,
+      "notes": "js infobox row scan"
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 6,
+      "wallMs": 33116,
+      "tokensObserved": null,
+      "notes": "re-verified: form_input+synthetic ref-click still no-ops in a FRESH tab (not a transient r1 event); requestSubmit() fallback ran the real handler"
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 1,
+      "wallMs": 12006,
+      "tokensObserved": null,
+      "notes": "js before/after {list,input} with 1.2s wait, clock advanced"
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 3,
+      "wallMs": 15055,
+      "tokensObserved": null,
+      "notes": "site search form via js submit"
+    }
+  ]
+}

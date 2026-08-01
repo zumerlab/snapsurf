@@ -1,0 +1,161 @@
+{
+  "arm": "claude-agent",
+  "runner": "claude",
+  "model": "claude-fable-5",
+  "rep": 2,
+  "date": "2026-07-31",
+  "notesGlobal": "Same methodology as rep 1 (wallMs spans batches incl. runner turnaround). Fresh daemon. No Cloudflare challenge on npm this rep. No wasted blind clicks this rep.",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 170",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 3,
+      "wallMs": 11230,
+      "tokensObserved": null,
+      "notes": "row '1.' confirmed #1 at y=44; comments link same row · daemon 1030 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "matches live top-10 story: \"Tailscale didn't stop the Hugging Face intrusion\""
+      }
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://github.com/zumerlab/snapdom/blob/main/package.json",
+      "actions": 5,
+      "wallMs": 7059,
+      "tokensObserved": null,
+      "notes": "repo → file link → look → find version · daemon 2543 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "version 2.23.1 confirmed against raw.githubusercontent"
+      }
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 4,
+      "wallMs": 6997,
+      "tokensObserved": null,
+      "notes": "link at y=91080, auto-scroll click · daemon 2128 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on /wiki/Mar_del_Plata"
+      }
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "23.467.316",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 2,
+      "wallMs": 1309,
+      "tokensObserved": null,
+      "notes": "no challenge this rep; sidebar value · daemon 1304 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "23467316 within ±25% of live API value 27689392"
+      }
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "Alice Cooper 'School s out' WB with Signed Panties",
+      "finalUrl": "https://www.ebay.com/itm/287458494065",
+      "actions": 9,
+      "wallMs": 22855,
+      "tokensObserved": null,
+      "notes": "different first organic than r1 (results not stationary); y=420 top of main results · daemon 10904 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on a listing: /itm/287458494065"
+      }
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 9,
+      "wallMs": 16974,
+      "tokensObserved": null,
+      "notes": "via Library reference; extra find to surface full signature line · daemon 1431 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "functools page + maxsize default 128"
+      }
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "Partido de General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 925,
+      "tokensObserved": null,
+      "notes": "infobox link visible in digest · daemon 921 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "partido General Pueyrredón"
+      }
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 5,
+      "wallMs": 6727,
+      "tokensObserved": null,
+      "notes": "diff: added listitem Buy milk; no wasted clicks this rep · daemon 1571 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "list is exactly [Bread, Buy milk] in DOM order"
+      }
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 2,
+      "wallMs": 325,
+      "tokensObserved": null,
+      "notes": "no changes since last look, clock running · daemon 313 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "correctly reported no semantic change"
+      }
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 6,
+      "wallMs": 2035,
+      "tokensObserved": null,
+      "notes": "search redirected straight to article · daemon 1950 ms (JSONL 20260801-015007)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on the Obelisco article"
+      }
+    }
+  ],
+  "judgedAt": "2026-08-01T01:52:58.506Z"
+}

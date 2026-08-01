@@ -1,0 +1,161 @@
+{
+  "arm": "claude-native",
+  "runner": "claude",
+  "model": "claude-fable-5",
+  "rep": 1,
+  "date": "2026-07-31",
+  "notesGlobal": "User's logged-in real Chrome via claude-in-chrome extension. wallMs = Date.now() stamps around each task (includes model turnaround between calls — inherent to the 1-action-per-turn interface). MAJOR ENVIRONMENT EVENT: from T5 on, an eBay listing click opened a window OUTSIDE the MCP tab group and synthetic input degraded — ref clicks, coordinate clicks and key presses reported success but silently no-oped (verified via screenshot + DOM state in T8). JS-programmatic fallbacks (javascript_tool) used and disclosed per task. demo-qa served at localhost:8123 (extension file:// not attempted).",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 174",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 2,
+      "wallMs": 14479,
+      "tokensObserved": null,
+      "notes": "navigate + get_page_text; page shows user logged in (noprocrast did not fire this round)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "matches live top-10 story: \"Tailscale didn't stop the Hugging Face intrusion\""
+      }
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://github.com/zumerlab/snapdom/blob/main/package.json",
+      "actions": 4,
+      "wallMs": 26942,
+      "tokensObserved": null,
+      "notes": "find located the file link; navigated to blob; find read the version value",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "version 2.23.1 confirmed against raw.githubusercontent"
+      }
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 5,
+      "wallMs": 37668,
+      "tokensObserved": null,
+      "notes": "native find DIED: prompt too long 299152 tokens > 200000 (reproduced from prior rounds). Fallback: javascript_tool queried anchors, .click() on the 1st of 6 body links (1 selector miss first)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on /wiki/Mar_del_Plata"
+      }
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "23.467.316",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 2,
+      "wallMs": 15837,
+      "tokensObserved": null,
+      "notes": "NO Cloudflare challenge in the user's real browser (blocked headless daemon and fresh Playwright in the other arms). find read the sidebar number",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "23467316 within ±25% of live API value 27689392"
+      }
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "Bert Kaempfert And His Orchestra The Kaempfert Touch Vinyl LP 1970 Shrink Wrap",
+      "finalUrl": "https://www.ebay.com/itm/156667373874",
+      "actions": 12,
+      "wallMs": 84388,
+      "tokensObserved": null,
+      "notes": "form_input set the query but Return did not submit (combobox focus fragility, same as prior rounds); js form.submit() recovered. find got the first organic. Its click opened a window OUTSIDE the MCP group; href blocked by the extension sanitizer (query string); recovered via pathname + direct navigate. 4 recovery actions total",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on a listing: /itm/156667373874"
+      }
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 11,
+      "wallMs": 67276,
+      "tokensObserved": null,
+      "notes": "TWO silent ref-click failures (clicks reported ok, page never navigated) + 1 js syntax error of mine; recovered by direct navigates. Signature read from rendered text: functools.lru_cache(maxsize=128, typed=False)",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "functools page + maxsize default 128"
+      }
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "Partido General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 21570,
+      "tokensObserved": null,
+      "notes": "js scan of infobox rows for /partido/i",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "partido General Pueyrredón"
+      }
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 13,
+      "wallMs": 104317,
+      "tokensObserved": null,
+      "notes": "SYNTHETIC INPUT FULLY BROKEN here: click-by-ref on Add, focus+Enter, and coordinate click all silently no-oped (screenshot proved value in input + unfired handler). Fallback: form.requestSubmit() via javascript_tool ran the real submit handler. 13 actions, 2 under cap",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "list is exactly [Bread, Buy milk] in DOM order"
+      }
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 1,
+      "wallMs": 17691,
+      "tokensObserved": null,
+      "notes": "js: captured {list,input,heading} before, #refresh.click(), waited 1.2s (clock advanced), captured after — semantically equal. Note: semantic scope hand-picked by the runner, unlike the oracle arm where the differ decides",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "correctly reported no semantic change"
+      }
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 3,
+      "wallMs": 38486,
+      "tokensObserved": null,
+      "notes": "site search form submitted via js (synthetic input still unreliable); Wikipedia search redirected straight to the article",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on the Obelisco article"
+      }
+    }
+  ],
+  "judgedAt": "2026-08-01T01:11:37.634Z"
+}

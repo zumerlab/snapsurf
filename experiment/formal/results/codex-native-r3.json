@@ -1,0 +1,110 @@
+{
+  "arm": "codex-native",
+  "runner": "codex",
+  "model": "gpt-5",
+  "rep": 3,
+  "date": "2026-07-31",
+  "notesGlobal": "Native Codex stack only: curl, local parsing scripts, and Playwright CLI. No tooling, modules, or extension from packages/agent/* was used. The demo app HTML was served with Python's standard http.server solely because the protocol requires driving that local page. tokensObserved is null because the harness did not expose per-task token usage.",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 168 comments",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 1,
+      "wallMs": 489,
+      "tokensObserved": null,
+      "notes": "Method: curl + Python HTMLParser. Fetched the Hacker News front page once and extracted the first titleline and its matching subtext comment count."
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://raw.githubusercontent.com/zumerlab/snapdom/main/package.json",
+      "actions": 1,
+      "wallMs": 156,
+      "tokensObserved": null,
+      "notes": "Method: curl + JSON.parse. Read package.json from the repository's default main branch through raw.githubusercontent.com and extracted version."
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 4915,
+      "tokensObserved": null,
+      "notes": "Method: curl + Python HTMLParser. Read the Argentina article, found its in-body Mar del Plata link, then opened that linked article and verified HTTP 200 and the effective URL."
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "27689392",
+      "finalUrl": "https://api.npmjs.org/downloads/point/last-week/preact",
+      "actions": 2,
+      "wallMs": 11464,
+      "tokensObserved": null,
+      "notes": "Method: curl. The npm package-page request was blocked by Cloudflare and returned a 5,531-byte 'Just a moment...' page, so I used npm's public downloads API as a fallback and reported its last-week downloads value verbatim."
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "ALL $5.99 Vinyl Records No Limit You Pick & Choose Rock+ LP A-F Flat $6 Shipping",
+      "finalUrl": "https://www.ebay.com/itm/266123534705",
+      "actions": 6,
+      "wallMs": 42426,
+      "tokensObserved": null,
+      "notes": "Method: Playwright CLI in a named browser session. Opened eBay, filled and submitted its search form, inspected the search-results snapshot, skipped the synthetic 'Shop on eBay' placeholders, clicked the first organic listing, listed tabs because it opened a new tab, and selected the /itm/ landing tab."
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 3,
+      "wallMs": 12616,
+      "tokensObserved": null,
+      "notes": "Method: curl + Python HTMLParser/regex. Followed the documentation home link to the library index, followed its functools link, then read the lru_cache signature on the functools page."
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 1,
+      "wallMs": 8737,
+      "tokensObserved": null,
+      "notes": "Method: curl + local regex/text stripping. Fetched the Mar del Plata article and read the infobox row labeled Partido, which says General Pueyrredón."
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 3,
+      "wallMs": 19737,
+      "tokensObserved": null,
+      "notes": "Method: Python standard-library static server + Playwright CLI. Opened the actual app in the existing named browser session, filled New item with Buy milk, clicked Add, and observed the resulting DOM-order list in the post-click snapshot: Bread then Buy milk."
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 1,
+      "wallMs": 4743,
+      "tokensObserved": null,
+      "notes": "Method: Playwright CLI, continuing T8's exact page and session without reload. Clicked Refresh and compared the post-click semantic state with T8: the grocery list remained Bread, Buy milk; only ambient clock/button state changed."
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 5,
+      "wallMs": 27261,
+      "tokensObserved": null,
+      "notes": "Method: Playwright CLI. Opened Spanish Wikipedia, filled its own search box, attempted one click with a stale ref (failed), took a fresh snapshot, then clicked the Obelisco de Buenos Aires search suggestion and verified the final article URL."
+    }
+  ]
+}

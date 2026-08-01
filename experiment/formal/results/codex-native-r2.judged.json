@@ -1,0 +1,161 @@
+{
+  "arm": "codex-native",
+  "runner": "codex",
+  "model": "GPT-5 (exact model id not exposed)",
+  "rep": 2,
+  "date": "2026-07-31",
+  "notesGlobal": "Native shell/curl and Playwright CLI only; no packages/agent tooling, browse.mjs, snapDOM MCP, or companion extension used. The demo app was served locally solely because the formal protocol requires runtime interaction. As in rep 1, wallMs is accumulated measured command/browser execution time across actions; the interface did not expose a continuous task clock spanning reasoning pauses, so those pauses are not included. tokensObserved unavailable.",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 164",
+      "finalUrl": "https://news.ycombinator.com/item?id=49127306",
+      "actions": 2,
+      "wallMs": 817,
+      "tokensObserved": null,
+      "notes": "Method: curl plus local parsing. Action 1 read the HN HTML and extracted the title but its regex missed the comment count. Action 2 queried the public HN Firebase topstories and item endpoints and returned the complete answer.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "matches live top-10 story: \"Tailscale didn't stop the Hugging Face intrusion\""
+      }
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://raw.githubusercontent.com/zumerlab/snapdom/main/package.json",
+      "actions": 1,
+      "wallMs": 279,
+      "tokensObserved": null,
+      "notes": "Method: curl to the default branch's raw package.json plus local JSON parsing.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "version 2.23.1 confirmed against raw.githubusercontent"
+      }
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 3,
+      "wallMs": 1171,
+      "tokensObserved": null,
+      "notes": "Method: curl plus grep, following a link found in the Argentina article body. Action 1 failed locally because passing the full page through an environment variable exceeded the argument limit. Action 2 found the absolute Mar del Plata href but incorrectly prefixed it. Action 3 followed the discovered absolute URL and confirmed the canonical final URL.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on /wiki/Mar_del_Plata"
+      }
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "27689392",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 1,
+      "wallMs": 363,
+      "tokensObserved": null,
+      "notes": "Method: curl to npm's public downloads API for last-week/preact plus local JSON parsing; this supplied the weekly number corresponding to the package page.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "27689392 within ±25% of live API value 27689392"
+      }
+    },
+    {
+      "task": "ebay-first",
+      "claimed": false,
+      "answer": "",
+      "finalUrl": "https://www.ebay.com/sch/i.html?_nkw=vinyl+records",
+      "actions": 2,
+      "wallMs": 6948,
+      "tokensObserved": null,
+      "notes": "Method: curl, then Playwright Chromium fallback. eBay returned HTTP 403 to both methods; Chromium rendered 'Error Page | eBay'. No organic listing could be observed or opened, so the task is honestly unclaimed.",
+      "judge": {
+        "verdict": "fail",
+        "expected": "…/itm/<digits>",
+        "detail": "finalUrl \"https://www.ebay.com/sch/i.html?_nkw=vinyl+records\" is not an /itm/ listing"
+      }
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 4,
+      "wallMs": 600,
+      "tokensObserved": null,
+      "notes": "Method: curl plus grep on the Python functools reference. The first three patterns missed or found a different lru_cache example; action 4 extracted the documented signature @functools.lru_cache(maxsize=128, typed=False), confirming 128.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "functools page + maxsize default 128"
+      }
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 1,
+      "wallMs": 378,
+      "tokensObserved": null,
+      "notes": "Method: curl plus grep on the Mar del Plata article infobox; read the Partido row as General Pueyrredón.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "partido General Pueyrredón"
+      }
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 5,
+      "wallMs": 4354,
+      "tokensObserved": null,
+      "notes": "Method: Playwright CLI against the locally served app, with actual runtime interaction. Opened and snapshotted the page, filled New item with Buy milk, clicked Add, and snapshotted again; the DOM-order list was [Bread, Buy milk]. The same browser session continued into T9.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "list is exactly [Bread, Buy milk] in DOM order"
+      }
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "http://localhost:8123/app.html",
+      "actions": 2,
+      "wallMs": 1870,
+      "tokensObserved": null,
+      "notes": "Method: same Playwright page/session as T8. Clicked Refresh and snapshotted the resulting runtime DOM. The clock advanced and button focus changed, but the semantic grocery list remained [Bread, Buy milk], so the app state did not change.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "correctly reported no semantic change"
+      }
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 1,
+      "wallMs": 316,
+      "tokensObserved": null,
+      "notes": "Method: curl using Wikipedia's own /w/index.php search endpoint with the Obelisco de Buenos Aires query; followed redirects and observed the canonical article URL.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on the Obelisco article"
+      }
+    }
+  ],
+  "judgedAt": "2026-08-01T01:18:40.995Z"
+}

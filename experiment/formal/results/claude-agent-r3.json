@@ -1,0 +1,110 @@
+{
+  "arm": "claude-agent",
+  "runner": "claude",
+  "model": "claude-fable-5",
+  "rep": 3,
+  "date": "2026-07-31",
+  "notesGlobal": "Same methodology as reps 1-2. Fresh daemon (JSONL 20260801-015304.jsonl). No Cloudflare on npm. Oracle ids confirmed deterministic across sessions for same DOM (n_1rw, n_1rrj, n_1r3e, n_1r2d reused from prior reps and echo-verified before acting).",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 170",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 5,
+      "wallMs": 11684,
+      "tokensObserved": null,
+      "notes": "2 wasted actions (outline display-filtered by me, find row-1 no-match); text n_1rw echoed row 1 · daemon 1088 ms"
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://github.com/zumerlab/snapdom/blob/main/package.json",
+      "actions": 5,
+      "wallMs": 6502,
+      "tokensObserved": null,
+      "notes": " · daemon 6412 ms"
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 4,
+      "wallMs": 2189,
+      "tokensObserved": null,
+      "notes": "link at y=91080 · daemon 2111 ms"
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "23.467.316",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 2,
+      "wallMs": 1216,
+      "tokensObserved": null,
+      "notes": "no challenge · daemon 1212 ms"
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "Bert Kaempfert And His Orchestra The Kaempfert Touch Vinyl LP 1970 Shrink Wrap",
+      "finalUrl": "https://www.ebay.com/itm/156667373874",
+      "actions": 9,
+      "wallMs": 16211,
+      "tokensObserved": null,
+      "notes": "first organic rotated again (Bert Kaempfert back at y=420) · daemon 11680 ms"
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 9,
+      "wallMs": 9520,
+      "tokensObserved": null,
+      "notes": "1 extra find (display-filtered output re-confirmed honestly) · daemon 1617 ms"
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "Partido de General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 914,
+      "tokensObserved": null,
+      "notes": "infobox link in digest · daemon 910 ms"
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 5,
+      "wallMs": 1649,
+      "tokensObserved": null,
+      "notes": "diff: added listitem Buy milk · daemon 1556 ms"
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 2,
+      "wallMs": 319,
+      "tokensObserved": null,
+      "notes": "no changes, clock running · daemon 310 ms"
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 6,
+      "wallMs": 1861,
+      "tokensObserved": null,
+      "notes": " · daemon 1776 ms"
+    }
+  ]
+}

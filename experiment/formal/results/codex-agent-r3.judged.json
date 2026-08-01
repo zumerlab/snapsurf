@@ -1,0 +1,161 @@
+{
+  "arm": "codex-agent",
+  "runner": "codex",
+  "model": "GPT-5",
+  "rep": 3,
+  "date": "2026-07-31",
+  "notesGlobal": "Fresh snapDOM Agent CLI daemon session 20260801-014156. Only browse.mjs verbs were used for page interaction; no task hit the 15-action cap. The daemon was stopped and port 8377 closure verified at the end. Wall times run from the first task verb through completion of the final evidence-producing verb.",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 169 comments",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 7,
+      "wallMs": 26838,
+      "tokensObserved": null,
+      "notes": "Opened the front page and ultimately scoped the story table to read the first story and its 169 comments in DOM order. Dead ends: parent scoped only the title row; find comments and find discuss returned no matches; outline remained on the narrow scope; a full look was needed before the final scoped look. Daemon verb time: 1064 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "matches live top-10 story: \"Tailscale didn't stop the Hugging Face intrusion\""
+      }
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://github.com/zumerlab/snapdom/blob/main/package.json",
+      "actions": 6,
+      "wallMs": 17141,
+      "tokensObserved": null,
+      "notes": "Found package.json in the repository file list, opened it, re-baselined the navigated page, and found the rendered version field. Daemon verb time: 2892 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "version 2.23.1 confirmed against raw.githubusercontent"
+      }
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 4,
+      "wallMs": 8030,
+      "tokensObserved": null,
+      "notes": "Opened Argentina, found the Mar del Plata link inside the article body, followed it, and verified the destination article. Daemon verb time: 2135 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on /wiki/Mar_del_Plata"
+      }
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "23.467.316",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 2,
+      "wallMs": 5869,
+      "tokensObserved": null,
+      "notes": "Opened the package page and found the exact rendered Weekly Downloads value in the sidebar. Daemon verb time: 1308 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "23467316 within ±25% of live API value 27689392"
+      }
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "Bert Kaempfert And His Orchestra The Kaempfert Touch Vinyl LP 1970 Shrink Wrap",
+      "finalUrl": "https://www.ebay.com/itm/156667373874",
+      "actions": 8,
+      "wallMs": 24522,
+      "tokensObserved": null,
+      "notes": "Used eBay's own search box for vinyl records and opened the first organic listing at the top of the main results. Verified the listing title and real /itm/ landing. Daemon verb time: 10708 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on a listing: /itm/156667373874"
+      }
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 7,
+      "wallMs": 10352,
+      "tokensObserved": null,
+      "notes": "Navigated from the Python documentation home page through Library reference to functools and found the rendered signature @functools.lru_cache(maxsize=128, typed=False). Daemon verb time: 1426 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "functools page + maxsize default 128"
+      }
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "Partido de General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 1069,
+      "tokensObserved": null,
+      "notes": "Opened the article and found the rendered partido entry. Daemon verb time: 952 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "partido General Pueyrredón"
+      }
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 6,
+      "wallMs": 7698,
+      "tokensObserved": null,
+      "notes": "Opened the local app, observed the initial Bread list item, entered Buy milk, clicked Add, and verified the added list item in DOM order. Daemon verb time: 1559 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "list is exactly [Bread, Buy milk] in DOM order"
+      }
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 2,
+      "wallMs": 508,
+      "tokensObserved": null,
+      "notes": "Continued T8's page/session, clicked Refresh, and look reported no changes since the prior observation with zero unobservable regions. Daemon verb time: 308 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "correctly reported no semantic change"
+      }
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 6,
+      "wallMs": 9446,
+      "tokensObserved": null,
+      "notes": "Opened Spanish Wikipedia, used its own search box, submitted Obelisco de Buenos Aires, and verified the destination article. Daemon verb time: 1901 ms.",
+      "judge": {
+        "verdict": "pass",
+        "expected": "",
+        "detail": "landed on the Obelisco article"
+      }
+    }
+  ],
+  "judgedAt": "2026-08-01T01:46:08.335Z"
+}

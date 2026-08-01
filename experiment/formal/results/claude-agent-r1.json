@@ -1,0 +1,110 @@
+{
+  "arm": "claude-agent",
+  "runner": "claude",
+  "model": "claude-fable-5",
+  "rep": 1,
+  "date": "2026-07-31",
+  "notesGlobal": "Runner chains verbs in Bash batches; wallMs = end-of-last-verb minus start-of-first-verb per task (includes runner turnaround between batches). Setup status/help calls before T1 not counted. Fresh daemon, stopped after rep.",
+  "entries": [
+    {
+      "task": "hn-top",
+      "claimed": true,
+      "answer": "Tailscale didn't stop the Hugging Face intrusion | 153",
+      "finalUrl": "https://news.ycombinator.com/",
+      "actions": 2,
+      "wallMs": 14485,
+      "tokensObserved": null,
+      "notes": "#1 by y-position (y=44); comment link at y=61 same row · daemon 1065 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "gh-version",
+      "claimed": true,
+      "answer": "2.23.1",
+      "finalUrl": "https://github.com/zumerlab/snapdom/blob/main/package.json",
+      "actions": 6,
+      "wallMs": 14995,
+      "tokensObserved": null,
+      "notes": "file list row already showed 2.23.1; verified in file view. 1 wasted find pre-look after click (needs re-observe) · daemon 2587 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "wiki-deeplink",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 4,
+      "wallMs": 6018,
+      "tokensObserved": null,
+      "notes": "link at y=91080, click auto-scrolled · daemon 2146 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "npm-downloads",
+      "claimed": true,
+      "answer": "23.467.316",
+      "finalUrl": "https://www.npmjs.com/package/preact",
+      "actions": 8,
+      "wallMs": 41640,
+      "tokensObserved": null,
+      "notes": "Cloudflare challenge on first open; 2 looks + waits did nothing, reopen passed it. Page value lags npm API · daemon 6736 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "ebay-first",
+      "claimed": true,
+      "answer": "ALL $5.99 Vinyl Records No Limit You Pick & Choose Rock+ LP A-F Flat $6 Shipping",
+      "finalUrl": "https://www.ebay.com/itm/266123534705",
+      "actions": 9,
+      "wallMs": 29308,
+      "tokensObserved": null,
+      "notes": "first organic by y (743); no blind clicks · daemon 13678 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "pydocs-lru",
+      "claimed": true,
+      "answer": "128",
+      "finalUrl": "https://docs.python.org/3/library/functools.html",
+      "actions": 10,
+      "wallMs": 18033,
+      "tokensObserved": null,
+      "notes": "no functools link on /3/ home: went via Library reference; 2 exploratory finds wasted · daemon 1509 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "wiki-partido",
+      "claimed": true,
+      "answer": "Partido de General Pueyrredón",
+      "finalUrl": "https://es.wikipedia.org/wiki/Mar_del_Plata",
+      "actions": 2,
+      "wallMs": 1469,
+      "tokensObserved": null,
+      "notes": "municipality link + section title both name it · daemon 1465 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "demoqa-add",
+      "claimed": true,
+      "answer": "Bread, Buy milk",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 6,
+      "wallMs": 9042,
+      "tokensObserved": null,
+      "notes": "diff: added listitem Buy milk, list=Bread Buy milk. 1 wasted blind click (hit the clock) — self-inflicted, counted · daemon 1870 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "demoqa-noop",
+      "claimed": true,
+      "answer": "no-change",
+      "finalUrl": "file:///Users/martin/GitHub/zumerlab/snapdom/packages/agent/demo-qa/app.html",
+      "actions": 2,
+      "wallMs": 327,
+      "tokensObserved": null,
+      "notes": "diff: no changes since last look, clock running · daemon 314 ms (JSONL 20260801-001225)"
+    },
+    {
+      "task": "wiki-search",
+      "claimed": true,
+      "answer": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "finalUrl": "https://es.wikipedia.org/wiki/Obelisco_de_Buenos_Aires",
+      "actions": 6,
+      "wallMs": 7035,
+      "tokensObserved": null,
+      "notes": "searchbox type+enter landed directly on the article · daemon 2233 ms (JSONL 20260801-001225)"
+    }
+  ]
+}
