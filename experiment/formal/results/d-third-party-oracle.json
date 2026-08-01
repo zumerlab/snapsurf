@@ -1,0 +1,330 @@
+[
+  {
+    "index": "0",
+    "task": "Find the store location and hours of the closest Gamestop to zip code 90028 and set as home store on gamestop",
+    "arm": "oracle",
+    "keyNodes": 2,
+    "completed": 1,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.gamestop.com/",
+        "hit": true
+      },
+      {
+        "matcher": "url_exactly_match",
+        "ref": "https://www.gamestop.com/search/?store=2630",
+        "hit": false
+      }
+    ],
+    "steps": 25,
+    "tokensIn": 125864,
+    "tokensOut": 2496,
+    "wallMs": 105415,
+    "answer": "",
+    "urls": [
+      "about:blank",
+      "https://www.gamestop.com/stores",
+      "https://www.gamestop.com/stores/?showMap=true&horizontalView=true&isForm=true&postalCode=90028&radius=100",
+      "https://www.gamestop.com/",
+      "https://www.gamestop.com/stores/",
+      "https://www.gamestop.com/stores/us/ca/los-angeles",
+      "https://www.bing.com/search?q=GameStop+store+Hollywood+90028+hours",
+      "https://www.gamestop.com/store/us/ca/los-angeles/2630/sunset-and-andrews-center?msockid=1499f7e0b1d66f663fd2e048b05b6ec2",
+      "https://www.gamestop.com/store/us/ca/los-angeles/2630/sunset-and-andrews-center",
+      "https://www.bing.com/search?q=%22Sunset+and+Andrews+Center%22+GameStop+address+hours"
+    ]
+  },
+  {
+    "index": "1",
+    "task": "Compare available plans for the AeroAPI on flightaware",
+    "arm": "oracle",
+    "keyNodes": 3,
+    "completed": 1,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.flightaware.com/",
+        "hit": true
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.flightaware.com/commercial/aeroapi/",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.flightaware.com/commercial/aeroapi/#compare-plans-section",
+        "hit": false
+      }
+    ],
+    "steps": 22,
+    "tokensIn": 90222,
+    "tokensOut": 3241,
+    "wallMs": 70362,
+    "answer": "FlightAware's AeroAPI is offered in three self-service tiers — Personal, Standard, and Premium (each is cumulative: Standard = \"everything in Personal plus…\", Premium = \"everything in Standard plus…\").\n\n**Overview / usage rights**\n- **Personal:** Storage and distribution of derivative works for pers",
+    "urls": [
+      "https://www.bing.com/search?q=%22Sunset+and+Andrews+Center%22+GameStop+address+hours",
+      "https://www.flightaware.com/aeroapi/portal/#overview",
+      "https://www.flightaware.com/es-ES/commercial/aeroapi/"
+    ]
+  },
+  {
+    "index": "3",
+    "task": "Check the status of train S92 for any disruptions on new.mta.info.",
+    "arm": "oracle",
+    "keyNodes": 3,
+    "completed": 1,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://new.mta.info/",
+        "hit": true
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://new.mta.info/alerts",
+        "hit": false
+      },
+      {
+        "matcher": "url_exactly_match",
+        "ref": "https://new.mta.info/alerts?selectedroutes=mta%3as92&selecteddate=3%2f20%2f2024",
+        "hit": false
+      }
+    ],
+    "steps": 6,
+    "tokensIn": 7226,
+    "tokensOut": 1174,
+    "wallMs": 26333,
+    "answer": "I wasn't able to complete this check, and there are two separate issues worth flagging.\n\n**1. The site is blocking access.** Every URL I tried on the MTA domain returns a server-level \"Access Denied\" page rather than any content:\n\n- `https://new.mta.info/` → Access Denied\n- `https://new.mta.info/sta",
+    "urls": [
+      "https://www.flightaware.com/es-ES/commercial/aeroapi/",
+      "https://new.mta.info/",
+      "https://new.mta.info/status",
+      "https://www.mta.info/",
+      "https://new.mta.info/service-status"
+    ]
+  },
+  {
+    "index": "4",
+    "task": "Check the status of your iPhone repair on apple.",
+    "arm": "oracle",
+    "keyNodes": 3,
+    "completed": 0,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.apple.com/",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://support.apple.com/repair?cid=gn-ols-repair-lp-get_help",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://support.apple.com/my-support",
+        "hit": false
+      }
+    ],
+    "steps": 11,
+    "tokensIn": 26050,
+    "tokensOut": 1761,
+    "wallMs": 45759,
+    "answer": "I wasn't able to complete this one. Here's what I found:\n\n**What I tried:**\n1. `support.apple.com/repair` — the main Apple Service and Repair hub. It has links for starting a repair, finding service providers, and checking coverage, but no repair-status lookup.\n2. `support.apple.com/repair/check-sta",
+    "urls": [
+      "https://new.mta.info/service-status",
+      "https://support.apple.com/repair",
+      "https://support.apple.com/repair/check-status",
+      "https://idmsa.apple.com/IDMSWebAuth/signin?appIdKey=d7abc4ccb9b9f72d2f98c8d82fb9948668d09380a40c0fa64007a906a7502b4f&path=/repairs",
+      "https://support.apple.com/en-us/102655"
+    ]
+  },
+  {
+    "index": "5",
+    "task": "Open the page with a overview about the submission of releases on discogs",
+    "arm": "oracle",
+    "keyNodes": 2,
+    "completed": 2,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.discogs.com/",
+        "hit": true
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://support.discogs.com/hc/en-us/articles/360004016474-overview-of-submission-guidelines-for-releases",
+        "hit": true
+      }
+    ],
+    "steps": 6,
+    "tokensIn": 14612,
+    "tokensOut": 976,
+    "wallMs": 23664,
+    "answer": "I've opened the requested page.\n\n**Page:** [Overview Of Submission Guidelines For Releases](https://support.discogs.com/hc/en-us/articles/360004016474-Overview-Of-Submission-Guidelines-For-Releases) — on the Discogs Support site.\n\n**How I got there:** From the Discogs homepage footer, under the *Hel",
+    "urls": [
+      "https://support.apple.com/en-us/102655",
+      "https://www.discogs.com/",
+      "https://support.discogs.com/hc/en-us/articles/360004016474-Overview-Of-Submission-Guidelines-For-Releases"
+    ]
+  },
+  {
+    "index": "8",
+    "task": "Find a person by address Nice st - 1234, Good, FL on yellowpages",
+    "arm": "oracle",
+    "keyNodes": 5,
+    "completed": 1,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.yellowpages.com/",
+        "hit": true
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://people.yellowpages.com/whitepages/address",
+        "hit": false
+      },
+      {
+        "matcher": "url_exactly_match",
+        "ref": "https://people.yellowpages.com/whitepages/address?street=nice+st+-+1234&city=good&state=fl",
+        "hit": false
+      },
+      {
+        "matcher": "url_exactly_match",
+        "ref": "https://people.yellowpages.com/whitepages/address?street=nice+st+-+1234&city=good&state=fl",
+        "hit": false
+      },
+      {
+        "matcher": "url_exactly_match",
+        "ref": "https://people.yellowpages.com/whitepages/address?street=nice+st+-+1234&city=good&state=fl",
+        "hit": false
+      }
+    ],
+    "steps": 22,
+    "tokensIn": 133486,
+    "tokensOut": 3338,
+    "wallMs": 95661,
+    "answer": "I wasn't able to complete this search, and I want to explain exactly why rather than invent a result.\n\n**What I did:**\n1. Opened yellowpages.com and located the **\"Find People\"** option.\n2. Clicking it produced a \"You are leaving Yellowpages.com…\" interstitial and redirected me off-site to **Inteliu",
+    "urls": [
+      "https://support.discogs.com/hc/en-us/articles/360004016474-Overview-Of-Submission-Guidelines-For-Releases",
+      "https://www.yellowpages.com/",
+      "https://www.intelius.com/?utm_source=Y72M&traffic[source]=Y72M&utm_medium=&traffic[medium]=&utm_campaign=yellowpages&traffic[campaign]=:yellowpages&utm_term=&traffic[term]=&utm_content=&traffic[content]=&s1=yellowpages&s2=&s3=&s4=&s5=&traffic[funnel]=bg&traffic[sub_id]=yellowpages&traffic[s2]=&ck_rsid=4102626356",
+      "https://www.intelius.com/reverse-address-lookup/",
+      "https://www.yellowpages.com/search?search_terms=Nice+St+1234&geo_location_terms=Good%2C+FL"
+    ]
+  },
+  {
+    "index": "10",
+    "task": "Get the lowest priced women's plus size one piece swimsuit in color black with customer rating of atleat 5 on kohls",
+    "arm": "oracle",
+    "keyNodes": 8,
+    "completed": 1,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.kohls.com/",
+        "hit": true
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.kohls.com/catalog/womens-clothing.jsp?cn=gender:womens+department:clothing&cc=wms-tn1.0-s-women&kls_sbp=87660515555844928264416369496642981542",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.kohls.com/catalog/womens-swimsuits-clothing.jsp?cn=gender:womens+category:swimsuits+department:clothing&bst=6749829:6749828&icid=sl-nav-wmn-clothing-womensclothing-swimwear&kls_sbp=87660515555844928264416369496642981542",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.kohls.com/catalog/womens-onepiece-swimsuits-swimsuits-clothing.jsp?cn=gender:womens+product:one-piece%20swimsuits+category:swimsuits+department:clothing&icid=sl-nav-wmn-clothing-swimwear-onepiece&kls_sbp=87660515555844928264416369496642981542",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.kohls.com/catalog/womens-plus-onepiece-swimsuits-swimsuits-clothing.jsp?cn=gender:womens+sizerange:plus+product:one-piece%20swimsuits+category:swimsuits+department:clothing&bst=4582406&icid=womensonepieceswim-vn-plus&pfm=internal%20campaign%20p13n_control%20visual%20nav&kls_sbp=87660515555844928264416369496642981542",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.kohls.com/catalog/womens-black-plus-onepiece-swimsuits-swimsuits-clothing.jsp?cn=gender:womens+color:black+sizerange:plus+product:one-piece%20swimsuits+category:swimsuits+department:clothing&s=1&ppp=48&pfm=internal%20campaign%20visual%20nav%20refine&kls_sbp=87660515555844928264416369496642981542",
+        "hit": false
+      },
+      {
+        "matcher": "url_exactly_match",
+        "ref": "https://www.kohls.com/catalog/womens-black-plus-onepiece-swimsuits-swimsuits-clothing.jsp?cn=gender:womens+color:black+sizerange:plus+product:one-piece%20swimsuits+category:swimsuits+department:clothing&pfm=internal%20campaign%20visual%20nav%20refine&kls_sbp=87660515555844928264416369496642981542&ppp=48&s=4&sks=true",
+        "hit": false
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.kohls.com/catalog/5-womens-black-plus-onepiece-swimsuits-swimsuits-clothing.jsp?cn=toprated:5+gender:womens+color:black+sizerange:plus+product:one-piece%20swimsuits+category:swimsuits+department:clothing&s=4&ppp=48&pfm=internal%20campaign%20visual%20nav%20refine&kls_sbp=87660515555844928264416369496642981542",
+        "hit": false
+      }
+    ],
+    "steps": 25,
+    "tokensIn": 137652,
+    "tokensOut": 4562,
+    "wallMs": 150606,
+    "answer": "",
+    "urls": [
+      "https://www.yellowpages.com/",
+      "https://www.kohls.com/",
+      "https://www.kohls.com/catalog/womens-plus-size-one-piece-swimsuits-swimsuits-swimwear-clothing.jsp?CN=Gender:Womens+Size:Plus+Product:One%20Piece%20Swimsuits+Category:Swimsuits+Department:Swimwear+Department:Clothing",
+      "https://m.kohls.com/",
+      "https://duckduckgo.com/static-pages/418.html?bno=84f2&is_tor=0&is_ar=0&is_netp=0",
+      "https://www.bing.com/search?q=kohls+womens+plus+size+one+piece+swimsuits+black",
+      "https://www.kohls.com/catalog/plus-size-one-piece-swimsuits.jsp?CN=Size:Plus%20Size+Product:One%20Piece%20Swimsuits",
+      "https://www.bing.com/search?q=site%3Akohls.com+plus+size+one+piece+swimsuit+black",
+      "https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3Dkohls%2Bplus%2Bsize%2Bblack%2Bone%2Bpiece%2Bswimsuit%26sei%3DCx5uar2oL5eHptQPstCt4Aw&q=EhAmAEBBWayBAHDupd1P_ASVGIu8uNMGIjCntvRYiaf7cM9Do8j2p14DeKfCKsMwJh5wD54EKycnffQdOB4M9jMm8NDrQNNc2m8yAVJaAUM",
+      "https://r.jina.ai/https://www.kohls.com/catalog/plus-size-one-piece-swimsuits.jsp?CN=Size:Plus%20Size+Product:One%20Piece%20Swimsuits",
+      "https://r.jina.ai/https%3A%2F%2Fwww.kohls.com%2Fcatalog%2Fplus-size-one-piece-swimsuits.jsp",
+      "https://www.kohls.com/catalog/womens-plus-size-swimsuits-swimwear-clothing.jsp?CN=Gender:Womens+Size:Plus%20Size+Category:Swimsuits+Department:Swimwear+Department:Clothing"
+    ]
+  },
+  {
+    "index": "12",
+    "task": "Find a 2022 Tesla Model 3 on carmax",
+    "arm": "oracle",
+    "keyNodes": 3,
+    "completed": 1,
+    "nodes": [
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.carmax.com/",
+        "hit": true
+      },
+      {
+        "matcher": "url_included_match",
+        "ref": "https://www.carmax.com/cars/tesla/model-3?year=2022-2023",
+        "hit": false
+      },
+      {
+        "matcher": "url_exactly_match",
+        "ref": "https://www.carmax.com/cars/tesla/model-3?year=2022",
+        "hit": false
+      }
+    ],
+    "steps": 19,
+    "tokensIn": 91038,
+    "tokensOut": 4290,
+    "wallMs": 132191,
+    "answer": "I was unable to complete this task. Here's what happened:\n\n**CarMax is blocking this browser entirely.** Every request to the site — including the homepage, the Tesla Model 3 search pages, their internal search API, and even `robots.txt` — returns an \"Access Denied\" page (bot detection at the CDN le",
+    "urls": [
+      "https://www.mojeek.com/search?q=kohls+plus+size+one+piece+swimsuit+black",
+      "https://www.carmax.com/",
+      "https://www.carmax.com/cars/tesla/model-3",
+      "https://carmax.com/cars/tesla/model-3/2022",
+      "https://www.carmax.com/cars/api/search/run?uri=%2Fcars%2Ftesla%2Fmodel-3&skip=0&take=24&year=2022",
+      "https://www.bing.com/search?q=carmax+2022+Tesla+Model+3+for+sale",
+      "https://html.duckduckgo.com/html/?q=carmax+2022+Tesla+Model+3",
+      "https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3Dsite:carmax.com%2B2022%2BTesla%2BModel%2B3%26sei%3Dix5uarznMKzuptQPh8GO6A8&q=EhAmAEBBWayBAHDupd1P_ASVGIu9uNMGIjCMRfQmyCO4Q2_c7C7DZQ3e7i1TDTYFXRtG3yy0i58OYsImqc6cfdajPDrrMAVgpo4yAVJaAUM",
+      "https://r.jina.ai/https://www.carmax.com/cars/tesla/model-3/2022",
+      "https://www.carmax.com/cars/tesla/model-3/2022",
+      "https://www.bing.com/search?q=%22carmax%22+2022+Tesla+Model+3+stock+number&setlang=en&cc=US",
+      "https://www.mojeek.com/search?q=carmax+2022+Tesla+Model+3"
+    ]
+  }
+]

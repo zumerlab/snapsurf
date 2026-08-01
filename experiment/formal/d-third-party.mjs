@@ -111,13 +111,25 @@ for (const task of TASKS) {
   await cmd('open', ['about:blank'])
   const messages = [{ role: 'user', content: task.task }]
   let turns = 0, tokensIn = 0, tokensOut = 0, answer = null, steps = 0
+  const errors = []
   const t0 = Date.now()
   while (turns < 25) {
     turns++
-    let resp
-    try {
-      resp = await client.messages.create({ model: MODEL, max_tokens: 8000, output_config: { effort: 'high' }, system: SYSTEM, tools: toolsFor(ARM), messages })
-    } catch (e) { break }
+    // Reintento con backoff ante 429/5xx, y el error REGISTRADO — no silenciado.
+    // Mi primera versión hacía `catch { break }` y produjo 5 episodios de 0 pasos que
+    // parecían "0 key nodes" legítimos: exactamente el fallo mudo que este proyecto
+    // persigue en las páginas, cometido en el harness.
+    let resp = null, lastErr = null
+    for (let attempt = 0; attempt < 5 && !resp; attempt++) {
+      try {
+        resp = await client.messages.create({ model: MODEL, max_tokens: 8000, output_config: { effort: 'high' }, system: SYSTEM, tools: toolsFor(ARM), messages })
+      } catch (e) {
+        lastErr = `${e.status || ''} ${String(e.message).slice(0, 140)}`
+        if (e.status === 429 || (e.status >= 500 && e.status < 600)) { await sleep(20000 * (attempt + 1)); continue }
+        break
+      }
+    }
+    if (!resp) { errors.push({ turn: turns, error: lastErr }); break }
     if (resp.stop_reason === 'refusal') break
     tokensIn += resp.usage.input_tokens; tokensOut += resp.usage.output_tokens
     messages.push({ role: 'assistant', content: resp.content })
@@ -135,8 +147,8 @@ for (const task of TASKS) {
   }
   const nodes = scoreKeyNodes(task.evaluation, visited)
   const done = nodes.filter((n) => n.hit).length
-  results.push({ index: task.index, task: task.task, arm: ARM, keyNodes: nodes.length, completed: done, nodes, steps, tokensIn, tokensOut, wallMs: Date.now() - t0, answer: (answer || '').slice(0, 300), urls: [...new Set(visited)].slice(0, 12) })
-  console.log(`[${task.index}] ${done}/${nodes.length} key nodes · ${steps} pasos · ${(tokensIn / 1000).toFixed(0)}k · ${((Date.now() - t0) / 1000).toFixed(0)}s — ${task.task.slice(0, 60)}`)
+  results.push({ errors, index: task.index, task: task.task, arm: ARM, keyNodes: nodes.length, completed: done, nodes, steps, tokensIn, tokensOut, wallMs: Date.now() - t0, answer: (answer || '').slice(0, 300), urls: [...new Set(visited)].slice(0, 12) })
+  console.log(`[${task.index}]${errors.length ? ' ⚠ ' + errors[0].error + ' |' : ''} ${done}/${nodes.length} key nodes · ${steps} pasos · ${(tokensIn / 1000).toFixed(0)}k · ${((Date.now() - t0) / 1000).toFixed(0)}s — ${task.task.slice(0, 60)}`)
   await writeFile(join(OUT, `d-third-party-${ARM}.json`), JSON.stringify(results, null, 2) + '\n')
 }
 
