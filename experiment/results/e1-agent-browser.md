@@ -1,72 +1,73 @@
-# E1 — `vercel-labs/agent-browser` como cuarto brazo determinista
+# E1 — `vercel-labs/agent-browser` as a fourth arm, no model involved
 
-2026-08-01 · agent-browser **0.33.1** (`npm install -g agent-browser`) · mismas 19
-fixtures con truth escrita a mano que `bench-qa.md` · sin modelo, 100% determinista.
+2026-08-01 · agent-browser **0.33.1** (`npm install -g agent-browser`) · the same 19 cases
+with hand-written truth used in `bench-qa.md` · no model, fully deterministic.
 
-Primera vez que corremos al rival más comparable: hasta ahora solo lo teníamos
-fichado a nivel documental en `docs/LANDSCAPE.md`. Leer un README no es medir.
+The first time we actually ran the most comparable public tool. Until now we only had it
+described in `docs/LANDSCAPE.md`. Reading a README is not measuring.
 
-## Resultado
+## Result
 
-| Brazo | Correctos | Falsos positivos (ruido) | Cambios perdidos |
+| Method | Right | False alarms (noise) | Missed changes |
 |---|---:|---:|---:|
-| **Oráculo (browser_verify)** | **19/19** | **0/8** | **0/11** |
-| agent-browser + normalización sin refs | 17/19 | 1/8 | 1/11 |
-| a11y-tree (Playwright) | 16/19 | 2/8 | 1/11 |
-| pixel-diff (clase pixelmatch) | 13/19 | 5/8 | 1/11 |
-| **agent-browser `diff snapshot` tal cual sale** | **11/19** | **8/8** | 0/11 |
+| **This tool (browser_verify)** | **19/19** | **0/8** | **0/11** |
+| agent-browser, references normalized away | 17/19 | 1/8 | 1/11 |
+| Accessibility tree (Playwright) | 16/19 | 2/8 | 1/11 |
+| Pixel difference (pixelmatch class) | 13/19 | 5/8 | 1/11 |
+| **agent-browser `diff snapshot` as it ships** | **11/19** | **8/8** | 0/11 |
 
-## Los dos números de agent-browser, y por qué son dos
+## Why there are two numbers for agent-browser
 
-**Tal cual sale (11/19, 8/8 falsos positivos):** sus refs `@eN` **se renumeran en cada
-snapshot**, y su `diff` es textual sobre el árbol serializado — así que el ruido de
-refs domina todo. Medido de forma aislada: una página **100% estática**, diffeada
-contra sí misma, reporta `3 additions, 3 removals`. Consecuencia: **todo caso de
-ruido da "cambió"**. Para QA, tal cual sale, no es utilizable.
+**As it ships (11/19, 8 false alarms out of 8):** its `@eN` references **are renumbered on
+every snapshot**, and its diff is textual over the serialized tree, so reference noise
+swamps everything. Measured in isolation: a **completely static page**, diffed against
+itself, reports `3 additions, 3 removals`. The consequence is that **every noise case
+reads as a change**. For QA work, as it ships, it is not usable.
 
-**Con normalización sin refs (17/19):** borrando ` ref=eN` de ambos lados antes de
-comparar —un post-proceso que cualquier consumidor razonable escribiría— pasa a ser
-**el mejor competidor del corpus**, por encima del a11y-tree de Playwright y bastante
-por encima de pixel-diff. Sus dos errores:
+**With references normalized away (17/19):** stripping ` ref=eN` from both sides before
+comparing — a post-processing step any reasonable user would write — makes it **the
+strongest comparison in the corpus**, above Playwright's accessibility tree and well above
+the pixel comparison. Its two errors:
 
-- **`live-timestamp` (falso positivo)**: el reloj cambia el texto, y un diff textual
-  no puede saber que eso no es estado de la aplicación. Es exactamente el caso que
-  nuestro `rawTextHash` + supresión causal resuelven.
-- **`font-swap-late` (perdido)**: una fuente que termina de cargar no tiene
-  representación textual en el árbol de accesibilidad. Invisible para ese canal.
+- **`live-timestamp` (false alarm)**: the clock changes the text, and a textual diff
+  cannot know that is not application state. This is exactly the case our raw-text hash
+  and causal suppression handle.
+- **`font-swap-late` (missed)**: a font finishing loading has no textual representation in
+  the accessibility tree. Invisible to that channel.
 
-### Antes de aceptar el número as-is se agotaron las alternativas
+### Alternatives were exhausted before accepting the as-shipped number
 
-Para no ganar por configurarlo mal (regla del TESTPLAN), se probó:
-- flujo in-session sin `-b` → peor (`4 additions, 0 unchanged` en página estática);
-- `--compact` → los refs igual se renumeran;
-- no existe flag que omita refs del snapshot.
+So that we do not win by configuring it badly (a rule in `TESTPLAN.md`), we tried:
 
-No hay configuración documentada en la que una página estática diffee limpio.
+- an in-session flow with no `-b` → worse (`4 additions, 0 unchanged` on a static page);
+- `--compact` → references are still renumbered;
+- there is no flag that omits references from the snapshot.
 
-## Lectura honesta
+There is no documented configuration in which a static page diffs clean.
 
-1. **La tesis se sostiene, con margen más chico del que creíamos.** Contra un
-   agent-browser bien normalizado la distancia es 19/19 vs 17/19 — no 19/19 vs 13/19
-   como contra pixel-diff. La ventaja real está concentrada en dos clases: **ruido
-   textual** (relojes, timestamps) y **cambios sin representación textual** (fuentes,
-   y por extensión todo lo visual sin semántica).
-2. **La hipótesis que llevábamos era parcialmente falsa y hay que corregirla.**
-   Suponíamos que un diff de texto del a11y tree perdería el flip de `disabled`.
-   **No lo pierde**: `[disabled]` viaja en la serialización, así que lo detecta.
-   Lo que sí rompe su diff es la identidad, no la representación del estado.
-3. **El problema de identidad que documentábamos es real y medible**: sus refs no
-   sobreviven un re-snapshot, y eso convierte cada observación en "todo cambió".
-   Nuestros ids derivados de contenido existen precisamente para eso.
-4. **Para el pitch**: contra este rival no alcanza con "detectamos más". El argumento
-   defendible es *"tu diff necesita que le escribas la normalización, y aun así se
-   come los relojes y no ve lo que no tiene texto"*.
+## Honest reading
 
-## Reproducir
+1. **The core claim holds, with a smaller margin than we believed.** Against a
+   well-normalized agent-browser the distance is 19/19 to 17/19 — not 19/19 to 13/19 as it
+   is against a pixel comparison. The real advantage is concentrated in two classes:
+   **textual noise** (clocks, timestamps) and **changes with no textual representation**
+   (fonts, and by extension anything visual without structure).
+2. **One of our assumptions was false and has to be corrected.** We assumed a text diff of
+   the accessibility tree would miss the `disabled` flip. **It does not**: `[disabled]`
+   travels in the serialization, so it is detected. What breaks its comparison is
+   identity, not the representation of state.
+3. **The identity problem we documented is real and measurable**: its references do not
+   survive a re-snapshot, which turns every reading into "everything changed". Our
+   content-derived ids exist precisely for that.
+4. **For the pitch**: against this tool, "we detect more" is not enough. The defensible
+   statement is *"your comparison needs you to write the normalization yourself, and even
+   then it eats clocks and cannot see what has no text."*
+
+## Reproducing
 
 ```bash
 npm install -g agent-browser
 node packages/agent/experiment/e1-agent-browser.mjs
 ```
 
-Datos crudos por fixture: `results/e1-agent-browser.json`.
+Raw per-case data: `results/e1-agent-browser.json`.

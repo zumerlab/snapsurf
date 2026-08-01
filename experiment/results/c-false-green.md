@@ -1,96 +1,98 @@
-# Fase C — False-green diferencial
+# Phase C — Catching failures that look like successes
 
-2026-08-01 · `experiment/c-false-green.mjs` · app `demo-qa/silent-failures.html`
-con ruido ambiental deliberado (reloj vivo + spinner + marquesina) ·
-agent-browser 0.33.1 · pixel-diff perceptual (clase pixelmatch, @zumer/snapdiff).
+2026-08-01 · `experiment/c-false-green.mjs` · app `demo-qa/silent-failures.html`, which
+carries deliberate ambient noise (a live clock, a spinner, a ticker) · agent-browser
+0.33.1 · perceptual pixel comparison (pixelmatch class, @zumer/snapdiff).
 
-Ocho acciones que **parecen** haber funcionado. Cada canal responde "¿mi acción tuvo
-el efecto que yo pretendía?" y un juez independiente —`window.__intent()`, que lee el
-estado real del DOM sin pasar por ningún canal— dice la verdad.
+Eight actions that **look** as if they worked. Each channel answers "did my action have
+the effect I intended?", and an independent judge — `window.__intent()`, which reads the
+real DOM state without going through any channel — says what actually happened.
 
-## Resultado
+## Result
 
-| Canal | Aciertos | **FALSE GREEN** | false red |
+| Channel | Right | **WRONG SUCCESS** | wrong failure |
 |---|---:|---:|---:|
-| **Oráculo · assert de la postcondición** | **8/8** | **0** | 0 |
-| Oráculo · `look` crudo (¿cambió algo?) | 4-6/8 † | 2-4 | 0 |
+| **Stating the expected outcome and checking it** | **8/8** | **0** | 0 |
+| Just asking "did anything change?" | 4–6/8 † | 2–4 | 0 |
+| agent-browser `diff snapshot` (as it ships) | 2/8 | 6 | 0 |
+| agent-browser with references normalized away | 2/8 | 6 | 0 |
+| Screenshot (perceptual pixel comparison) | 2/8 | 6 | 0 |
 
-| agent-browser `diff snapshot` (as-is) | 2/8 | 6 | 0 |
-| agent-browser + normalización sin refs | 2/8 | 6 | 0 |
-| Screenshot (pixel-diff perceptual) | 2/8 | 6 | 0 |
+**The difference: 0 against 6 wrong success reports out of 8 cases.** The cut-off in
+`TESTPLAN.md` asked for 30 points; the result is 75.
 
-**Diferencial: 0 vs 6 falsos positivos de éxito sobre 8 casos.** El criterio de corte
-del TESTPLAN pedía ≥30 puntos; el resultado es de 75.
+† **The raw "did anything change?" arm is NOT stable between runs.** The first run scored
+6/8 with 2 wrong successes; the re-run on 2026-08-01 scored 4/8 with 4. It depends on what
+the page's ambient noise happens to do at that moment — which is exactly what these cases
+simulate. The stated-expectation arm scored 8/8 with 0 wrong successes in both runs. This
+does not weaken the document's conclusion, it strengthens it: asking "did anything change?"
+is inherently unstable under noise, which is why the stated expectation is the product and
+the raw comparison is the input.
 
-† **El brazo `look` crudo NO es estable entre corridas.** La primera corrida dio 6/8 · 2
-falsos verdes y la re-corrida del 2026-08-01 dio 4/8 · 4: depende del ruido ambiental que
-la página produzca en ese instante (reloj + spinner + marquesina), que es justamente lo
-que el caso simula. El brazo `assert` dio 8/8 · 0 falsos verdes en las dos corridas. La
-conclusión del documento no cambia — la refuerza: preguntar "¿cambió algo?" es
-intrínsecamente inestable bajo ruido, y por eso la aserción de postcondición es el
-producto y el diff crudo es el insumo.
+## Per case
 
-## Por caso
+Rows below are from the first run, where the raw arm scored 6/8.
 
-| # | Falla plantada | Verdad | assert | look | agent-browser | pixel |
+| # | Planted failure | Truth | stated expectation | raw "changed?" | agent-browser | pixel |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| F1 | no-op puro | ✗ | ✓ FAIL | ✓ | ✗ dice cambió | ✗ 0,118% |
-| F2 | submit rechazado en silencio | ✗ | ✓ FAIL | ✓ | ✗ | ✗ 0,182% |
-| F3 | click interceptado por overlay | ✗ | ✓ FAIL | ✓ | ✗ | ✗ 0,082% |
-| F4 | toast efímero (ya se fue) | ✗ | ✓ FAIL | ✓ | ✗ | ✗ 0,112% |
-| F5 | funciona fuera del viewport | ✓ | ✓ PASS | ✓ | ✗ indistinguible | ✗ 4,9% |
-| F6 | estado sin delta visual | ✓ | ✓ PASS | ✓ | ✗ indistinguible | ✗ 3,9% |
-| F7 | doble efecto (insertó 2, no 1) | ✗ | ✓ FAIL | ✗ dice ok | ✗ | ✗ 3,8% |
-| F8 | SPA a medio hidratar | ✗ | ✓ FAIL | ✗ dice ok | ✗ | ✗ 3,9% |
+| F1 | plain no-op | ✗ | ✓ FAIL | ✓ | ✗ says it changed | ✗ 0.118% |
+| F2 | submit rejected silently | ✗ | ✓ FAIL | ✓ | ✗ | ✗ 0.182% |
+| F3 | click swallowed by an overlay | ✗ | ✓ FAIL | ✓ | ✗ | ✗ 0.082% |
+| F4 | notification already gone | ✗ | ✓ FAIL | ✓ | ✗ | ✗ 0.112% |
+| F5 | worked, but out of view | ✓ | ✓ PASS | ✓ | ✗ cannot tell | ✗ 4.9% |
+| F6 | state change with no visual difference | ✓ | ✓ PASS | ✓ | ✗ cannot tell | ✗ 3.9% |
+| F7 | double effect (inserted 2, not 1) | ✗ | ✓ FAIL | ✗ says fine | ✗ | ✗ 3.8% |
+| F8 | half-hydrated single-page navigation | ✗ | ✓ FAIL | ✗ says fine | ✗ | ✗ 3.9% |
 
-## Lo que hay que leer con cuidado
+## What to read carefully
 
-**1. El valor NO está en el diff, está en la aserción.** Nuestro propio `look` crudo
-—la pregunta "¿cambió algo?"— produce **2 falsos positivos** (F7: insertó dos filas y
-"cambió" es cierto; F8: la URL cambió y el contenido nunca hidrató). El canal que da
-0 es el `assert` de la postcondición pretendida. Esto confirma por medición lo que ya
-sospechábamos: **`changed:true` a secas es señal de humo, no aserción**, y el producto
-defendible es el runtime de postcondiciones, no "un diff mejor".
+**1. The value is not the comparison, it is the stated expectation.** Our own raw
+"did anything change?" produces wrong success reports (F7: two rows were inserted and
+"something changed" is true; F8: the URL changed and the content never arrived). The
+channel that reaches 0 is the one that checks the outcome you intended. This confirms by
+measurement what we already suspected: **a bare `changed:true` is a smoke signal, not an
+assertion**, and the defensible product is the runtime that checks postconditions, not
+"a better diff".
 
-**2. Los otros canales no fallan por ser malos, fallan porque responden otra pregunta.**
-El pixel-diff detecta movimiento —siempre lo hay, el reloj corre— y agent-browser
-entrega un diff textual que el consumidor tiene que interpretar. Ninguno de los dos
-**miente**: simplemente no tienen una primitive para expresar "yo esperaba que se
-agregara UNA fila llamada X". Comparación honesta: no es "su diff está roto", es
-**"con su diff todavía tenés que escribir vos la capa que decide si funcionó, y ahí es
-donde aparecen los falsos verdes"**.
+**2. The other channels do not fail because they are bad. They fail because they answer a
+different question.** The pixel comparison detects movement, and there is always movement
+here because the clock runs. agent-browser hands over a text diff the caller has to
+interpret. Neither of them **lies**: they simply have no primitive for expressing "I
+expected ONE row named X to be added". The honest comparison is not "their diff is
+broken", it is **"with their diff you still have to write the layer that decides whether
+it worked, and that is where the wrong success reports appear"**.
 
-**3. Los dos casos que separan todo son los más incómodos**: F7 (la acción funcionó
-*de más*) y F8 (la navegación arrancó y no terminó). Ambos son "algo pasó" para
-cualquier canal de cambio, y solo una aserción con intención —`maxChanges`,
-`urlIncludes` + `exists`— los distingue de un éxito.
+**3. The two cases that separate everything are the uncomfortable ones**: F7, where the
+action worked *too much*, and F8, where the navigation started and never finished. Both
+are "something happened" for any change-detection channel, and only an assertion carrying
+intent — `maxChanges`, `urlIncludes` plus `exists` — tells them apart from a success.
 
-## Higiene de medición (cuatro bugs propios, corregidos antes de creer nada)
+## Measurement hygiene (four bugs of our own, fixed before believing anything)
 
-Esta fase dio resultados distintos en cinco corridas. Los cuatro errores eran míos:
+This phase produced different results across five runs. All four errors were mine:
 
-1. **pixel-diff siempre 0,000%** — invocaba `diffPixels` con `ImageData` en vez de los
-   datos crudos; devolvía `undefined` y se leía como 0. Corregido copiando la
-   invocación exacta del brazo pixel de `bench-qa`.
-2. **`element.click()` programático** — atraviesa el hit-testing, así que F3 (click
-   interceptado) daba "ocurrió". Corregido a click real de mouse.
-3. **Click real por coordenadas de página** — los botones bajo el fold quedaban fuera
-   del viewport y el click caía al vacío (los 8 casos daban "no pasó nada"). Corregido
-   con auto-scroll + `force:true` (saltea los chequeos de Playwright, **no** el
-   hit-testing del browser, que es lo que F3 necesita).
-4. **Asimetría injusta**: agent-browser recibía la acción por `eval` (programática) y
-   nosotros por click real. Igualado: los tres canales usan el click real de su propia
-   herramienta.
+1. **The pixel comparison always returned 0.000%** — `diffPixels` was called with
+   `ImageData` instead of the raw buffers, returned `undefined`, and that read as 0. Fixed
+   by copying the exact call from the pixel arm of `bench-qa`.
+2. **A programmatic `element.click()`** goes straight through hit-testing, so F3 (the
+   intercepted click) reported "it happened". Fixed to a real mouse click.
+3. **A real click by page coordinates** left buttons below the fold outside the viewport,
+   so the click landed on nothing and all 8 cases reported "nothing happened". Fixed with
+   auto-scroll plus `force:true`, which skips Playwright's own checks but **not** the
+   browser's hit-testing, which is what F3 needs.
+4. **An unfair asymmetry**: agent-browser received the action through `eval`
+   (programmatic) while we used a real click. Levelled: all three channels now use their
+   own tool's real click.
 
-Y un quinto, conceptual: el juez medía *"¿mutó algo?"* en vez de *"¿se cumplió la
-postcondición?"*. Con la primera definición, F7 y F8 contaban como éxitos —que es
-justamente el error que este experimento existe para detectar.
+And a fifth, conceptual one: the judge was measuring *"did anything mutate?"* instead of
+*"did the intended outcome happen?"*. Under the first definition, F7 and F8 counted as
+successes — which is precisely the error this experiment exists to detect.
 
-## Reproducir
+## Reproducing
 
 ```bash
 npm install -g agent-browser
 node packages/agent/experiment/c-false-green.mjs
 ```
 
-Datos crudos por caso: `results/c-false-green.json`.
+Raw per-case data: `results/c-false-green.json`.

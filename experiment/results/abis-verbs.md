@@ -1,54 +1,69 @@
-# A-bis — Los verbos que nunca se habían probado
+# A-bis — The verbs that had never been tested
 
-2026-08-01 · runner: `experiment/abis-verbs.mjs` · **13/13 checks OK**
+2026-08-01 · runner: `experiment/abis-verbs.mjs` · **19/19 checks OK, on both installs**
 
-Cobertura previa verificada con matcher sobre `test/`, `experiment/`,
-`companion/gate.mjs` y `demo-qa/`: `rec` y `parent` no aparecían en ningún lado;
-`snap`, `cp` y `map` solo en `mcp/server.mjs`, que es implementación, no prueba.
+Previous coverage, verified with a matcher over `test/`, `experiment/`,
+`companion/gate.mjs` and `demo-qa/`: `rec` and `parent` appeared nowhere; `snap`, `cp` and
+`map` only in `mcp/server.mjs`, which is the implementation and not a test.
 
-## Resultado por verbo
+Since 2026-08-01 the runner takes `--daemon <path>`, so the same checks run against the
+repository tree **and** against the global install in `~/.claude/snapdom-agent`. That
+second run is not optional: the global install had a broken bundle and no gate touched it.
 
-| Verbo | Checks | Estado |
+## Result by verb
+
+| Verb | Checks | State |
 |---|---|---|
-| `parent` | localiza y sube a la card con ≥2 actionables (ve link **y** botón) | ✅ |
-| `map` | primera página 40 ids · offset 40 devuelve 22 nuevos · **sin solapamiento** | ✅ |
-| `snap` | PNG de 60 KB de la región + ancestro de contexto | ✅ |
-| `cp` | `save` / `list` / `diff` contra el checkpoint nombrado | ✅ |
-| `rec` | GIF 296 KB y MP4 75 KB del body (2 s) · scopeado a un elemento · sobrevive una navegación | ✅ |
+| `parent` | finds the node and climbs to the card with 2+ clickable things (sees the link **and** the button) | ✅ |
+| `map` | first page 40 ids · offset 40 returns 22 new ones · **no overlap** | ✅ |
+| `snap` | 60 KB PNG of the region plus enough surrounding context | ✅ |
+| `cp` | `save` / `list` / `diff` against the named reference point | ✅ |
+| `rec` | 296 KB GIF and 75 KB MP4 of the page (2 s) · scoped to one element · survives a navigation | ✅ |
+| `find` | responds without throwing, returns ids | ✅ |
+| `text` | returns the element's text | ✅ |
+| `redact` | rules accepted at runtime · term absent from the summary · `[redacted]` visibly present · probing a hidden term fails loudly | ✅ |
 
-`rec` produce **GIF89a por gifExport y MP4 por videoExport**, ambos con los plugins
-públicos de snapdom (cero codecs externos). Overhead medido: 2.200 ms para 2 s de GIF
-y 2.053 ms para 2 s de MP4 — es decir, ~tiempo real, sin penalización relevante.
+`rec` produces **GIF89a through gifExport and MP4 through videoExport**, both using
+snapDOM's public plugins, with no external codecs. Measured overhead: 2,200 ms for 2 s of
+GIF and 2,053 ms for 2 s of MP4 — roughly real time, no meaningful penalty.
 
-## Dos hallazgos que solo aparecen probando
+## Three findings that only appear by running it
 
-### 1. El scoping de `rec` funciona; lo que engaña es tomar el primer id de `find`
+### 1. Scoping in `rec` works; what misleads is taking the first id from `find`
 
-Primera corrida: la grabación "scopeada" pesaba lo mismo que la del body y medía
-1280×800. Parecía que `rec <id>` ignoraba el scope. **No es así.** Grabando la card
-por su id exacto el resultado es **326×106 px**, idéntico a su caja CSS.
+First run: the "scoped" recording weighed the same as the full-page one and measured
+1280×800. It looked as if `rec <id>` ignored the scope. **It does not.** Recording the
+card by its exact id gives **326×106 px**, identical to its CSS box.
 
-Lo que había pasado: mi test tomaba `match(/n_\w+/)` — el **primer** id del `find`
-rankeado — y para la consulta "Producto destacado" el primer hit era un **wrapper de
-página (1264×270)**, no el heading ni la card. Es la conducta conocida del ranking
-(los contenedores concatenan el nombre accesible de sus hijos y matchean todo).
+What had happened: the test took `match(/n_\w+/)` — the **first** id from the ranked
+`find` — and for the query "Producto destacado" the top hit was a **page wrapper
+(1264×270)**, not the heading and not the card. That is the known behaviour of the ranking:
+containers concatenate the accessible names of their children and match everything.
 
-**Consecuencia para consumidores** (y para nuestra propia doc): *nunca tomar el primer
-id de `find` a ciegas* — hay que leer rol, nombre y bbox antes de actuar. El eco de
-`click` existe justamente para eso, pero `rec`/`snap` no tienen ese eco.
+**Consequence for callers**, and for our own documentation: *never take the first id from
+`find` blindly.* Read the role, name and box before acting. The echo on `click` exists for
+exactly this, but `rec` and `snap` have no such echo.
 
-### 2. Divergencia doc-vs-comportamiento: la navegación NO aborta la grabación
+### 2. Documentation contradicts behaviour: a navigation does NOT abort a recording
 
-Está documentado que "una navegación aborta la grabación (el elemento muere con el
-documento)". Medido: con una grabación de 4 s y una navegación **real a otra URL** a
-los 800 ms, la grabación **terminó normalmente** y produjo un GIF válido de 591 KB.
+It is documented that "a navigation aborts the recording, the element dies with the
+document". Measured: with a 4-second recording and a **real navigation to another URL** at
+800 ms, the recording **finished normally** and produced a valid 591 KB GIF.
 
-O la doc quedó vieja, o el comportamiento cambió. Hay que resolver cuál antes de
-prometerle nada a un consumidor sobre este borde.
+Either the documentation went stale or the behaviour changed. Resolve which before
+promising a caller anything about this edge.
 
-## Pendiente de decisión (no de test)
+### 3. The global install was broken and nothing was testing it
 
-`rec` sigue sin consumidor definido. Un LLM no mira un GIF cuadro por cuadro a costo
-razonable; si el consumidor es humano, el lugar natural es **evidencia adjunta a un
-`assert` que falla**. Hasta que eso se decida, estos checks son un smoke de que el
-verbo no está roto, no una validación de producto.
+Adding `--daemon` immediately paid for itself. Against `~/.claude/snapdom-agent`, `find`
+and `text` threw `window.__agentRedact is not a function` inside the page, because that
+install's bundle was built from a second copy of the entry source that never received
+`redactString`. `open` still worked, so the daemon looked healthy. Fixed by removing the
+duplicate definition (`tools/sdk-bundle.mjs`), and both installs now pass 19/19.
+
+## Still a decision, not a test
+
+`rec` still has no defined user. A model is not going to watch a GIF frame by frame at any
+reasonable cost; if the viewer is a human, the natural place for it is **evidence attached
+to a check that failed**. Until that is decided, these checks are a smoke test that the
+verb is not broken, not a validation of a product.

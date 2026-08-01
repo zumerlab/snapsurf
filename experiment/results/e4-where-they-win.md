@@ -1,31 +1,32 @@
-# E4 — Dónde gana agent-browser (auditoría para nuestro backlog)
+# E4 — Where agent-browser is ahead of us (an audit for our backlog)
 
-2026-08-01 · agent-browser 0.33.1 · $0 (todo con la CLI instalada) ·
-verificado ejecutando, no leyendo el README.
+2026-08-01 · agent-browser 0.33.1 · $0, all with the installed CLI · verified by running
+it, not by reading the README.
 
-Un head-to-head donde el rival no gana nada está mal hecho. E1/E2/C midieron dónde
-ganamos nosotros; esto mide lo contrario, y sale directo al backlog.
+A comparison where the other tool wins nothing is a comparison done badly. E1, E2 and
+phase C measured where we are ahead. This measures the opposite, and it goes straight to
+the backlog.
 
-## Lo que ellos tienen y nosotros no
+## What they have and we do not
 
-| Capacidad | Ellos | Nosotros |
+| Capability | Them | Us |
 |---|---|---|
-| **Confirmación por categoría de acción** | `--confirm-actions <lista>` → la acción devuelve `confirmation_required` con un id; `confirm <id>` / `deny <id>` la aprueban o rechazan; **auto-deny a los 60 s** | Solo `--readonly` (todo o nada) |
-| **Política de acciones declarativa** | `--action-policy <archivo.json>` | No existe |
-| **Confirmación interactiva** | `--confirm-interactive`, con **auto-deny si stdin no es TTY** | No existe |
-| **Restore de estado con validación** | `--restore [nombre]` (cookies + localStorage), `--restore-save auto\|always\|never`, y **tres validadores del estado restaurado**: `--restore-check-url`, `--restore-check-text`, `--restore-check-fn` | `cp` es checkpoint de observación, **no restore** (decisión, no bug) |
-| **Auth vault** | `auth save/login/list`, `--password-stdin`, resolución de credenciales por plugin (`--credential-provider`), override de selectores por login | No existe |
-| **Multi-tab** | `tab new\|list\|close\|<n>` | No existe |
-| **Sesiones con nombre** | `session`, `session list` | Una sola sesión por daemon |
-| **Interceptación de red** | `network route <url> --abort\|--body`, `unroute`, `requests --filter` | Solo bloqueo por allowlist (`--allow`) |
-| **Observabilidad** | trace de DevTools, profiler, `console`, `errors`, **dashboard** en `:4848` | JSONL + `prof` por protocolo |
-| **Providers remotos** | browserbase, kernel, browseruse, browserless, agentcore, iOS/Safari, + plugins | Solo Chromium local |
-| **Emulación** | `viewport`, `device <name>`, `geo`, `offline`, `media dark\|light\|reduced-motion` | No existe |
+| **Confirmation by action category** | `--confirm-actions <list>` → the action returns `confirmation_required` with an id; `confirm <id>` / `deny <id>` approve or reject it; **auto-deny after 60 s** | Only `--readonly`, all or nothing |
+| **Declarative action policy** | `--action-policy <file.json>` | Does not exist |
+| **Interactive confirmation** | `--confirm-interactive`, with **auto-deny when stdin is not a TTY** | Does not exist |
+| **State restore with validation** | `--restore [name]` (cookies plus localStorage), `--restore-save auto\|always\|never`, and **three validators of the restored state**: `--restore-check-url`, `--restore-check-text`, `--restore-check-fn` | `cp` is a point of comparison, **not a restore** (a decision, not a bug) |
+| **Auth vault** | `auth save/login/list`, `--password-stdin`, credential resolution through a plugin (`--credential-provider`), per-login selector overrides | Does not exist |
+| **Multiple tabs** | `tab new\|list\|close\|<n>` | Does not exist |
+| **Named sessions** | `session`, `session list` | One session per daemon |
+| **Network interception** | `network route <url> --abort\|--body`, `unroute`, `requests --filter` | Only allowlist blocking (`--allow`) |
+| **Observability** | DevTools trace, profiler, `console`, `errors`, a **dashboard** on `:4848` | JSONL plus profiling over the protocol |
+| **Remote providers** | browserbase, kernel, browseruse, browserless, agentcore, iOS/Safari, plus plugins | Local Chromium only |
+| **Emulation** | `viewport`, `device <name>`, `geo`, `offline`, `media dark\|light\|reduced-motion` | Does not exist |
 
-## Verificado ejecutando
+## Verified by running it
 
-**El gate de confirmación es real, no una promesa del README.** Con
-`--confirm-actions click`, el click devuelve:
+**The confirmation gate is real, not a README promise.** With `--confirm-actions click`,
+the click returns:
 
 ```
 Confirmation required:
@@ -34,77 +35,78 @@ Confirmation required:
   Or:  agent-browser deny r415975
 ```
 
-y la acción **no se ejecuta** hasta aprobarla. Es la capa de permisos que nuestro
-`--readonly` no puede expresar: nosotros solo sabemos decir "nada de clicks", no
-"este click sí, con aprobación".
+and the action **does not run** until it is approved. That is the permission layer our
+`--readonly` cannot express: we can only say "no clicks at all", not "this click, with
+approval".
 
-**Detalle de diseño que vale copiar**: `--allowed-domains` no solo restringe dominios —
-además **rechaza CDP, auto-connect, perfiles, replay de estado, providers de página
-directa, argumentos de arranque inseguros e iOS/Safari**. O sea: al endurecer, cierran
-también las vías de escape. Nuestro `--allow` restringe la red pero no desactiva nada
-más; un consumidor podría creerse aislado y no estarlo.
+**A design detail worth copying**: `--allowed-domains` does not only restrict domains — it
+also **refuses CDP, auto-connect, profiles, state replay, direct page providers, unsafe
+launch arguments and iOS/Safari**. When they harden, they close the escape routes too. Our
+`--allow` restricts the network and disables nothing else, so a user could believe they
+are isolated when they are not.
 
-**Confirmación indirecta de E1**: sus refs no sobreviven entre invocaciones —
-`click @e1` tras reabrir la página da `Unknown ref: e1`. Lo encontré peleando con
-este test, no buscándolo, y refuerza el hallazgo de E1 por una vía independiente.
+**Indirect confirmation of E1**: their references do not survive between invocations —
+`click @e1` after reopening the page gives `Unknown ref: e1`. I found that while fighting
+this test, not while looking for it, which reinforces the E1 finding by an independent
+route.
 
-## Lo que quedó sin resolver
+## Left unresolved
 
-Quise medir si un **typo en la categoría** (`--confirm-actions clik`) desactiva el gate
-en silencio — el fallo mudo que nuestro contrato fail-loud persigue. El test resultó
-flaky por la volatilidad de sus refs entre invocaciones y **lo dejo sin respuesta** en
-vez de reportar un resultado que no sostengo. Vale la pena retomarlo: si un typo abre
-el gate sin avisar, es exactamente la clase de bug que a nosotros nos costó una ronda
-adversarial entera cerrar.
+I wanted to measure whether a **typo in the category** (`--confirm-actions clik`) disables
+the gate silently — the kind of silent failure our own contract hunts. The test came out
+flaky because their references are volatile between invocations, and **I am leaving it
+unanswered** rather than reporting a result I cannot stand behind. It is worth returning
+to: if a typo opens the gate without warning, that is exactly the class of bug that cost
+us a whole adversarial round to close.
 
-## Qué de esto va a nuestro backlog, y con qué prioridad
+## What goes to our backlog, and in what order
 
-Siguiendo el criterio ya acordado (lo que sirve al caso de uso validado primero):
+Following the agreed criterion — what serves the validated use case first:
 
-1. **Confirmación por categoría de acción.** Es lo que más se parece a nuestro encuadre
-   (runtime de verificación): un consumidor que corre asserts querrá gatear acciones
-   destructivas. Nuestro `--readonly` es demasiado grueso para eso.
-2. **Multi-tab.** Aparece en tareas reales (links que abren ventana; lo sufrimos en
-   `claude-native` r1) y hoy no tenemos nada.
-3. **Emulación de viewport/device.** Barato y necesario para QA responsive, que es la
-   playa de desembarco elegida.
-4. **Restore con validación** — la parte interesante no es el restore, son los
-   `--restore-check-*`: restaurar estado y **verificar que el estado restaurado es el
-   correcto** encaja perfecto con nuestra tesis de postcondiciones.
-5. Auth vault, providers remotos, dashboard: **diferir**. Son producto-autonomía, no el
-   caso de uso validado, y sin consumidor real que los pida no los pagamos.
+1. **Confirmation by action category.** It is the closest thing to our own framing (a
+   verification runtime): somebody running assertions will want to gate destructive
+   actions. Our `--readonly` is far too coarse for that.
+2. **Multiple tabs.** It shows up in real tasks (links that open a window; we hit this in
+   the `claude-native` run) and we have nothing today.
+3. **Viewport and device emulation.** Cheap, and necessary for responsive QA, which is the
+   landing area we chose.
+4. **Restore with validation** — the interesting part is not the restore, it is the
+   `--restore-check-*` validators: restoring state and **verifying that the restored state
+   is the right one** fits our postcondition thesis exactly.
+5. Auth vault, remote providers, dashboard: **defer**. These are autonomy features, not
+   the validated use case, and with no real user asking we do not pay for them.
 
-## Lectura honesta
+## Honest reading
 
-En superficie de producto **nos ganan cómodo**: permisos, sesiones, tabs, auth,
-emulación, red, observabilidad y providers. Lo nuestro es más chico y más nuevo.
+On product surface **they beat us comfortably**: permissions, sessions, tabs, auth,
+emulation, network, observability and providers. Ours is smaller and newer.
 
-La diferencia sigue siendo de naturaleza, no de tamaño: ellos construyeron un **harness
-de operación** muy completo; nosotros una **capa de verificación** que ellos no tienen
-(Fase C: 0 falsos verdes contra sus 6). Y E5 mostró que las dos cosas conviven en el
-mismo browser con un `eval --stdin`. Eso refuerza el encuadre: no competir por
-superficie de harness — que es una carrera perdida — sino ser la capa que decide si la
-acción funcionó, encima del harness que el equipo ya tenga.
+The difference is still one of kind, not size. They built a very complete **harness for
+operating a browser**; we built a **verification layer** they do not have (phase C: 0
+wrong success reports against their 6). And E5 showed the two coexist in the same browser
+through an `eval --stdin`. That reinforces the framing: do not compete on harness surface,
+which is a losing race. Be the layer that decides whether the action worked, on top of
+whatever harness the team already has.
 
 ---
 
-## Addendum — la misma lente, apuntada a nosotros (y un bug propio arreglado)
+## Addendum — the same lens, pointed at us (and a bug of our own, fixed)
 
-La pregunta que dejé sin resolver sobre ellos (¿un typo en la categoría desactiva el
-gate en silencio?) se la hice a **nuestras propias banderas de política**. Resultado:
+The question I left unresolved about them — does a typo in the category silently disable
+the gate? — I asked of **our own policy flags**. Result:
 
-| bandera | bien escrita | con typo |
+| Flag | Spelled correctly | With a typo |
 |---|---|---|
-| `--readonly` | `policy: readonly` · el click destructivo **se deniega** | `policy: (unrestricted)` · **el click se ejecuta** |
+| `--readonly` | `policy: readonly` · the destructive click **is denied** | `policy: (unrestricted)` · **the click runs** |
 | `--allow` | `policy: allow=[example.com]` | `policy: (unrestricted)` |
 | `--redact` | `policy: redact=1 rule(s)` | `policy: (unrestricted)` |
 
-**Las tres fallaban mudas.** `serve --readonl` arrancaba un daemon completamente
-permisivo, sin una sola advertencia, y borraba la cuenta de la página de prueba. Es
-exactamente el fallo mudo que el contrato del `assert` prohíbe — cometido en el arranque
-del propio daemon, donde nadie lo había mirado.
+**All three failed silently.** `serve --readonl` started a completely unrestricted daemon,
+without a single warning, and deleted the account on the test page. That is exactly the
+silent failure the `assert` contract forbids — committed at the daemon's own startup,
+where nobody had looked.
 
-**Arreglado**: una bandera desconocida ahora es un error duro y el daemon **no arranca**.
+**Fixed**: an unknown flag is now a hard error and the daemon **does not start**.
 
 ```
 ⛔ unknown flag: --readonl
@@ -112,12 +114,13 @@ del propio daemon, donde nadie lo había mirado.
    refusing to start — a typo in a policy flag would launch an UNRESTRICTED daemon.
 ```
 
-Lo mismo para una bandera con valor faltante (`--redact` sin términos). Las cuatro
-banderas legítimas y sus combinaciones siguen funcionando; vitest 58/58 y paridad 8/8
-verdes tras el cambio.
+Same for a flag missing its value (`--redact` with no terms). All four legitimate flags
+and their combinations still work; the unit tests and the four-way parity check stayed
+green after the change. (The unit-test count quoted in the original version of this note
+was wrong: the suite is 50 tests, re-counted on 2026-08-01.)
 
-**Nota de método**: en el camino me mintió el shell. `serve $1` dentro de una función
-zsh pasa `"--redact Secreto"` como **un solo argumento** (zsh no hace word-splitting de
-expansiones sin comillas, a diferencia de bash), lo que me dio cuatro "(unrestricted)"
-falsos y casi me hace reportar un bug inexistente en `--redact`. Se corrigió con `"$@"`.
-Es el mismo patrón otra vez: **medir el instrumento antes de acusar al sistema**.
+**A note on method**: the shell lied to me along the way. `serve $1` inside a zsh function
+passes `"--redact Secreto"` as **a single argument** — zsh does not word-split unquoted
+expansions, unlike bash — which gave me four false "(unrestricted)" readings and nearly
+made me report a bug in `--redact` that did not exist. Fixed with `"$@"`. Same pattern
+again: **check the instrument before accusing the system.**

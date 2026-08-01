@@ -1,101 +1,110 @@
-# PLAN — del laboratorio al componente: fase comercial del oráculo
+# PLAN — from lab to product
 
-Fecha: 2026-07-31 · Rama: agent-lab (privado, nunca push) · Estado: aprobación pendiente
+Started 2026-07-31 · branch `agent-lab` (private, never pushed) · status updated
+2026-08-01 after phases 1–3 ran.
 
-## Posicionamiento (decidido, no re-litigar)
+## Positioning (decided — do not re-open)
 
-**Capa de verificación de acciones para agentes.** No "reemplazo de screenshots"
-(el mapa de página está comoditizado: Playwright snapshot, MCPs de browser). El
-activo único, validado por tres evaluadores independientes en uso real:
+**A layer that checks whether an agent's action did anything.** Not "a replacement for
+screenshots": describing a page is a solved, crowded problem (Playwright snapshot,
+browser MCPs, and several others do it). And not a replacement for any existing browser
+tool — this is a tool that adds one reading, and it can run *inside* other tools
+(phase E5 proved that).
 
-1. **El diff semántico** — "un agente sin esa señal cree que actuó y sigue con
-   estado falso". Evidencia: 2 errores silenciosos evitados (Reddit: comentario
-   borrado explicado; lanacion: 3 no-ops detectados con `changed:false`).
-2. **`match`/find dirigido** — 38 kB→2 kB medidos para el mismo resultado.
-3. Oclusión proactiva (`covered`/`coveredBy`) — el a11y tree no la tiene.
+What is actually ours, in order of how well it is backed:
 
-Cliente objetivo: **builders de agentes de QA y automatización web** (el nicho que
-ya paga; el diff reemplaza aserciones visuales frágiles). El caso MV3/embebido
-(companion) queda como demo del pitch técnico, no como producto de consumo.
+1. **The change report.** An agent without it believes it acted and carries on with a
+   wrong idea of the page. Measured: 0 wrong success reports against 6 out of 8 for three
+   other channels (`experiment/results/c-false-green.md`).
+2. **Targeted search.** 38 kB down to 2 kB, measured, for the same result.
+3. **Warning about covered elements before the click**, which the accessibility tree does
+   not carry. Confirmed against a comparable tool in `experiment/results/e2-contracts.md`.
 
-Ventana: componente integrable HOY, antes de que los runtimes de agentes absorban
-la verificación de acciones. Nada se publica sin decisión explícita del user.
+There is a fourth thing often listed here that should not be: two silent failures caught
+during ordinary browsing (a deleted Reddit comment, three no-ops on a news site). Those
+are anecdotes from real use. They are a good story and they are why we looked here in the
+first place, but they are not evidence and must never be quoted as a result.
 
-## Fase 1 — Servidor MCP (el vehículo) — ~1-2 sesiones
+Target user: **people building QA and web-automation agents** — the niche that already
+pays for this, and where the change report replaces brittle visual assertions. The
+extension case stays as a demo of what the tool can do that others cannot, not as a
+consumer product.
 
-`packages/agent/mcp/`: servidor MCP stdio en Node que envuelve el daemon.
+Nothing gets published without an explicit decision from the owner.
 
-Tools (superficie mínima, nombres provisorios):
-- `browser_open(url)` → digest compacto (obs #, mapa rankeado, secciones)
-- `browser_find(text)` → matches full-snapshot (texto completo, href, selector)
-- `browser_act(id | selector, action, text?)` → click/type/enter CON eco role/name
-- `browser_verify()` → EL PRODUCTO: diff desde la última observación
-  (changed, changes con kinds+names, actionabilityDelta) — es el reemplazo de la
-  aserción visual
-- `browser_checkpoint(name)` / `browser_diff(name)` → baselines con nombre
-- `browser_screenshot(id?)` → píxeles snapdom solo como escalación
+## Phase 1 — MCP server ✅ done
 
-Decisiones de diseño ya tomadas en el lab que el MCP hereda: garantías
-"único-o-ausente" (selectores verificados, secciones honestas), negativos fieles,
-logs JSONL por sesión, política --readonly/--allow.
+`packages/agent/mcp/`: a stdio MCP server in Node wrapping the daemon. Ten tools:
+`browser_open`, `browser_find`, `browser_act`, `browser_verify`, `browser_assert`,
+`browser_checkpoint`, `browser_diff`, `browser_text`, `browser_page`,
+`browser_screenshot`.
 
-**Gate de fase**: (a) Claude Code y Claude Desktop lo consumen como tools nativas
-sin skill ni snippet; (b) re-correr las 5 tareas de la comparativa vía MCP con
-resultados ≥ iguales al CLI; (c) una ronda Codex a ciegas usando solo el MCP.
+It inherits everything the lab already hardened: per-session JSONL logs, the
+`--readonly` / `--allow` policies, verified selectors, honest negatives, adaptive settle.
 
-## Fase 2 — Benchmark QA (el número de venta) — ~1 sesión
+**Gate: passed.** Claude Code and Claude Desktop consume it as native tools with no skill
+and no pasted snippet; the benchmark runs through it; an outside reviewer used it blind
+(`experiment/results/codex-mcp.md`).
 
-Comparar sobre el corpus de 18 mutaciones (ya existe, con truth escrita a mano) +
-el sweep de 35 sitios reales (ya medido) + 3-5 regresiones reales reproducidas:
+## Phase 2 — the number to quote ✅ done
 
-| Métrica | Oráculo (diff) | Pixel-diff (pixelmatch/odiff) | a11y snapshot diff |
+`experiment/bench-qa.mjs`, over the 19 hand-written cases, through the MCP server:
+
+| Metric | This tool | Pixel difference | Accessibility tree diff |
 |---|---|---|---|
-| Falsos positivos en reposo | (sweep: 18/35 cero ruido) | ? | ? |
-| Detección de la mutación | ? | ? | ? |
-| "Explica QUÉ cambió" | kinds+names+selector | no (% píxeles) | diff textual crudo |
-| Costo (tokens/bytes/ms) | ? | ? | ? |
+| Right | **19/19** | 13/19 | 16/19 |
+| False alarms on 8 noise cases | **0** | 5 | 2 |
+| Missed, of 11 real changes | **0** | 1 | 1 |
+| Explains *what* changed | kind + role + name | % of pixels | two JSON trees to diff |
+| Evidence size, no-op case | **61 B** | 33 KB | 1 KB |
 
-Deliverable: informe con la tabla completa + un repo demo "QA sin aserciones
-visuales" (un test real que usa `browser_verify` donde antes había screenshot
-assertion).
+**Gate: passed.** The quotable line: *zero false alarms where a pixel comparison reports
+5 out of 8, and it says what changed in about 30 tokens.*
 
-**Gate de fase**: un número citable del tipo "0 falsos positivos donde pixel-diff
-reporta N%; explica el cambio en ~30 tokens".
+`demo-qa/` is the matching demo: a QA test that uses `browser_assert` where a screenshot
+assertion used to be.
 
-## Fase 3 — Privacidad auditable (lo que pregunta el comprador) — ~1 sesión
+## Phase 3 — auditable privacy ✅ done
 
-La capa `privacy: {redact}` del core existe y está testeada; falta hacerla visible:
-- Exponerla en digest/MCP (opción de sesión).
-- **Reporte de redacción**: qué reglas matchearon, cuántos nodos, en qué campos —
-  auditable, no un detalle enterrado.
-- Doc de una página: exactamente qué texto viaja en un digest y qué no.
+The redaction layer existed and was tested; this phase made it visible.
 
-**Gate**: digest de una página con datos sensibles muestra las redacciones y el
-reporte las lista; test automatizado.
+- Exposed in the daemon and MCP as a session option.
+- Redaction report: which rules matched, how many nodes, in which fields — by rule
+  *number*, never by rule text, because the report is read by a model and naming the rule
+  would leak the string being hidden.
+- One-page document: `docs/PRIVACY.md`, exactly what text leaves the page and what
+  never does.
 
-## Fase 4 — Empaquetado como componente — ~1 sesión
+**Gate: passed.** A page with sensitive data shows the redactions, the report lists them,
+asking whether a hidden string exists is refused rather than answered, and it is covered
+by 8 unit tests plus 5 checks in the extension gate. An adversarial review round found
+five holes and all five are closed (commit `91daf6d`).
 
-- API pública mínima congelada (inspect/checkpoint/diff/agentMap + MCP) con las
-  garantías escritas como contrato versionado ("único-o-ausente", negativos
-  fieles, same-environment repeatability).
-- companion/ → `demo/` con README ("el oráculo embebido sin CDP" — pitch #2 como
-  demo viva).
-- Decisión de licencia/nombre/pricing: DEL USER, explícitamente fuera de este plan.
+## Phase 4 — package it as a component ⬜ open
 
-**Gate**: integración en frío por un tercero (Codex) desde el README en <30 min,
-sin ayuda.
+- Freeze a minimal public API with the guarantees written down as a versioned contract:
+  unique-or-absent targets, honest negatives, same-environment repeatability only.
+- Move `companion/` to `demo/` with its own README.
+- Licence, name and pricing: the owner's call, deliberately outside this plan.
 
-## Orden y dependencias
+**Gate:** somebody who has never seen this integrates it from the README alone, in under
+30 minutes, without help.
 
-F1 (MCP) primero: es vehículo de F2 (el benchmark se corre VÍA el MCP, así el
-número de venta mide el producto real, no el laboratorio). F3 y F4 pueden
-intercalarse. Después de cada fase: ronda de consumo real (panel/Codex) antes de
-seguir — la metodología que funcionó estas 6 rondas.
+Progress: the README was rewritten as a manual for all five modes on 2026-08-01, which is
+the prerequisite. The cold-integration test has not been run.
 
-## Qué NO está en el plan (a propósito)
+## Order and dependencies
 
-- Publicar cualquier cosa (npm, Chrome Web Store, GitHub público).
-- Extensión de consumo final.
-- Autonomía total (restore de estado, permisos finos por campo) — sin consumidor
-  real que lo pida, sigue diferido.
-- Re-litigar el posicionamiento: verificación de acciones, QA primero.
+Phase 1 first because it is the vehicle for phase 2 — running the benchmark *through* the
+MCP server means the number measures the product, not the lab. Phases 3 and 4 can
+interleave. After each phase, a real consumption round (an outside reviewer, or the
+browser panel) before moving on. That is the method that worked for six rounds.
+
+## Deliberately not in this plan
+
+- Publishing anything: npm, Chrome Web Store, a public repo.
+- A consumer-facing extension.
+- Full autonomy: state restore, per-field permissions. No real user has asked, so it
+  stays deferred — but `experiment/results/e4-where-they-win.md` records them as things a
+  comparable tool already has, which is different from ignoring them.
+- Re-opening the positioning.

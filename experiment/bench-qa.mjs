@@ -189,34 +189,34 @@ const noise = rows.filter((r) => r.expected === false)
 const real = rows.filter((r) => r.expected === true)
 const fp = (arm) => noise.filter((r) => !r[`${arm}Ok`]).length
 const miss = (arm) => real.filter((r) => !r[`${arm}Ok`]).length
-const md = `# Benchmark QA — oráculo (vía MCP) vs pixel-diff vs a11y-tree
+const md = `# Change detection — this tool (through MCP) vs pixel difference vs accessibility tree
 
-Fecha: ${new Date().toISOString().slice(0, 10)} · corpus: ${rows.length} fixtures con truth escrita a mano
-(${real.length} con cambio semántico real, ${noise.length} de RUIDO: movimiento visual sin cambio semántico).
-El brazo oráculo corre A TRAVÉS del servidor MCP (browser_open + browser_verify): mide el producto.
+Date: ${new Date().toISOString().slice(0, 10)} · corpus: ${rows.length} cases with hand-written truth
+(${real.length} with a real change, ${noise.length} NOISE cases: visible movement, no real change).
+The tool arm runs THROUGH the MCP server (browser_open + browser_verify), so it measures the product.
 
-## Resultado global
+## Overall
 
-| Brazo | Correctos | Falsos positivos (ruido) | Cambios perdidos | Explica QUÉ cambió |
+| Method | Right | False alarms (noise) | Missed changes | Says WHAT changed |
 |---|---:|---:|---:|---|
-| **Oráculo (browser_verify)** | **${tally('oracleOk')}/${rows.length}** | **${fp('oracle')}/${noise.length}** | ${miss('oracle')}/${real.length} | kinds + role + name + selector |
-| Pixel-diff (clase pixelmatch) | ${tally('pixelOk')}/${rows.length} | ${fp('pixel')}/${noise.length} | ${miss('pixel')}/${real.length} | % de píxeles, sin semántica |
-| a11y-tree (Playwright) | ${tally('a11yOk')}/${rows.length} | ${fp('a11y')}/${noise.length} | ${miss('a11y')}/${real.length} | dos árboles JSON a diffear |
+| **This tool (browser_verify)** | **${tally('oracleOk')}/${rows.length}** | **${fp('oracle')}/${noise.length}** | ${miss('oracle')}/${real.length} | kind + role + name + selector |
+| Pixel difference (pixelmatch class) | ${tally('pixelOk')}/${rows.length} | ${fp('pixel')}/${noise.length} | ${miss('pixel')}/${real.length} | a % of pixels, no meaning |
+| Accessibility tree (Playwright) | ${tally('a11yOk')}/${rows.length} | ${fp('a11y')}/${noise.length} | ${miss('a11y')}/${real.length} | two JSON trees to diff yourself |
 
-## Por fixture
+## Per case
 
-| Fixture | Truth | Oráculo | Pixel | a11y | Evidencia oráculo | Evidencia pixel | Evidencia a11y |
+| Case | Truth | This tool | Pixel | a11y | Evidence, tool | Evidence, pixel | Evidence, a11y |
 |---|:---:|:---:|:---:|:---:|---:|---:|---:|
-${rows.map((r) => `| ${r.name} | ${r.expected ? 'cambio' : 'ruido'} | ${r.oracle.error ? 'ERR' : (r.oracleOk ? '✓' : `✗ (${r.oracle.changed})`)} | ${r.pixel.error ? 'ERR' : (r.pixelOk ? '✓' : `✗ (${r.pixel.pct}%)`)} | ${r.a11y.error ? 'ERR' : (r.a11yOk ? '✓' : '✗')} | ${r.oracle.evidenceBytes ?? '—'} B | ${r.pixel.evidenceBytes ? Math.round(r.pixel.evidenceBytes / 1024) + ' KB' : '—'} | ${r.a11y.evidenceBytes ? Math.round(r.a11y.evidenceBytes / 1024) + ' KB' : '—'} |`).join('\n')}
+${rows.map((r) => `| ${r.name} | ${r.expected ? 'change' : 'noise'} | ${r.oracle.error ? 'ERR' : (r.oracleOk ? '✓' : `✗ (${r.oracle.changed})`)} | ${r.pixel.error ? 'ERR' : (r.pixelOk ? '✓' : `✗ (${r.pixel.pct}%)`)} | ${r.a11y.error ? 'ERR' : (r.a11yOk ? '✓' : '✗')} | ${r.oracle.evidenceBytes ?? '—'} B | ${r.pixel.evidenceBytes ? Math.round(r.pixel.evidenceBytes / 1024) + ' KB' : '—'} | ${r.a11y.evidenceBytes ? Math.round(r.a11y.evidenceBytes / 1024) + ' KB' : '—'} |`).join('\n')}
 
-Notas de honestidad:
-- El pixel-diff se corrió con el MISMO algoritmo perceptual con anti-aliasing de
-  @zumer/snapdiff (clase pixelmatch), no un compare naive.
-- El a11y-tree solo responde "¿difiere el JSON?"; interpretar QUÉ cambió queda a
-  cargo del consumidor con ambos árboles completos (la columna de evidencia).
-- La evidencia del oráculo es el texto de browser_verify (kinds+names+selectors,
-  listo para un LLM o una aserción); la del pixel son los DOS screenshots que un
-  humano/LLM tendría que mirar; la del a11y son los dos árboles a diffear.
+Honesty notes:
+- The pixel comparison uses the SAME perceptual, anti-aliasing-aware algorithm from
+  @zumer/snapdiff (pixelmatch class), not a naive compare.
+- The accessibility tree only answers "does the JSON differ?". Working out WHAT changed is
+  left to the caller, holding both full trees — that is what its evidence column measures.
+- Evidence for this tool is the text browser_verify returns (kinds, names, selectors,
+  ready for a model or an assertion). For pixels it is the TWO screenshots a person or a
+  model would have to look at. For the accessibility tree it is the two trees to diff.
 `
 await writeFile(join(HERE, 'results', 'bench-qa.md'), md)
 await writeFile(join(HERE, 'results', 'bench-qa.json'), JSON.stringify(rows, null, 2))

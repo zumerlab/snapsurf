@@ -1,103 +1,101 @@
-# Plan de testeo del snapDOM Agent
+# Test plan
 
-2026-08-01 · rama `agent-lab` · complementa `PAPER.md` (evidencia actual) y
-`LANDSCAPE.md` (estado del arte y riesgos). Este documento responde tres preguntas
-que hoy no están respondidas: **(1)** cuándo corresponde cada superficie de uso,
-**(2)** si las superficies dan la misma respuesta, y **(3)** si un LLM con sus propias
-herramientas disponibles *elige* usar esto — y en qué tipo de tarea.
+2026-08-01 · branch `agent-lab` · companion to `PAPER.md` (the evidence) and
+`docs/LANDSCAPE.md` (the surrounding field and the risks).
 
-Regla de este plan: cada fase declara **qué resultado la falsaría**. Una fase que solo
-puede confirmar lo que ya creemos no es un test, es una demo.
+This document answers three questions the other two do not: **(1)** when each way of
+using the tool is the right one, **(2)** whether they all give the same answer, and
+**(3)** whether a model with its own tools available *chooses* this one — and for what
+kind of work.
+
+Rule for this plan: every phase states **what result would prove it wrong**. A phase that
+can only confirm what we already believe is a demo, not a test.
 
 ---
 
-## 1. Las cinco superficies, y cuándo se usa cada una
+## 1. The five ways to use it
 
-| # | Superficie | Qué es | Consumidor típico | Requiere CDP | Estado |
+| # | Mode | What it is | Typical user | Needs CDP | State |
 |---|---|---|---|---|---|
-| S1 | **Core SDK** | `snapdom(el,{plugins:[agentOracle()]})` / `inspect()` | Código de producto: extensión MV3, copiloto embebido, webview | No | 50 tests |
-| S2 | **CLI daemon** | `browse.mjs serve` + verbos (open/look/find/click/assert/…) | Agente que encadena N comandos por turno (Claude Code, Codex CLI) | Sí (Playwright propio) | Rondas Codex v2-v5 |
-| S3 | **Servidor MCP** | 10 tools (`browser_open/find/act/verify/assert/…`) | Cualquier cliente MCP, como tools nativas | Sí (vía daemon) | GATE.md, bench-qa |
-| S4 | **Companion MV3** | Content script isolated-world + postMessage | Agente que vive DENTRO del Chrome del usuario (panel Claude) | **No** | gate 27/27 |
-| S5 | **Install global** | `~/.claude/snapdom-agent` + skill de usuario | Toda sesión de Claude Code de la máquina | Sí | Uso diario |
+| S1 | **Library** | `snapdom(el,{plugins:[agentOracle()]})` / `inspect()` | Product code: extension, embedded copilot, webview | No | 50 tests |
+| S2 | **Command line** | `browse.mjs serve` + verbs | An agent that chains many commands per turn | Yes (its own Playwright) | Review rounds v2–v5 |
+| S3 | **MCP server** | 10 tools | Any MCP client, as native tools | Yes (via the daemon) | `mcp/GATE.md`, bench-qa |
+| S4 | **Chrome extension** | Content script in the isolated world + postMessage | An agent living inside the user's own Chrome | **No** | gate 27/27 |
+| S5 | **Global install** | `~/.claude/snapdom-agent` + a user skill | Every Claude Code session on this machine | Yes | Daily use |
 
-### Matriz de decisión (el árbol, en orden de corte)
+### How to choose (in cutting order)
 
-1. **¿El agente vive dentro de la página del usuario?** (extensión, copiloto embebido,
-   webview) → **S4** si es un agente de terceros que habla por postMessage; **S1** si
-   es tu propio código. *Es el único caso sin alternativa en el mercado* — Playwright
-   MCP, agent-browser, Stagehand y CUA necesitan CDP o browser propio.
-2. **¿El consumidor es un agente con tools nativas configurables?** → **S3 (MCP)**.
-   Es la vía de adopción correcta: `claude mcp add` es consentimiento del dueño de la
-   máquina, no un protocolo pegado por chat (lección de las rondas del panel).
-3. **¿El consumidor puede encadenar muchos comandos por turno de modelo?** → **S2**.
-   Ventaja medida: 20 comandos en ~6 turnos vs 1 acción/turno de las extensiones.
-4. **¿Es mi propia máquina, para todas las sesiones?** → **S5**.
-5. **¿Necesita el browser real logueado del usuario?** → **S4 obligatorio** (S2/S3
-   levantan Chromium aislado; ver el hallazgo de Reddit T6: la sesión tibia evita
-   bloqueos, pero nadie recomienda el perfil diario — el trade-off es del usuario).
+1. **Does the agent live inside the user's page?** (extension, embedded copilot, webview)
+   → **S4** if it is a third-party agent that talks over postMessage; **S1** if it is your
+   own code. *This is the only case with no alternative on the market* — Playwright MCP,
+   agent-browser, Stagehand and computer-use agents all need CDP or their own browser.
+2. **Is the user an agent with configurable native tools?** → **S3**. This is the correct
+   way in: `claude mcp add` is consent from the machine's owner, not a protocol pasted
+   into a chat window.
+3. **Can the user chain many commands per model turn?** → **S2**. Measured: 20 commands
+   in about 6 turns, against one action per turn for extensions.
+4. **Is it your own machine, for every session?** → **S5**.
+5. **Does it need the user's real logged-in browser?** → **S4 is the only option** (S2 and
+   S3 launch an isolated Chromium). A warm session avoids blocks, but nobody recommends
+   pointing an agent at a daily-use profile. That trade-off belongs to the user.
 
-### Lo que la matriz NO cubre todavía (huecos de diseño, no de test)
+### What this table does not cover (design gaps, not test gaps)
 
-- **Multi-tab / ventanas**: ninguna superficie lo soporta. agent-browser sí.
-- **Restore de estado**: `cp` es checkpoint de observación, no undo (decisión, no bug).
-- **Permisos finos**: `--readonly`/`--allow`/`--redact` son gruesos; no hay política
-  por campo ni por destino.
+- **Multiple tabs or windows**: no mode supports it. agent-browser does.
+- **State restore**: a checkpoint is a point of comparison, not an undo. That is a
+  decision, not a bug.
+- **Fine-grained permissions**: `--readonly` / `--allow` / `--redact` are coarse. There is
+  no per-field or per-destination policy.
 
 ---
 
-## 2. Mapa de cobertura: qué está probado hoy
+## 2. Coverage map
 
-| Dimensión | S1 SDK | S2 CLI | S3 MCP | S4 Companion | S5 Global |
+| Dimension | S1 lib | S2 CLI | S3 MCP | S4 extension | S5 global |
 |---|---|---|---|---|---|
-| Corrección del diff | ✅ 50 tests | — | ✅ bench-qa 19/19 | ✅ gate | — |
-| Performance / bloqueo | ✅ scaling | ⚠️ JSONL | — | ✅ gate throttled | — |
-| Fail-loud del assert | ✅ tests | ✅ smoke | ✅ codex-assert | ✅ gate | — |
-| Privacidad / redacción | ✅ 8 tests | ✅ smoke | ✅ smoke | ✅ gate ×5 | — |
-| Tarea real end-to-end | — | ✅ benchmark | ✅ benchmark | ✅ rondas panel | ⚠️ uso diario |
-| **Paridad entre superficies** | ✅ Fase A | ✅ | ✅ | ✅ | — |
-| **Verbos rec/parent/snap/cp/map** | — | ❌ **cero** | ❌ cero | — | ❌ |
-| **Preferencia del LLM** | — | ❌ sesgado por skill | ❌ | ❌ | ❌ |
-| **vs frameworks reales** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Comparison is correct | ✅ 50 tests | — | ✅ bench-qa 19/19 | ✅ gate | ✅ since 2026-08-01 |
+| Speed / main-thread block | ✅ scaling | ⚠️ JSONL only | — | ✅ gate, throttled | — |
+| Bad input fails loudly | ✅ tests | ✅ smoke | ✅ review round | ✅ gate | ✅ |
+| Privacy / redaction | ✅ 8 tests | ✅ smoke | ✅ smoke | ✅ gate ×5 | ✅ |
+| Real end-to-end task | — | ✅ benchmark | ✅ benchmark | ✅ panel rounds | ⚠️ daily use |
+| **All modes agree** | ✅ phase A | ✅ | ✅ | ✅ | — |
+| **`rec`/`parent`/`snap`/`cp`/`map`** | — | ✅ phase A-bis | ✅ | — | ✅ |
+| **Does the model prefer it** | — | ✅ phase B | ✅ | ❌ | ❌ |
+| **Against comparable tools** | ✅ E1 | ✅ E2 | — | — | — |
 
-Las filas en negrita son este plan. La de verbos huérfanos se verificó con matcher
-sobre `test/`, `experiment/`, `companion/gate.mjs` y `demo-qa/`: `rec` y `parent` no
-aparecen en ningún lado, y `snap`/`cp`/`map` solo en `mcp/server.mjs`, que es la
-implementación y no una prueba.
+The bold rows are this plan. The verb row was checked with a matcher over `test/`,
+`experiment/`, `companion/gate.mjs` and `demo-qa/`: `rec` and `parent` appeared nowhere,
+and `snap`/`cp`/`map` only in `mcp/server.mjs`, which is the implementation and not a
+test.
 
 ---
 
-## Fase A — Paridad de superficies (barata, cierra un hueco estructural)
+## Phase A — do all five modes agree? ✅ done
 
-**Pregunta**: ¿las cinco superficies contestan lo mismo ante el mismo hecho?
+**Question**: do the modes give the same answer to the same fact?
 
-Hoy cada una tiene su propio gate y ninguno cruza. Ya nos mordió: el bug de
-`navigated` falso-positivo en `file://` existía en el daemon y no en la companion,
-y apareció por casualidad en un demo run.
+Each one had its own gate and none of them crossed. It had already bitten us: a false
+`navigated` on `file://` existed in the daemon and not in the extension, and only turned
+up by accident during a demo run.
 
-**Diseño**: 8 casos del corpus determinista (4 cambios reales + 4 de ruido) +
-2 casos de SPA + 2 de oclusión, corridos por S1/S2/S3/S4 sobre las **mismas
-fixtures locales**. Un runner único compara: `changed`, kinds emitidos, nombres,
-`navigated`, `hasBaseline`, y el reporte de privacidad.
+**Design**: 8 cases from the corpus (4 real changes, 4 noise) plus 2 single-page
+navigation cases and 2 occlusion cases, run through S1/S2/S3/S4 against the same local
+fixtures. One runner compares `changed`, the change kinds, the names, `navigated`,
+whether a reference point existed, and the privacy report.
 
-**Salida**: `experiment/parity.mjs` + tabla caso × superficie. Discrepancia = bug
-de una de las superficies, y hay que decir cuál.
+**Would prove it wrong**: 2 or more differences in meaning (not formatting) would make
+"the same reader through every path" false, and it would have to be fixed before showing
+this to anyone.
 
-**Falsación**: si aparecen ≥2 discrepancias semánticas (no de formato), la promesa
-de "mismo oráculo en todas las vías" es falsa y hay que arreglar antes de mostrar
-esto a un tercero.
+### Result (`experiment/parity.mjs`)
 
-**Costo**: ~1 sesión, $0 (todo local, sin modelo).
+**Agreement on the first run: 0 of 8 disagreements on `changed`, 0 of 8 contradictions
+with the hand-written truth, and the change kinds match exactly across all four modes.**
 
-### ✅ Resultado (2026-08-01, `experiment/parity.mjs`)
-
-**PARIDAD OK a la primera: 0/8 desacuerdos de `changed`, 0/8 contradicciones con la
-truth, y los kinds coinciden exactamente en las cuatro superficies.**
-
-| fixture | truth | S1 SDK | S2 CLI | S3 MCP | S4 companion |
+| fixture | truth | S1 lib | S2 CLI | S3 MCP | S4 extension |
 |---|:---:|---|---|---|---|
 | text-update | true | content | content | content | content |
-| list-row-inserted | true | added+moved+resized | ídem | ídem | ídem |
+| list-row-inserted | true | added+moved+resized | same | same | same |
 | button-enabled | true | state | state | state | state |
 | modal-overlay | true | added | added | added | added |
 | live-timestamp | false | — | — | — | — |
@@ -105,385 +103,360 @@ truth, y los kinds coinciden exactamente en las cuatro superficies.**
 | scroll-only | false | — | — | — | — |
 | residual-hover | false | — | — | — | — |
 
-Más los dos contratos que el corpus no cubría:
+Plus the two contracts the corpus did not cover:
 
-| contrato | S1 SDK | S2 CLI | S3 MCP | S4 companion |
+| contract | S1 lib | S2 CLI | S3 MCP | S4 extension |
 |---|---|---|---|---|
-| `becameCovered` (overlay tapa un botón) | 1 | 1 | 1 | 1 |
-| `navigated` tras `pushState` | n/a por diseño | true | true | true |
+| something became covered | 1 | 1 | 1 | 1 |
+| `navigated` after `pushState` | n/a by design | true | true | true |
 
-**Falsa alarma diagnosticada (vale como resultado):** la primera corrida dio
-`navigated:false` en las tres superficies y marcó PARIDAD ROJA. No era un bug del
-producto: `history.pushState` a un path nuevo lanza `SecurityError` bajo origen opaco
-(`file://`), así que la URL nunca cambiaba y `false` era la respuesta *correcta*. El
-runner ahora sirve las fixtures por HTTP. Es la misma lección de la saga de perf —
-medir el instrumento antes de acusar al sistema— y el motivo por el que el harness
-quedó documentado.
+**A false alarm worth recording as a result**: the first run reported `navigated:false`
+everywhere and failed the phase. It was not a bug. `history.pushState` to a new path
+throws a `SecurityError` under an opaque origin (`file://`), so the URL never changed and
+`false` was the *correct* answer. The runner now serves the fixtures over HTTP. Same
+lesson as the performance saga — check the instrument before accusing the system.
 
-Caveats declarados (el resultado vale menos de lo que parece si no se dicen):
-- **S2 y S3 no son independientes**: el MCP es un traductor fino sobre el daemon, así
-  que comparten motor. Las vías genuinamente independientes son tres: SDK crudo,
-  familia daemon, y bundle de la companion.
-- El corpus es el mismo contra el que se desarrolló el oráculo: esto prueba
-  consistencia entre vías, **no** corrección en páginas nuevas.
-- `navigated` es contrato de las superficies que rastrean URL; el SDK entrega el diff
-  y no participa. Es diseño, no hueco.
+Caveats, without which the result reads as stronger than it is:
 
----
-
-## Fase A-bis — Features con cobertura CERO
-
-**Hueco detectado en review externo** (verificado con matcher sobre `test/`,
-`experiment/`, `companion/gate.mjs`, `demo-qa/`): los verbos `rec`, `parent`,
-`snap`, `cp` y `map` **no aparecen en ningún gate, test ni benchmark**. Solo figuran
-en `mcp/server.mjs`, que es la implementación, no una prueba. El plan original cubría
-la familia observar/verificar e ignoraba una familia entera.
-
-### Pregunta de producto ANTES de invertir tests en grabación
-
-`rec` (GIF89a en JS puro + MediaRecorder, plugins públicos de snapdom, cero codecs
-externos) no tiene consumidor definido. **Un LLM no mira un GIF cuadro por cuadro a un
-costo razonable.** Si el consumidor es humano, el lugar natural de la grabación es
-**evidencia adjunta a una aserción que falló** — un `assert` rojo que entrega 3
-segundos de lo que realmente pasó. Eso encaja exactamente con el encuadre de "runtime
-de postcondiciones" y además es dogfooding real de los plugins públicos (a diferencia
-del video de Playwright, que depende de ffmpeg).
-
-**Decisión a tomar antes de A-bis-2**: o `rec` se integra al fallo del assert (y
-entonces se testea como parte del contrato), o queda como utilidad de demo (y entonces
-alcanza con un smoke). No testear en profundidad algo cuyo consumidor no está definido.
-
-### A-bis-1 · Smoke de los verbos huérfanos (barato, primero)
-
-Por cada verbo: que corra en el bundle actual, que su salida tenga la forma
-documentada, y el caso borde conocido. En particular:
-- `rec`: formatos (gif/mp4/webm) y tamaños resultantes, límite de duración, overhead
-  sobre el walk, `rec <id>` scopeado a un elemento vs body, y el caso documentado de
-  que **una navegación aborta la grabación** (el elemento muere con el documento).
-- `snap`: región clipeada vs viewport, y el caso de `content-visibility` (bug ya
-  arreglado — vale como test de regresión).
-- `cp save/list/diff`: que el baseline nombrado sobreviva navegaciones y que `diff`
-  contra un checkpoint viejo dé el mismo resultado que el diff en vivo.
-- `parent` / `map`: que `parent` suba a la card con ≥2 actionables y que `map <offset>`
-  pagine sin perder ni duplicar entradas.
-
-**Falsación**: cualquier verbo que falle en el bundle actual es deuda que estamos
-ofreciendo a consumidores sin saberlo.
+- **S2 and S3 are not independent**: the MCP server is a thin translation of the daemon,
+  so they share an engine. There are three genuinely independent paths: the raw library,
+  the daemon family, and the extension bundle.
+- The corpus is the one the tool was developed against. This proves the modes are
+  consistent, **not** that they are correct on pages nobody has seen.
+- `navigated` is a contract of the modes that track a URL. The library hands back a
+  comparison and does not participate. That is design, not a gap.
 
 ---
 
-## Fase E — Head-to-head contra `vercel-labs/agent-browser`
+## Phase A-bis — features with zero coverage ✅ done
 
-**Hueco detectado en review externo**: es el rival más comparable que existe (misma
-categoría: CLI + daemon + refs + find + MCP, repo público) y hasta ahora solo lo
-miramos a nivel documental en `LANDSCAPE.md`. **Nunca corrimos una sola tarea contra
-él.** Comparar leyendo su README no es comparar.
+**Gap found in an outside review** (verified with a matcher over `test/`, `experiment/`,
+`companion/gate.mjs`, `demo-qa/`): the verbs `rec`, `parent`, `snap`, `cp` and `map`
+appeared **in no gate, test or benchmark**. Only in `mcp/server.mjs`, which is the
+implementation. The original plan looked at the modes and never at the inventory of what
+the tool exposes.
 
-Verificado para este plan: se instala con `npm install -g agent-browser` (también brew
-y cargo; CLI y daemon en Rust, Chrome for Testing auto-descargado), y expone
-`snapshot`, `diff snapshot | screenshot | url`, `eval`, `screenshot`, `click/fill/type`
-y un protocolo de plugins `agent-browser.plugin.v1` por stdio.
+### A product question to settle before spending tests on recording
 
-### E1 · Diff determinista, sin modelo (la más importante, primero)
+`rec` (a GIF encoder in pure JavaScript plus MediaRecorder, both from snapDOM's public
+plugins, no external codecs) has no defined user. **A model is not going to watch a GIF
+frame by frame at any reasonable cost.** If the viewer is a human, the natural place for
+a recording is **evidence attached to a check that failed** — a red assertion that hands
+you three seconds of what actually happened. That fits the framing exactly, and it is
+real use of the public plugins.
 
-Agregar agent-browser como **cuarto brazo en `bench-qa.mjs`**, junto a pixel-diff y
-a11y-diff, sobre las 19 fixtures con truth manual.
+**Decision needed**: either `rec` becomes part of what a failed check returns, and then it
+gets tested as part of that contract, or it stays a demo utility and a smoke test is
+enough. Do not test something whose user is undefined.
 
-Hipótesis a testear (no a asumir — hay que leer qué hace su `diff snapshot` de verdad,
-no fiarse de nuestras notas): que un diff de texto del árbol de accesibilidad **pierde
-los cambios sin delta textual** (el flip de `disabled`, que es justo el caso que
-pixel-diff también pierde) y que **reporta ruido donde el texto se reordena**.
+### Result
 
-**Falsación, dicha sin eufemismos**: si su diff saca 19/19, nuestra afirmación central
-se cae y tenemos que ser los primeros en saberlo.
+19 of 19 checks, run against **both installs** — the repository tree and the global copy
+in `~/.claude/snapdom-agent`. Covered: `parent` climbing to a card with 2 or more
+clickable things, `map` paging without gaps or repeats, `snap` producing a real image,
+`cp save/list/diff`, `rec` in GIF and MP4 scoped to the page and to one element, a
+navigation during a recording, and `find`/`text`/`redact`.
 
-### E2 · Los contratos donde afirmamos ventaja
-
-Reusar las fixtures de `parity.mjs`:
-- **Oclusión**: ¿avisa que el botón quedó tapado *antes* del click? (nosotros:
-  proactivo en el mapa; ellos, según su doc: error reactivo post-click).
-- **Identidad**: ¿sus refs `@eN` sobreviven un remount de React o una lista
-  reordenada? Ellos documentan que **no** son estables; nuestros `n_xxx` los medimos
-  deterministas para el mismo DOM. Hay que verificar ambas mitades.
-- **SPA**: qué reporta tras una navegación blanda.
-
-### E3 · Brazo en los benchmarks que ya existen (cuando corra la Fase C)
-
-Sumar `agent-browser` como brazo en `experiment/formal/` (10 tareas, mismo modelo,
-mismo juez externo) y en la app de fallas silenciosas de la Fase C. Es casi gratis
-porque el harness ya está: solo cambia el runner.
-
-**Higiene**: el dato de Reddit (r/AI_Agents `1uc0bbi`: "the worst one in speed…
-couldn't get simple task done") es **una anécdota de un solo usuario**, no un
-resultado. Sirve como hipótesis a verificar, jamás como cita.
-
-### E4 · Auditoría de dónde ELLOS ganan (la parte que da credibilidad)
-
-Capa de permisos (`--action-policy`, `--confirm-actions`, `--content-boundaries`),
-sesiones y multi-tab, auth vault, dashboard, scoping del snapshot. Sale directo a
-nuestro backlog en vez de barrerse bajo la alfombra. Un head-to-head donde el rival no
-gana nada es un head-to-head mal hecho.
-
-### E5 · Prueba de coexistencia (la jugada estratégica)
-
-Tienen `eval` y protocolo de plugins. **¿Se puede inyectar nuestro SDK dentro de su
-flujo y obtener el diff sin reemplazarlos?** Si funciona, dejan de ser rival y pasan a
-ser **canal de distribución** — que es exactamente la debilidad #1 del `LANDSCAPE`
-(distribución inexistente). Es la fase con mejor relación valor/costo de todo el plan
-si E1 sale bien.
+Two findings: the ranking can mislead on some pages, and the documented claim that a
+navigation aborts a recording is **wrong** — it does not happen.
 
 ---
 
-## Fase B — Preferencia revelada del LLM en sesiones largas
+## Phase E — comparison with `vercel-labs/agent-browser`
 
-**Pregunta del usuario**: ¿al propio LLM le resulta preferible usarlo antes que sus
-propias herramientas? Y crucialmente: **¿en qué tipo de tarea?**
+**Gap found in an outside review**: it is the most comparable public tool that exists —
+same category (CLI plus daemon, references, search, MCP), public repository — and until
+this phase we had only read its documentation. **We had never run a single task with it.**
+Comparing by reading a README is not comparing.
 
-**El sesgo a evitar**: hoy la skill `agent-browse` le *dice* a Claude Code que use el
-oráculo por defecto. Cualquier medición con esa skill activa mide obediencia, no
-preferencia. Hay que apagarla.
+This is not a competition. E5 below is the reason: it turned out we can run *inside* it.
+The point of E1–E4 is to find out whether our central claim survives contact with the
+closest comparable implementation, and to write down what it does better.
 
-**Diseño — tres brazos, misma sesión de modelo**:
+Verified for this plan: it installs with `npm install -g agent-browser`, CLI and daemon
+in Rust, Chrome for Testing downloaded automatically, and it exposes `snapshot`,
+`diff snapshot | screenshot | url`, `eval`, `screenshot`, `click/fill/type` and a plugin
+protocol over stdio.
 
-- **B1 · Elección libre (el dato principal)**: ambos toolsets disponibles
-  (MCP snapdom + tools nativas del cliente), **sin skill ni instrucción de preferencia**,
-  prompt neutro: "resolvé esta tarea con las herramientas que quieras". Se mide qué
-  herramienta elige *por paso*, no por tarea.
-- **B2 · Elección libre con justificación**: idéntico, pero pidiendo una línea de
-  por qué eligió cada herramienta. Da el *porqué* cualitativo; se corre aparte porque
-  pedir justificación altera la elección.
-- **B3 · Control forzado**: solo tools nativas / solo oráculo. Da el techo de cada
-  canal y detecta si la elección libre fue peor que cualquiera de los dos puros
-  (señal de que mezclar confunde).
+### E1 · The comparison with no model involved ✅ done
 
-**Tareas: largas y reales, no las 10 del benchmark formal.** El benchmark actual usa
-tareas de 2-8 acciones donde todos los brazos llegan (119/120) — no discriminan.
-Aquí hacen falta **misiones de 15-40 acciones** sobre sitios reales, del tipo:
+Added as a fourth arm in `bench-qa.mjs`, next to the pixel and accessibility-tree
+baselines, over the 19 cases with hand-written truth.
 
-1. Investigación multi-página con extracción acumulada (comparar 5 items entre 3
-   páginas y producir una tabla).
-2. Flujo con formulario multi-paso y validación (llenar, disparar un error de
-   validación a propósito, corregirlo, confirmar el efecto).
-3. Navegación SPA profunda con hidratación (GitHub: Code→Issues→filtro→issue→
-   volver, verificando cada transición).
-4. Tarea sobre página gigante (>50k px de scroll) con búsqueda de un elemento bajo
-   el fold + acción sobre él.
-5. Tarea con ruido ambiental (sitio con carrusel/reloj) donde hay que distinguir
-   "mi acción funcionó" de "la página se movió sola".
-6. Tarea de recuperación: un paso falla a propósito (elemento tapado por un banner)
-   y hay que detectarlo y resolverlo.
+**Would prove us wrong, stated plainly**: if its comparison scores 19/19, our central
+claim collapses and we should be the first to know.
 
-**Métricas**:
-- **Tasa de elección por tipo de tarea y por paso** (el dato que responde la pregunta).
-- **Punto de cruce de tokens**: costo acumulado por turno, brazo vs brazo, a lo largo
-  de la sesión. Hipótesis a testear: el oráculo pierde el primer turno (digest ~3KB)
-  y gana a partir del turno N. **N nunca fue medido** — es deuda pendiente desde el
-  sweep de 35 sitios.
-- Éxito juzgado externamente (mismo `judge.mjs`), acciones, wall time.
-- Abandono: ¿empieza con una herramienta y se pasa a la otra? ¿En qué momento?
+**Result: 11/19 as it comes, 17/19 after normalizing away its element references.** As
+shipped, its references are renumbered between readings, so every reading looks different
+and all 8 noise cases read as changes. Normalized, it misses 1 real change and reports 1
+false alarm. Our 19/19 stands, but **against a well-normalized comparison the margin is
+2 cases, not 6** — and that is the honest way to state it.
 
-**Falsación (importante)**: si en B1 el modelo elige las tools nativas en la mayoría
-de los pasos *y* las tareas se completan igual, entonces el valor percibido no
-existe y el producto necesita otro encuadre (o el pitch no es "mejor percepción" sino
-solo "verificación", que es la Fase C). Ese resultado hay que reportarlo tal cual.
+### E2 · The contracts where we claim an advantage ✅ done
 
-**Costo**: 6 tareas × 3 brazos × 3 reps ≈ $20-40 de API. Se puede empezar con 1 rep
-exploratoria (~$5) para calibrar tareas antes de gastar.
+**Result: 2 advantages confirmed, 1 of our assumptions disproved, 1 shared limit.**
+
+- **Occlusion**: we report a covered button *before* the click. It has no such signal —
+  its click fails afterwards. Advantage confirmed.
+- **Single-page navigation**: we report that the URL moved. Its comparison shows the
+  content change but not the page crossing. Advantage confirmed.
+- **Identity across a remount**: both stable. We had claimed its references would not
+  survive. **False** — they do.
+- **Identity across a reordered list**: neither is stable. Our claim of following identity
+  through reordering **does not hold** with short names; the tool declares uncertainty
+  instead, which is the designed behaviour but is not the same as tracking identity.
+
+### E3 · A fourth arm in the task benchmarks ⬜ open
+
+Add it to `experiment/formal/` (10 tasks, same model, same independent judge). Nearly free
+because the harness exists — only the runner changes.
+
+**Hygiene**: the Reddit datapoint about its speed is **one user's anecdote**, not a
+result. It is a hypothesis to test, never a quotation.
+
+### E4 · Where it is ahead of us ✅ done
+
+Permission layer (`--action-policy`, `--confirm-actions`, `--content-boundaries`),
+sessions and multiple tabs, an auth vault, a dashboard, snapshot scoping. Written into our
+backlog rather than swept aside. A comparison where the other tool wins nothing is a
+comparison done badly. See `experiment/results/e4-where-they-win.md`.
+
+### E5 · Coexistence ✅ done — and it changes the framing
+
+They have `eval` and a plugin protocol. **Can our reader run inside their flow?**
+
+**Yes.** 45 KB injected through their own `eval`, their flow untouched, and our change
+report comes back on top of it. That makes them a distribution channel, not a competitor —
+which addresses the single biggest weakness in `LANDSCAPE.md` (no distribution at all).
 
 ---
 
-## Fase C — False-green diferencial contra frameworks reales (el test decisivo)
+## Phase B — what the model chooses when nothing tells it to ✅ done
 
-**Pregunta**: ¿el oráculo caza fallas que browser-use / Playwright MCP / Stagehand
-dan por buenas? Esta es la prueba que convierte la tesis en producto — y es la que
-propuso la revisión externa del `LANDSCAPE.md`.
+**The bias to avoid**: the `agent-browse` skill *tells* Claude Code to prefer this tool.
+Any measurement with that skill active measures obedience, not preference. It has to be
+off.
 
-**Por qué es la decisiva**: la literatura mide que el false-success es 45-48% de las
-fallas sin verificador independiente y 3% con él (Advani, FAGEN@ICML2026 — ojo:
-workshop, autor único, dominios de tool-use no browser). Si ese efecto se reproduce
-en browser con frameworks reales, el pitch tiene respaldo externo *y* demostración
-propia. Si no se reproduce, hay que decirlo.
+**Design — three arms, same model**: free choice with both toolsets and a neutral prompt;
+free choice plus a one-line justification per step (run separately, because asking for a
+justification changes the choice); and forced single-channel controls for the ceiling of
+each.
 
-**Diseño**: una app de pruebas con **fallas silenciosas plantadas** (el patrón
-`demo-qa`, extendido). Cada caso es una acción que *parece* funcionar:
+**Tasks: long and real, not the 10 from the formal benchmark.** Those are 2–8 actions
+where every arm succeeds (119/120) — they do not discriminate. This needs missions of
+15–40 actions: multi-page research with accumulated extraction, a multi-step form with a
+deliberate validation error, deep single-page navigation, a task on a huge page, a task
+with ambient noise where "my action worked" must be told apart from "the page moved by
+itself", and a recovery task where a step fails on purpose.
 
-| Caso | Qué pasa realmente | Qué ve un canal sin verificación |
+**Would prove it wrong**: if the model mostly picks its native tools *and* the tasks still
+complete, then the perceived value is not there and the framing has to change.
+
+### Result
+
+**The model chose this tool in 63 of 81 channel-using steps (78%), in all six tasks.**
+Token cost of the forced arms: 1,078k for pixels against 216k for this tool — 5× fewer,
+and 4× cheaper ($6.02 against $1.50).
+
+Qualitatively it uses a screenshot to **orient itself** at the start, then switches to
+this tool to **operate and verify**. That supports offering both, not replacing one.
+
+---
+
+## Phase C — silent failures against real frameworks ✅ done
+
+**Question**: does this catch failures that other channels call successes?
+
+**Design**: a test page with planted silent failures — a no-op button, a form rejected
+without a message, a click swallowed by an invisible overlay, a notification that expires
+before you look, a row inserted out of view, a state change with no visual difference, a
+double submit, a half-hydrated single-page navigation. An independent function reads the
+real state and decides what happened.
+
+**Metric**: the share of cases where a channel reports success and the independent check
+says it did not happen.
+
+### Result
+
+| Channel | Right | Wrong success reports |
+|---|---:|---:|
+| **Stating the expected outcome and checking it** | **8/8** | **0** |
+| Just asking "did anything change?" | 4–6/8 | 2–4 |
+| `agent-browser` snapshot diff | 2/8 | 6 |
+| Screenshot comparison | 2/8 | 6 |
+
+**0 against 6 out of 8.** The cut-off in this plan asked for a 30-point difference; the
+result is 75.
+
+The second row is a range on purpose. It scored 6/8 in the first run and 4/8 in the
+re-run, because it depends on what the page's own noise does at that moment. **That
+instability is itself the finding**: "did anything change?" is the wrong question on a
+live page, and the stated-expectation arm was stable at 8/8 in both runs.
+
+---
+
+## Phase D — somebody else's benchmark ✅ done, and it hurt
+
+**Question**: do the numbers hold on tasks we did not write?
+
+Our formal benchmark gives 119/120 with our own tasks, and that 100% suggests the tasks
+are *easy*, not that the channel is better — public benchmarks measure around 30% real
+success on comparable work.
+
+**Design**: the subset of `iMeanAI/Mind2Web-Live` whose scoring steps can be judged by URL
+alone — 23 of the first 40 tasks; 8 were run. The metric is WebCanvas's, not ours.
+
+**Would prove it wrong**: if this tool does not beat the native channel on somebody else's
+corpus, our own benchmark result was an artifact of how we wrote the tasks.
+
+### Result: it did not beat it
+
+| Benchmark | Success |
+|---|---:|
+| Our formal benchmark (our tasks) | **99%** |
+| **Mind2Web-Live, this tool** | **28%** (8 of 29 scoring steps) |
+| Tasks finished end to end | 1 of 8 |
+
+28% is exactly where the literature puts current agents on the live web. The pattern: it
+reaches the right site almost every time and loses the middle steps — filters, multi-field
+forms, flows needing a login or earlier state.
+
+**The comparison arm is incomplete and what exists goes against us.** API credit ran out
+after 3 of 8 tasks. On those 3, the screenshot arm scored 5 of 8 scoring steps against
+this tool's 3 of 8. Three tasks prove nothing, but the direction is recorded.
+
+**This phase gives no evidence that reading structure instead of pixels helps an agent
+finish more tasks.** The measured advantages are cost (phase B) and catching silent
+failures (phase C).
+
+Finishing it properly: about $4 for the comparison arm, about $25–30 to widen to 23 tasks
+with 2 repetitions.
+
+---
+
+## Cycle results (2026-08-01)
+
+Run in one session. Everything deterministic except phases B and D, which needed a model.
+
+| Phase | Result | Report |
 |---|---|---|
-| Botón no-op | El handler no hace nada | La página "se ve igual pero con el reloj corriendo" |
-| Submit que falla en silencio | Validación server-side rechaza, sin mensaje visible | Formulario limpio = parece éxito |
-| Click interceptado | Un overlay transparente come el click | Screenshot idéntico |
-| Toast que ya se fue | El efecto ocurrió y desapareció antes del screenshot | Nada que ver |
-| Fila insertada fuera de viewport | La acción funcionó pero no se ve | Parece no-op |
-| Estado sin delta visual | `disabled` → `enabled`, mismo pixel | Invisible |
-| Doble submit | Se insertaron 2 filas en vez de 1 | Parece éxito |
-| SPA a medio hidratar | La URL cambió, el contenido no llegó | Parece navegación OK |
+| **A** modes agree | ✅ 8/8 plus occlusion and navigation, four modes agree | this document |
+| **E1** comparable tool | ✅ **11/19 as shipped, 17/19 normalized** against our 19/19 | `results/e1-agent-browser.md` |
+| **E2** claimed contracts | ⚠️ **2 confirmed, 1 of our assumptions disproved, 1 shared limit** | `results/e2-contracts.md` |
+| **A-bis** untested verbs | ✅ 19/19 on **both** installs, plus 2 findings | `results/abis-verbs.md` |
+| **C** silent failures | ✅ **0 against 6 out of 8** | `results/c-false-green.md` |
+| **E5** coexistence | ✅ **it runs inside agent-browser** through its `eval` | `results/e5-coexistence.md` |
+| **B** what the model picks | ✅ **78% of steps**, no skill biasing it; 5× fewer tokens | `results/b-preference.md` |
+| **D** somebody else's tasks | ⚠️ **28% against our own 99%**; comparison arm incomplete | `results/d-third-party.md` |
 
-**Brazos**: (1) browser-use, (2) Playwright MCP, (3) Stagehand si el tiempo alcanza,
-(4) snapDOM Agent vía MCP. Todos con **el mismo modelo** y la misma consigna:
-"hacé X y decime si funcionó".
+### The five results that changed the pitch
 
-**Métrica única y honesta**: **false-green rate** = casos donde el brazo reporta
-éxito y el juez externo (chequeo directo del estado de la app, sin ningún brazo de
-por medio) dice que no ocurrió.
+1. **The core claim survives, but the margin depends on what you compare against.**
+   Against a pixel comparison (13/19) and an accessibility-tree diff (16/19) the distance
+   is large. Against a well-normalized agent-browser it is 19/19 against 17/19. The
+   advantage is concentrated in **text noise** and in **changes with no textual
+   representation**.
+2. **The value is not the comparison, it is the stated expectation.** In phase C our own
+   raw "did anything change?" produced 2 to 4 wrong success reports; checking a stated
+   outcome produced 0.
+3. **agent-browser is a channel, not a competitor.** 45 KB through its `eval`, its flow
+   untouched.
+4. **The model prefers this tool when it can choose** — 78% of steps, all six tasks,
+   nothing biasing it. But it still uses pixels to orient itself, which supports using
+   both rather than replacing one.
+5. **Our tasks were easy, and now that is measured.** 99% on ours against **28% on
+   somebody else's**. The 119/120 measures the channel on reachable tasks, not capability.
+   On that outside corpus **there is no evidence the structural channel improves success**.
 
-**Falsación**: si los frameworks rivales cazan estas fallas con tasas similares
-—porque re-perciben y el modelo se da cuenta— la diferenciación central se cae, y lo
-que queda es costo de tokens (donde hay competencia agresiva: Rote, Opera, OpenBrowser).
-Este es el resultado que más nos costaría y por eso es el que más vale medir.
+### What this cycle corrected in our own claims
 
-**Nota metodológica**: hay que ser escrupulosamente justos con los rivales — última
-versión, configuración recomendada por sus docs, sin prompts que los saboteen, y
-publicar los transcripts. Un benchmark que se gana haciendo trampa no sirve ni para
-convencernos a nosotros.
+- ~~"a text diff of the accessibility tree misses the `disabled` flip"~~ → **false**, it
+  catches it; the flag travels in the serialization.
+- ~~"their references do not survive a remount"~~ → **false**, they do (`e1 → e1`).
+- ~~"we track identity through reordering"~~ → **only sometimes**: it depends on how rich
+  the names are. With short names the tool declares uncertainty instead.
+- ~~"a navigation aborts a recording"~~ → **does not happen**; the documentation was
+  stale.
 
-**Costo**: ~1-2 sesiones de setup + $10-20 de API.
+### Measurement hygiene
+
+Seven method bugs of our own, all found and fixed before believing any number:
+`diffPixels` called wrongly (0.000% everywhere), a programmatic click that passed straight
+through the overlay, a click by coordinates outside the viewport, an unfair comparison of
+their `eval` against our real click, and a judge measuring "did anything mutate?" instead
+of "did the expected outcome happen?". Plus the `execFile` input handling in E5, and in
+phase D a `catch { break }` that swallowed API errors and made five dead runs read as
+legitimate zeros.
+
+**No result in this cycle survived its first run without review, and the silent-failure
+pattern showed up three times in my own harness** — the same pattern the tool exists to
+catch in pages.
 
 ---
 
-## Fase D — Benchmark de terceros (credibilidad externa)
-
-**Pregunta**: ¿los números aguantan en tareas que no escribimos nosotros?
-
-Nuestro benchmark formal da 119/120 con tareas propias — y ese 100% sugiere que son
-*fáciles*, no que el canal sea superior (los benchmarks públicos miden ~30% de éxito
-real en tareas comparables). Es la brecha más citable que tenemos.
-
-**Diseño**: correr un subset de **Online-Mind2Web** (tareas vivas, key-nodes) o
-**WebArena** (self-hosted, reproducible) con los brazos del harness formal. Reusar
-`experiment/formal/` cambiando solo la fuente de tareas y el juez.
-
-**Falsación**: si el brazo oráculo no mejora al nativo en un corpus ajeno, el
-resultado del benchmark propio era un artefacto del diseño de tareas.
-
-**Costo**: 1-2 sesiones + API según subset. Es la mejora de credibilidad más grande
-por peso invertido, pero va después de C porque C decide si hay producto.
-
----
-
-## 2-bis. RESULTADOS DEL CICLO (2026-08-01)
-
-Corrido de forma autónoma en una sesión. Todo determinista, sin gasto de API.
-
-| Fase | Resultado | Reporte |
-|---|---|---|
-| **A** paridad de superficies | ✅ 8/8 fixtures + oclusión + SPA, cuatro superficies de acuerdo | (en este doc) |
-| **E1** agent-browser en bench-qa | ✅ corrido: **11/19 tal cual sale · 17/19 normalizado** vs nuestro 19/19 | `results/e1-agent-browser.md` |
-| **E2** contratos afirmados | ⚠️ **2 ventajas confirmadas, 1 suposición nuestra refutada, 1 límite propio** | `results/e2-contracts.md` |
-| **A-bis** verbos sin cobertura | ✅ 19/19 en las DOS instalaciones (repo y global) + 2 hallazgos (ranking engaña, doc de `rec` desactualizada) | `results/abis-verbs.md` |
-| **C** false-green diferencial | ✅ **0 vs 6 falsos verdes sobre 8** (criterio pedía ≥30 pts, dio 75) | `results/c-false-green.md` |
-| **E5** coexistencia | ✅ **el oráculo corre DENTRO de agent-browser** por su `eval --stdin` | `results/e5-coexistence.md` |
-| **B** preferencia revelada | ✅ **el modelo elige el oráculo en 78% de los pasos** sin skill que sesgue; tokens 5× | `results/b-preference.md` |
-| **D** benchmark de terceros | ⚠️ **28% en tareas ajenas vs 99% en las nuestras**; brazo de píxeles incompleto | `results/d-third-party.md` |
-
-### Los tres resultados que cambian el pitch
-
-1. **La tesis se sostiene, pero el margen depende del rival.** Contra pixel-diff
-   (13/19) y a11y-tree (16/19) la distancia es grande; contra un agent-browser bien
-   normalizado es 19/19 vs 17/19. La ventaja está concentrada en **ruido textual** y
-   **cambios sin representación textual**.
-2. **El valor NO es el diff, es la aserción.** En la Fase C nuestro propio `look`
-   crudo produjo 2 falsos verdes; el `assert` de postcondición produjo 0. Es la
-   confirmación medida del reencuadre a **runtime de postcondiciones**.
-3. **agent-browser puede ser canal, no rival.** 45 KB por su `eval` y su flujo queda
-   intacto.
-4. **El modelo prefiere el oráculo cuando puede elegir** — 78% de los pasos, en las seis
-   tareas, sin nada que lo sesgue. Pero también usa píxeles para orientarse: apoya el
-   híbrido, no el reemplazo.
-5. **Nuestras tareas eran fáciles, y ahora está medido.** 99% en nuestro benchmark vs
-   **28% en tareas de terceros** (Mind2Web-Live, sus key nodes). El 119/120 mide el
-   canal en tareas alcanzables, no capacidad. Y en ese corpus ajeno **no hay evidencia
-   de que el canal semántico mejore el éxito** — la ventaja medida está en costo y
-   verificación, no en capacidad.
-
-### Lo que este ciclo corrigió de nuestras propias afirmaciones
-
-- ~~"un diff textual del a11y tree pierde el flip de `disabled`"~~ → **falso**, lo
-  detecta (viaja en la serialización).
-- ~~"sus refs no sobreviven un remount"~~ → **falso**, sobreviven (`e1 → e1`).
-- ~~"seguimos la identidad a través de reordenamientos"~~ → **con matices**: depende
-  de la riqueza de los nombres; con nombres cortos declara incertidumbre.
-- ~~"una navegación aborta la grabación"~~ → **no ocurre** (doc desactualizada).
-
-### Higiene de medición
-
-Siete bugs de método propios, todos encontrados y corregidos antes de creer ningún
-número: `diffPixels` mal invocado (0,000% en todo), click programático que atravesaba
-el overlay, click por coordenadas fuera del viewport, asimetría `eval` vs click real
-contra el rival, y un juez que medía "¿mutó algo?" en vez de "¿se cumplió la
-postcondición?". Más el `execFile`+`input` de E5 y, en la Fase D, un `catch { break }`
-que silenciaba errores de API y hacía leer cinco episodios muertos como "0 key nodes"
-legítimos. **Ningún resultado de este ciclo sobrevivió a su primera corrida sin
-revisión, y el fallo mudo apareció tres veces en mi propio harness** — el mismo patrón
-que el producto persigue en las páginas.
-
-## 3. Orden propuesto y criterio de corte
+## Order and cut-off
 
 ```
-A ✅  →  E1 ($0, ataca la afirmación central)  →  A-bis  →  C + E3 (misma corrida)  →  E5  →  B  →  D
-                                                              ↑ E2 y E4 acompañan a E1
+A ✅ → E1 ($0, attacks the central claim) → A-bis → C + E3 (same run) → E5 → B → D
+                                              ↑ E2 and E4 ride along with E1
 ```
 
-- **A primero** (hecha): gratis, y mostrarle a un tercero superficies que no concuerdan
-  entre sí quema credibilidad.
-- **E1 inmediatamente después**: es determinista, sin modelo, cuesta $0 y apunta
-  directo a la afirmación de la que cuelga todo el pitch. Si el diff del rival empata,
-  todo lo demás cambia de sentido — mejor saberlo antes de gastar en C.
-- **A-bis antes de C**: barato, y no tiene sentido llevar a un head-to-head un bundle
-  con verbos que nunca se probaron.
-- **C y E3 en la MISMA corrida**: agent-browser entra como brazo de la app de fallas
-  silenciosas en vez de pagar dos veces el setup.
-- **E5 después de C**: si hay diferenciación demostrada, la coexistencia se vuelve
-  canal de distribución; si no la hay, no hay nada que distribuir.
-- **B antes que D** porque B es más barato y su resultado cambia qué se mide en D.
+- **A first**: free, and showing somebody modes that disagree with each other burns
+  credibility.
+- **E1 immediately after**: deterministic, no model, $0, and aimed straight at the claim
+  everything else hangs from.
+- **A-bis before C**: cheap, and there is no point taking a bundle with untested verbs
+  into a comparison.
+- **C and E3 in the same run**: agent-browser becomes an arm of the silent-failure app
+  instead of paying for the setup twice.
+- **E5 after C**: if there is a demonstrated difference, coexistence becomes distribution.
+- **B before D** because B is cheaper and its result changes what D should measure.
 
-**Criterio de corte honesto**: si C muestra false-green diferencial ≥30 puntos a
-favor y A está limpio, hay caso para buscar el primer consumidor real (F4 del PLAN.md).
-Si C sale parejo, el encuadre correcto pasa a ser el que sugirió la revisión externa:
-**runtime de postcondiciones para automatizaciones web**, o directamente una feature
-de snapdom / tecnología licenciable — no un producto independiente.
+**Honest cut-off**: phase C showed a 75-point difference and phase A is clean, so there is
+a case for looking for a first real user (phase 4 of `PLAN.md`). Phase D says the framing
+must stay narrow while doing it: this is a **runtime for checking postconditions**, not a
+general improvement to agent capability.
 
 ---
 
-## 4. Qué NO está en este plan (a propósito)
+## Not in this plan, on purpose
 
-- Más features del oráculo. La prioridad es validación externa y distribución, no
-  superficie nueva.
-- Mejorar el 19/19 o el 119/120: ya no informan nada.
-- Multi-tab, restore, permisos finos: se difieren hasta que un consumidor real los
-  pida — pero E4 los va a documentar como ventaja del rival, que es distinto a
-  ignorarlos.
-- Publicar cualquier cosa (npm, store, repo público).
+- More features. The priority is outside validation and distribution, not new surface.
+- Improving on 19/19 or 119/120: neither number tells us anything new.
+- Multiple tabs, state restore, fine-grained permissions: deferred until a real user asks
+  — but E4 documents them as things the comparable tool already has, which is different
+  from ignoring them.
+- Publishing anything.
 
-## 5. Historial de huecos del plan (para no repetirlos)
+---
 
-Este documento nació cubriendo solo la familia observar/verificar. Un review externo
-encontró dos omisiones que valen como lección de método:
+## History of gaps in this plan
 
-1. **Familia de features entera sin testear** (`rec`/`snap`/`cp`/`parent`/`map`): el
-   plan miró las superficies y no el inventario de verbos. Regla nueva: antes de
-   planificar tests, listar TODO lo que el producto expone y marcar qué no toca ningún
-   gate.
-2. **Comparable nunca ejecutado**: agent-browser estaba analizado en `LANDSCAPE.md` a
-   nivel documental y eso se sintió como cobertura. No lo es. Regla nueva: una
-   herramienta que no se corrió no está medida, por más prolija que sea la ficha que le
-   escribimos.
+Written so we do not repeat them.
 
-3. **La instalación que usamos todos los días no estaba en ningún gate** (2026-08-01).
-   Los gates corrían siempre contra el árbol del repo; el install global
-   (`~/.claude/snapdom-agent`) nunca se ejecutó en una prueba. Ahí el bundle `sdk.js`
-   se construía desde una SEGUNDA copia de la fuente de entrada, que nunca recibió
-   `redactString`: `window.__agentRedact` quedaba undefined y `find`, `text` y `assert`
-   tiraban "is not a function" DENTRO de la página. `open` seguía funcionando, así que
-   el daemon parecía sano. Reglas nuevas: (a) toda definición de bundle vive en UN solo
-   archivo (`tools/sdk-bundle.mjs`, con verificación de los globals al construir);
-   (b) los gates aceptan `--daemon <path>` y se corren también contra el install global;
-   (c) el bundle de la companion se re-genera y se compara antes de creer su gate —
-   estaba atrasado respecto de `91daf6d` (las correcciones F3 de privacidad NO estaban
-   en la extensión cargada en Chrome).
+1. **A whole family of features untested** (`rec`/`snap`/`cp`/`parent`/`map`): the plan
+   looked at the modes and never at the inventory of verbs. New rule: before planning
+   tests, list everything the tool exposes and mark what no gate touches.
 
-4. **Cuatro harnesses terminaban y no salían** (2026-08-01). `e1`, `e2`, `e5`,
-   `c-false-green` y `b-preference` escribían sus resultados y quedaban colgados con el
-   servidor de fixtures vivo por un socket keep-alive. Medido: >10 min de cuelgue sobre
-   un trabajo real de 43 s. Un CI con timeout habría reportado rojo un experimento que
-   salió bien. Regla nueva: todo harness con `createServer` cierra conexiones y sale con
-   `process.exit` sobre el resultado.
+2. **A comparable tool never actually run**: agent-browser was analysed in
+   `LANDSCAPE.md` at documentation level and that felt like coverage. It is not. New rule:
+   a tool you have not run is a tool you have not measured, however tidy the notes you
+   wrote about it.
+
+3. **The install we use every day was in no gate** (2026-08-01). Every gate ran against
+   the repository tree; the global install in `~/.claude/snapdom-agent` was never
+   exercised. There, the `sdk.js` bundle was built from a **second copy** of the entry
+   source, which never received `redactString`: `window.__agentRedact` was undefined and
+   `find`, `text` and `assert` threw inside the page. `open` still worked, so the daemon
+   looked healthy. New rules: (a) one bundle definition, in one file
+   (`tools/sdk-bundle.mjs`, which verifies the globals at build time); (b) gates take
+   `--daemon <path>` and are run against the global install too; (c) the extension bundle
+   is rebuilt and compared before trusting its gate — it was stale relative to commit
+   `91daf6d`, so the privacy fixes were **not** in the extension loaded in Chrome.
+
+4. **Four harnesses finished and never exited** (2026-08-01). `e1`, `e2`, `e5`,
+   `c-false-green` and `b-preference` wrote their results and then hung, holding the
+   fixture server open on a keep-alive socket. Measured: over 10 minutes of hanging on
+   43 seconds of real work. A CI run with a timeout would have reported a red result on a
+   run that succeeded. New rule: any harness with a server closes its connections and
+   exits on the result.

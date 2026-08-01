@@ -210,9 +210,9 @@ model. What did run is unambiguous:
 
 | task | A screenshot | B oracle | C both |
 |---|---|---|---|
-| wikipedia-borges (buscar) | 2/2 · 3.0 pasos · 5.9k tok | 2/2 · 3.0 · 22.8k | 2/2 · 3.0 · 26.7k |
-| wikipedia-nav (link en artículo gigante) | **2/2 · 1.0 · 1.9k** | 0/2 | 0/2 |
-| ebay-guitar (buscar) | 2/2 · 3.0 · 5.9k | 2/2 · 3.0 · 35.0k | 2/2 · 3.0 · 38.3k |
+| wikipedia-borges (search) | 2/2 · 3.0 steps · 5.9k tok | 2/2 · 3.0 · 22.8k | 2/2 · 3.0 · 26.7k |
+| wikipedia-nav (link inside a huge article) | **2/2 · 1.0 · 1.9k** | 0/2 | 0/2 |
+| ebay-guitar (search) | 2/2 · 3.0 · 5.9k | 2/2 · 3.0 · 35.0k | 2/2 · 3.0 · 38.3k |
 | **total** | **6/6 · $0.061** | 4/6 · $0.383 | 4/6 · $0.374 |
 
 ## Honest reading
@@ -257,7 +257,7 @@ a fresh first turn, and channel-authority rules for arm C.
 | ebay-guitar | 2/2 · 3.5 | 2/2 · 3.0 | 2/2 · 4.0 |
 | pydocs-tutorial | 2/2 · 3.0 | 2/2 · 3.0 | 2/2 · 3.0 |
 | npm-snapdom | 2/2 · 4.0 | 0/2 · 5.0 | 2/2 · 4.0 |
-| **total** | 9/10 · 3.2 pasos · $0.151 | 8/10 · 3.2 · $0.341 | **10/10 · 3.1 · $0.412** |
+| **total** | 9/10 · 3.2 steps · $0.151 | 8/10 · 3.2 · $0.341 | **10/10 · 3.1 · $0.412** |
 
 1. **C is the only perfect arm.** v1's "the oracle makes the combined arm worse" was a
    protocol defect, not a product property: with a truthful outline and channel
@@ -294,7 +294,7 @@ same walk, same task, same instant. No native capture API anywhere in the path.
 | ebay-guitar | 2/2 · 3.0 |
 | pydocs-tutorial | 2/2 · 3.0 |
 | npm-snapdom | 2/2 · 3.5 |
-| **total** | **10/10 · 2.9 pasos (best of all arms) · $0.398** |
+| **total** | **10/10 · 2.9 steps (best of all arms) · $0.398** |
 
 **The snapdom render is model-grade.** D matches C's 10/10 and edges it on steps
 (2.9 vs 3.1) at the same cost — the model operated real sites off snapdom's
@@ -319,47 +319,49 @@ appearing/closing, URL unchanged. Protocol gap, not a product bug: the agent rul
 
 ---
 
-# WebVoyager-25 — el benchmark del competidor (harness listo, 2026-08-01)
+# WebVoyager-25 — somebody else's benchmark (harness ready, 2026-08-01)
 
-`experiment/webvoyager/` replica la evaluación que publica **lumen** (Om Labs, MIT), un
-agente de navegador *vision-first* que reporta 25/25 en un subset de 25 tareas de
-WebVoyager contra browser-use (25/25) y stagehand (19/25), todos con
-`claude-sonnet-4-6` y juez `gemini-2.5-flash`.
+`experiment/webvoyager/` replicates the evaluation published by **lumen** (Om Labs, MIT),
+a vision-first browser agent that reports 25/25 on a 25-task subset of WebVoyager, next to
+browser-use (25/25) and stagehand (19/25), all with `claude-sonnet-4-6` and
+`gemini-2.5-flash` as the judge.
 
-Replicado idéntico: dataset (byte-idéntico), **los mismos 25 ids en el mismo orden**
-(su muestreo estratificado semilla-42 está portado y verificado), adaptación de fechas,
-`maxSteps` 50, timeout 600 s, 3 intentos con feedback del juez, contrato del juez y
-schema del reporte. Lo único que cambia es el canal de percepción: `pixels` (control
-vision-first) · `oracle` · `hybrid` · `snap` (una captura snapdom → píxeles+semántica del
-mismo instante).
+Replicated exactly: the dataset (byte-identical), **the same 25 task ids in the same
+order** (their seed-42 stratified sampling is ported and verified), the date adaptation,
+`maxSteps` 50, a 600 s timeout, 3 attempts with feedback from the judge, the judge's
+contract, and the report schema. The only thing that changes is what the model sees each
+turn: `pixels` (the vision-first control) · `oracle` · `hybrid` · `snap` (one snapDOM
+capture giving pixels and structure from the same moment).
 
-**Hallazgo que no costó nada**: su 100% es pass@3 *con pistas del juez* — el harness
-reinyecta el motivo del rechazo en el intento siguiente. El pass@1 es recuperable de sus
-propios archivos (un `trial > 1` implica intento 1 reprobado): lumen 23/25 (92%),
-browser-use 25/25, stagehand 16/25 (64%). Sus `avgSteps`/`avgTokens` son además los del
-intento que quedó registrado, no el costo total de resolver la tarea. Nuestro reporte
-publica las dos columnas y además el costo acumulado de todos los intentos.
+**A finding that cost nothing**: their 100% is pass@3 *with hints from the judge* — the
+harness feeds the reason for rejection back into the next attempt. The pass@1 number is
+recoverable from their own files, because a result recorded with `trial > 1` means attempt
+1 was rejected: lumen 23/25 (92%), browser-use 25/25, stagehand 16/25 (64%). Their
+`avgSteps` and `avgTokens` are also from the attempt that happened to be recorded, not the
+total cost of solving the task. Our report publishes both columns plus the cost of all
+attempts.
 
-Estado: verificado sin gastar — 25/25 sitios cargan sin bloqueo (`--dry`), los 4 brazos
-completan el loop en sitios reales (`--mock`), y el payload por turno muestra el
-comportamiento esperado del oráculo (25K chars el primer turno → 3,4K en los turnos de
-diff, contra una imagen entera por turno en `pixels`). **Falta la corrida real**: no hay
-todavía ningún número de aciertos propio en este benchmark.
+Status: verified without spending anything — 25 of 25 sites load with no blocks
+(`--dry`), all four arms complete the loop on real sites (`--mock`), and the payload per
+turn behaves as expected (25K characters on the first turn, 3.4K on the comparison turns,
+against a whole image every turn for `pixels`). **The real run is missing**: there is
+still no accuracy number of our own on this benchmark.
 
-**Se puede correr entero sin gastar**: el proveedor sale del id del modelo, así que
-`--model gemini-2.5-flash` con una key gratuita de AI Studio corre el benchmark completo
-por $0, con el mismo loop y los mismos tokens medidos (`usageMetadata`). El tier gratis
-limita rate, y por eso cada llamada pasa por `retry.mjs` (back-off ante 429/5xx
-respetando `retry-after`): la corrida se estira, no se cae. El camino Gemini está
-verificado contra un stub local del endpoint; falta probarlo contra el real. Costo si se
-prefiere el modelo exacto de ellos (`claude-sonnet-4-6`), cota superior medida:
-$30,5 (`pixels`) · $36,5 (`oracle`) · $56,8 (`hybrid`).
+**It can be run end to end for free**: the provider is chosen by the model id, so
+`--model gemini-2.5-flash` with a free AI Studio key runs the whole benchmark for $0, with
+the same loop and tokens measured the same way (from `usageMetadata`). The free tier rate
+limits, which is why every call goes through `retry.mjs` (exponential back-off on 429 and
+5xx, respecting `retry-after`): the run stretches, it does not fall over. The Gemini path
+is verified against a local stub of the endpoint; it has not been tried against the real
+one. If the exact model they used is preferred (`claude-sonnet-4-6`), the measured upper
+bound is $30.5 (`pixels`) · $36.5 (`oracle`) · $56.8 (`hybrid`).
 
-Advertencia de método al usar Gemini como actor: cambia el modelo respecto del de ellos,
-así que la comparación **externa** contra sus filas se debilita (una diferencia puede ser
-del modelo, no del canal). La comparación **interna** `oracle` vs `pixels` —misma key,
-mismo loop— es la que responde la pregunta del producto y no se ve afectada.
+A methodological warning about using Gemini as the actor: it changes the model relative to
+theirs, so the **external** comparison against their rows weakens — a difference could
+come from the model rather than from what the model sees. The **internal** comparison,
+`oracle` against `pixels` with the same key and the same loop, is the one that answers the
+product question and is unaffected.
 
-Método, flags y lecturas honestas: `experiment/webvoyager/README.md`.
-Esto cierra el hueco #2 de `TESTPLAN.md` §5 para lumen a nivel de *harness*; queda
-abierto a nivel de *medición* hasta que se corra.
+Method, flags and honest readings: `experiment/webvoyager/README.md`.
+This closes gap #2 of `TESTPLAN.md` at the level of *harness*; it stays open at the level
+of *measurement* until somebody runs it.

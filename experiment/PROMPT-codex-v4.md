@@ -1,49 +1,47 @@
-# Prompt para Codex — ronda 4: DURACIONES (copiar y pegar)
+# Review round 4 — TIMINGS — copy and paste
 
-Cuarta ronda, foco único: **tiempos**. Tus hallazgos de v3 ya están aplicados en el
-harness (mismo día): las denegaciones ya loguean `ok:false` (tu bug serio), `find`
-loguea los matches completos `{id, role, name, href}` con href pathname-first (no la
-cola de tracking), `look`/`open` loguean resumen (mapTotal/changed/#changes), y las
-URLs del log van truncadas a origin+pathname. Además el ranking de `find` v2 entierra
-los wrappers page-wide que concatenan toda la página. El bug de `snap` con scroll≠0
-que validaste de pasada quedó cerrado en el core con test de regresión.
+Fourth round, one focus: **time**. Your v3 findings are already applied in the harness, the
+same day: denials now log `ok:false` (your serious bug), `find` logs the complete matches
+`{id, role, name, href}` with the pathname first rather than the tracking tail,
+`look`/`open` log a summary (map total, changed, number of changes), and URLs in the log
+are truncated to origin plus pathname. The v2 ranking in `find` also buries the page-wide
+wrappers that concatenate the whole page. The `snap` bug with a non-zero scroll, which you
+validated in passing, is closed in the core with a regression test.
 
-Tu misión: repetir las MISMAS 5 tareas (mismos criterios, tope 15 acciones) midiendo
-duración de forma sistemática, y entregar la tabla de tiempos que le faltó a tus
-rondas anteriores.
+Your mission: repeat the SAME 5 tasks (same criteria, cap of 15 actions) measuring
+duration systematically, and produce the timing table your previous rounds lacked.
 
-Metodología de medición (respetala para que sea comparable):
+Measurement method — follow it so the numbers are comparable:
 
-1. **Wall-time por tarea**: cronometrá desde el instante antes del primer comando de
-   la tarea hasta el instante después del último (por ejemplo corriendo la cadena
-   completa de comandos de la tarea en una sola invocación con `time`, o tomando
-   timestamps antes/después). Ejecución pura del harness, sin tu tiempo de
-   razonamiento en el medio — si no podés encadenar, anotá los dos números por
-   separado (puro vs end-to-end) y decí cuál es cuál.
-2. **Por comando**: sacá `durationMs` del JSONL de la sesión
-   (`packages/agent/logs/<sesión>.jsonl`) — suma por tarea, y p50/máx de `open`,
-   `find`, `look`, `click`.
-3. Referencia para que contrastes (mi corrida de hoy, ejecución pura encadenada):
-   total 5/5 · 20 comandos · 21,2 s de pared; opens 1,0–5,6 s; finds 1–8 ms;
-   looks 94–413 ms; eBay entera 12,1 s. Si tus números difieren mucho, investigá
-   por qué (¿comandos de a uno? ¿red? ¿página distinta?) en vez de promediar.
+1. **Wall time per task**: time it from the instant before the task's first command to the
+   instant after its last. For example, run the whole chain of commands for the task in a
+   single invocation under `time`, or take timestamps before and after. Pure harness
+   execution, without your own reasoning time in the middle — if you cannot chain them,
+   record both numbers separately (pure and end-to-end) and say which is which.
+2. **Per command**: take `durationMs` from the session's JSONL
+   (`packages/agent/logs/<session>.jsonl`) — the sum per task, and the median and maximum
+   for `open`, `find`, `look` and `click`.
+3. Reference for contrast (my run today, pure chained execution): 5/5 · 20 commands ·
+   21.2 s of wall time; opens 1.0–5.6 s; finds 1–8 ms; looks 94–413 ms; the whole eBay
+   task 12.1 s. If your numbers differ a lot, investigate why (one command at a time? the
+   network? a different page?) instead of averaging it away.
 
-Entregable en `packages/agent/experiment/results/codex-self-v4.md`:
+Deliverable in `packages/agent/experiment/results/codex-self-v4.md`:
 
-- Tabla por tarea: éxito · acciones · wall-time v4, con tus acciones de v1/v2/v3 al
-  lado para historia (tiempos solo v3-aprox vs v4, que es lo que hay).
-- Tabla por comando: p50/máx de open/find/look/click/enter, y el desglose completo
-  de la tarea más lenta.
-- Overhead del CLI: compará la suma de `durationMs` del JSONL contra tu wall-time
-  por tarea — la diferencia es el costo de invocación por comando (~70-90 ms/cmd en
-  mi corrida). Decí si a tu juicio amerita un modo batch (`browse.mjs run 'open X;
-  find Y; click Z'`) o no.
-- Spot-check de tus fixes de auditoría (2 minutos): forzá una denegación con un
-  daemon `--readonly` y verificá `ok:false` en el JSONL; corré un `find` y verificá
-  que los matches quedaron con role/name/href. Reportá si algo sigue mal.
-- Fricciones nuevas si aparecen. Sin edulcorar, como siempre.
+- A per-task table: success · actions · v4 wall time, with your v1/v2/v3 action counts
+  beside it for history (timings only exist from v3 onward, approximately).
+- A per-command table: median and maximum for open, find, look, click and enter, plus the
+  full breakdown of the slowest task.
+- Command-line overhead: compare the sum of `durationMs` from the JSONL against your wall
+  time per task. The difference is the per-command invocation cost (about 70–90 ms per
+  command in my run). Say whether in your judgement that justifies a batch mode
+  (`browse.mjs run 'open X' 'find Y' 'click Z'`) or not.
+- A two-minute spot check of the audit fixes: force a denial with a `--readonly` daemon and
+  confirm `ok:false` in the JSONL; run a `find` and confirm the matches carry role, name
+  and href. Report anything still wrong.
+- New friction if any appears. Unsweetened, as always.
 
-Notas operativas: daemon con `node packages/agent/tools/browse.mjs serve` en
-background; los ids caducan por observación (`obs #N`); `snap`/`shot`/`text`/`find`
-no re-observan; nada de clicks por coordenadas para adivinar (parent/map). Al final:
-`stop` de todos los daemons que hayas levantado.
+Operational notes: run the daemon with `node packages/agent/tools/browse.mjs serve` in the
+background; ids expire per reading (`obs #N`); `snap`, `shot`, `text` and `find` do not
+re-read the page; no clicking by coordinate to guess (use `parent` and `map`). When you
+finish, stop every daemon you started.

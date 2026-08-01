@@ -1,206 +1,205 @@
-# WebVoyager-25 — el benchmark del competidor, corrido contra el oráculo
+# WebVoyager-25 — a public benchmark, run with our own perception channels
 
-Réplica reproducible de la evaluación que publica **lumen** (Om Labs,
-[omxyz/lumen](https://github.com/omxyz/lumen), MIT) sobre el benchmark **WebVoyager**
-([MinorJerry/WebVoyager](https://github.com/MinorJerry/WebVoyager), Apache-2.0), con
-nuestros brazos de percepción en lugar de los suyos.
+A reproducible replica of the evaluation published by **lumen** (Om Labs,
+[omxyz/lumen](https://github.com/omxyz/lumen), MIT) over the **WebVoyager** benchmark
+([MinorJerry/WebVoyager](https://github.com/MinorJerry/WebVoyager), Apache-2.0), with our
+channels in place of theirs.
 
-La pregunta no es "¿quién gana?" sino **¿qué aporta el canal de percepción?**. Por eso
-todos los brazos comparten loop, modelo, prompt, set de acciones, juez y métricas: la
-única variable es **qué ve el modelo en cada turno**.
+The question is not "who wins". It is **what does the perception channel contribute?**
+Every arm shares the loop, the model, the prompt, the action set, the judge and the
+metrics. The only variable is **what the model sees each turn**.
 
-## Qué hace lumen (para saber qué estamos replicando)
+## What lumen does (so it is clear what is being replicated)
 
-lumen es un agente de navegador *vision-first*: loop de percepción sobre CDP donde el
-modelo recibe **solo screenshots** (nada de DOM ni selectores), decide una acción
-(click / type / scroll / goto) y observa el resultado. Encima del loop pone cuatro cosas
-que no son percepción sino andamiaje: compresión de historia en dos niveles, `SiteKB`
-(conocimiento por sitio precargado), `ActionVerifier` (heurística post-acción) y
-`ModelVerifier` (una segunda llamada al modelo que hace de portero antes de declarar la
-tarea terminada).
+lumen is a vision-first browser agent: a perception loop over CDP where the model receives
+**only screenshots** — no DOM, no selectors — decides an action (click, type, scroll,
+goto) and observes the result. On top of the loop it adds four things that are scaffolding
+rather than perception: two-level history compression, a per-site knowledge base
+(`SiteKB`), an `ActionVerifier` heuristic after each action, and a `ModelVerifier`, a
+second model call acting as a gatekeeper before declaring the task finished.
 
-Su suite (`evals/webvoyager/run.ts`) hace:
+Their suite (`evals/webvoyager/run.ts`) does:
 
-1. Carga los 642 tasks de `WebVoyager_data.jsonl`.
-2. Adapta fechas obsoletas (2023/2024) hacia el futuro conservando los gaps relativos.
-3. Toma **25 tasks** con muestreo estratificado por sitio y RNG mulberry32 **semilla 42**.
-4. Corre cada task con `maxSteps = 50`, timeout 600 s y **hasta 3 intentos**; si el juez
-   reprueba, reinyecta el motivo del juez en la instrucción del intento siguiente.
-5. Juzga con **gemini-2.5-flash**: recibe la pregunta, el razonamiento/acciones del
-   agente y el **último screenshot**, y devuelve YES/NO con fundamentos.
-6. Reporta `passRate`, `avgSteps`, `avgTokens`, `avgDurationMs` — **del intento que
-   quedó registrado**, no de la suma de los 3.
+1. Load the 642 tasks from `WebVoyager_data.jsonl`.
+2. Adapt stale dates (2023/2024) forward, preserving relative gaps.
+3. Take **25 tasks** with per-site stratified sampling and a mulberry32 RNG, **seed 42**.
+4. Run each task with `maxSteps = 50`, a 600 s timeout, and **up to 3 attempts**; if the
+   judge rejects the result, the reason is fed back into the next attempt's instruction.
+5. Judge with **gemini-2.5-flash**: it receives the question, the agent's reasoning and
+   actions, and the **last screenshot**, and returns YES or NO with reasons.
+6. Report `passRate`, `avgSteps`, `avgTokens`, `avgDurationMs` — **for the attempt that
+   was recorded**, not the sum of all three.
 
-Sus números publicados (en `baselines/`, son sus archivos, no re-runs nuestros):
-lumen 25/25 · browser-use 25/25 · stagehand 19/25.
+Their published numbers (in `baselines/`, their files, not our re-runs): lumen 25/25 ·
+browser-use 25/25 · stagehand 19/25.
 
-## Qué replicamos exactamente
+## What we replicate exactly
 
-| pieza | estado |
+| Piece | State |
 |---|---|
-| dataset | **idéntico** — `data/WebVoyager_data.jsonl` es byte-idéntico al de ambos repos |
-| selección de los 25 tasks | **idéntica** — `dataset.mjs` reproduce sus 25 ids en el mismo orden (verificable: `node dataset.mjs`) |
-| adaptación de fechas | **port fiel** de su `run.ts` (mismo texto de instrucción) |
-| maxSteps / timeout / trials | **idénticos** (50 / 600 s / 3 con feedback del juez) |
-| juez | **mismo contrato**: mismo system prompt, mismo schema YES/NO, misma evidencia (traza + screenshot final). Backend gemini-2.5-flash si hay `GEMINI_API_KEY` |
-| schema del reporte | **superset** del suyo — sus campos más `pass@1`, `tokensIn/Out`, costo y las trazas |
+| Dataset | **identical** — `data/WebVoyager_data.jsonl` is byte-identical to the copy in both repositories |
+| Which 25 tasks | **identical** — `dataset.mjs` reproduces their 25 ids in the same order (check it: `node dataset.mjs`) |
+| Date adaptation | **faithful port** of their `run.ts`, same instruction text |
+| maxSteps / timeout / attempts | **identical** (50 / 600 s / 3 with judge feedback) |
+| Judge | **same contract**: same system prompt, same YES/NO schema, same evidence (trace plus final screenshot). gemini-2.5-flash when `GEMINI_API_KEY` is set |
+| Report schema | **a superset** of theirs — their fields plus pass@1, tokens in and out, cost, and the traces |
 
-El screenshot final se le pasa al juez **en todos los brazos**, incluido el que nunca
-vio píxeles. La evidencia de evaluación es igual para todos.
+The final screenshot is given to the judge **in every arm**, including the one that never
+saw pixels. The evidence used for grading is the same for all of them.
 
-## Los brazos
+## The arms
 
-| brazo | qué ve el modelo en cada turno |
+| Arm | What the model sees each turn |
 |---|---|
-| `pixels` | solo screenshot JPEG del viewport — la premisa vision-first, nuestro control |
-| `oracle` | primer turno: outline + `agentMap`; después: **solo el diff** (`changes`, `actionabilityDelta`) — el producto |
-| `hybrid` | screenshot + oráculo |
-| `snap` | **una** captura snapdom → píxeles y semántica del *mismo instante* (agente embebido) |
+| `pixels` | only a JPEG screenshot of the viewport — the vision-first premise, our control |
+| `oracle` | first turn: outline plus the map of clickable things; after that, **only the change report** — the product |
+| `hybrid` | screenshot plus the change report |
+| `snap` | **one** snapDOM capture giving pixels and structure from the *same moment* (the embedded configuration) |
 
-Los brazos con oráculo tienen además dos verbos que no cuestan tokens de modelo porque
-corren en la página: `find` (buscar texto en TODA la página, no solo en lo visible) y
-`read` (leer el texto alrededor de un nodo). Es exactamente la ventaja que el producto
-dice tener, y está declarada, no escondida.
+The arms with our reader also get two verbs that cost no model tokens because they run in
+the page: `find` (search text across the **whole** page, not just the visible part) and
+`read` (read the text around a node). That is exactly the advantage this project claims,
+and it is declared here rather than hidden.
 
-## Cómo correrlo
+## How to run it
 
 ```bash
-# 1. Gratis: valida los 25 sitios, mide el payload de primer turno por brazo y estima costo
+# 1. Free: check the 25 sites, measure the first-turn payload per arm, estimate cost
 node packages/agent/experiment/webvoyager/run.mjs --dry --headless
 
-# 2. Verificar que corremos los MISMOS 25 tasks que lumen
+# 2. Verify we run the SAME 25 tasks as lumen
 node packages/agent/experiment/webvoyager/dataset.mjs
 
-# 2b. Gratis: humo del loop completo con una política scripteada (cero llamadas al modelo)
+# 2b. Free: smoke the whole loop with a scripted policy (zero model calls)
 node packages/agent/experiment/webvoyager/run.mjs --mock --headless \
   --arms oracle,pixels,hybrid,snap --trials 1 --steps 6 --tasks "GitHub--25" --tag mock
 
-# 3a. GRATIS: actor y juez sobre el tier gratuito de Google AI Studio
+# 3a. FREE: actor and judge on Google AI Studio's free tier
 export GEMINI_API_KEY=...            # aistudio.google.com/apikey
 node packages/agent/experiment/webvoyager/run.mjs --model gemini-2.5-flash --arms oracle,pixels
 
-# 3b. Pago, para replicar el modelo exacto de lumen (requiere ANTHROPIC_API_KEY)
+# 3b. Paid, to replicate lumen's exact model (needs ANTHROPIC_API_KEY)
 node packages/agent/experiment/webvoyager/run.mjs --arms oracle,pixels
-node packages/agent/experiment/webvoyager/run.mjs --arms oracle --limit 5 --trials 1   # piloto barato
+node packages/agent/experiment/webvoyager/run.mjs --arms oracle --limit 5 --trials 1   # cheap pilot
 
-# 4. Tabla comparativa (nuestros results/ + sus baselines/)
+# 4. Comparison table (our results/ plus their baselines/)
 node packages/agent/experiment/webvoyager/report.mjs --out RESULTS.md
 ```
 
 Flags: `--arms` `--limit` `--trials` `--steps` `--model` `--tasks id,id` `--headless`
-`--timeout` `--tag`. Modelo por defecto `claude-sonnet-4-6`, el mismo que usaron ellos.
+`--timeout` `--tag`. Default model `claude-sonnet-4-6`, the same one they used.
 
-## Correrlo sin gastar (backend Gemini)
+## Running it without spending anything (the Gemini backend)
 
-El proveedor se elige por el id del modelo: `gemini-*` → Google AI Studio, cualquier otro
-→ Anthropic. Con una key gratuita de AI Studio el benchmark completo cuesta **$0** sin
-tocar el método: mismo loop, mismos brazos, tokens medidos igual (vienen de
-`usageMetadata`), mismo juez.
+The provider is chosen by the model id: `gemini-*` goes to Google AI Studio, anything else
+to Anthropic. With a free AI Studio key the whole benchmark costs **$0** without changing
+the method: same loop, same arms, tokens measured the same way (they come from
+`usageMetadata`), same judge.
 
-Lo que hay que saber antes:
+What to know first:
 
-- **El tier gratis limita rate y requests por día.** Cada llamada (actor y juez) pasa por
-  `retry.mjs`: back-off exponencial ante 429/5xx respetando `retry-after`. La corrida no
-  se cae, se estira — planificá horas, no minutos, para los 25 tasks × 3 intentos.
-- **Cambia el actor, y eso debilita la comparación EXTERNA.** Si el actor es
-  `gemini-2.5-flash` y el de ellos era `claude-sonnet-4-6`, una diferencia contra sus
-  filas puede ser del modelo y no del canal. La comparación **interna** (`oracle` vs
-  `pixels`, mismo modelo, mismo loop) no se ve afectada, y es la que responde la pregunta
-  del producto.
-- **Privacidad**: en el tier gratuito Google puede usar los datos enviados para mejorar
-  sus modelos. Acá se mandan screenshots y outlines de sitios públicos, pero conviene
-  saberlo.
-- El costo que reporta el JSON usa el precio de lista del tier pago (ver `../cost.mjs`),
-  como referencia de "cuánto habría salido". En el tier gratis el gasto real es $0.
+- **The free tier rate-limits and caps requests per day.** Every call, actor and judge,
+  goes through `retry.mjs`: exponential back-off on 429 and 5xx, respecting `retry-after`.
+  The run does not fall over, it stretches — plan hours, not minutes, for 25 tasks × 3
+  attempts.
+- **It changes the actor, which weakens the EXTERNAL comparison.** If our actor is
+  `gemini-2.5-flash` and theirs was `claude-sonnet-4-6`, a difference against their rows
+  could come from the model rather than from the channel. The **internal** comparison
+  (`oracle` against `pixels`, same key, same loop) is unaffected, and it is the one that
+  answers the product question.
+- **Privacy**: on the free tier Google may use the data sent to improve its models. What
+  is sent here is screenshots and outlines of public sites, but it is worth knowing.
+- The cost reported in the JSON uses paid-tier list prices (see `../cost.mjs`) as a
+  reference for "what this would have cost". On the free tier the real spend is $0.
 
-## Lecturas honestas antes de mirar cualquier número
+## Honest readings, before looking at any number
 
-**El 100% de lumen es pass@3 con pistas del juez.** Su harness reintenta hasta 3 veces y
-le pasa al agente el motivo por el que el juez lo reprobó. Eso es una ayuda externa que
-un agente en producción no tiene. El dato es recuperable de sus propios archivos: un
-resultado registrado con `trial > 1` significa que el intento 1 fue reprobado. Corriendo
-`report.mjs` sobre sus JSON:
+**lumen's 100% is pass@3 with hints from the judge.** Their harness retries up to 3 times
+and passes the agent the reason the judge rejected the previous attempt. That is outside
+help a production agent does not have. The figure is recoverable from their own files: a
+result recorded with `trial > 1` means attempt 1 was rejected. Running `report.mjs` over
+their JSON:
 
-| run | pass@3 (su titular) | pass@1 (derivado de sus archivos) |
+| Run | pass@3 (their headline) | pass@1 (derived from their files) |
 |---|---|---|
 | lumen | 25/25 (100%) | 23/25 (92%) |
 | browser-use | 25/25 (100%) | 25/25 (100%) |
 | stagehand | 19/25 (76%) | 16/25 (64%) |
 
-Por eso nuestro reporte publica **las dos** columnas siempre.
+That is why our report always publishes **both** columns.
 
-**Sus `avgSteps`/`avgTokens` son del intento que quedó**, no del costo total de resolver
-la tarea. Un task resuelto en el intento 3 aparece con los pasos del intento 3 y cero
-mención de los dos anteriores. Nosotros guardamos ambos: `avgSteps`/`avgTokens` (mismo
-criterio que ellos, comparable) y `avgStepsAllTrials`/`avgTokensAllTrials`/`usdAllTrials`
-(lo que realmente costó).
+**Their `avgSteps` and `avgTokens` are from the attempt that was recorded**, not the total
+cost of solving the task. A task solved on attempt 3 appears with attempt 3's steps and no
+mention of the two before it. We keep both: `avgSteps`/`avgTokens` on their criterion, so
+it is comparable, and `avgStepsAllTrials`/`avgTokensAllTrials`/`usdAllTrials` for what it
+actually cost.
 
-**Lo que comparamos no es "producto vs producto".** lumen es un agente completo con
-SiteKB, verificadores y caché de acciones; nuestros brazos son un loop mínimo cuya única
-diferencia entre sí es el canal de percepción. Contra sus filas, nuestras filas miden
-*canal*, no *producto*: si `pixels` queda por debajo de lumen, parte de esa distancia es
-su andamiaje, no su canal. La comparación **interna** (`oracle` vs `pixels`, mismo loop)
-es la única que aísla el canal, y es la que importa para el producto.
+**This is not product against product.** lumen is a complete agent with a site knowledge
+base, verifiers and an action cache. Our arms are a minimal loop whose only difference
+from each other is the perception channel. Against their rows, our rows measure a
+*channel*, not a *product*: if `pixels` lands below lumen, part of that distance is their
+scaffolding, not their channel. The **internal** comparison (`oracle` against `pixels`,
+same loop) is the only one that isolates the channel, and it is the one that matters here.
 
-**Sitios vivos, no estacionarios.** Amazon/Booking/Google Flights cambian entre corridas
-y pueden desafiar al harness. El `--dry` del 2026-08-01 dio 25/25 sitios cargados sin
-bloqueos (`results/dry.json`), pero eso caduca; re-correlo antes de cada run pago.
+**Live sites, not a frozen corpus.** Amazon, Booking and Google Flights change between
+runs and can defeat the harness. The `--dry` run on 2026-08-01 gave 25 of 25 sites loading
+with no blocks (`results/dry.json`), but that expires. Re-run it before every paid run.
 
-## Estado de verificación (2026-08-01, sin gastar un centavo)
+## Verification status (2026-08-01, without spending a cent)
 
-- `dataset.mjs` → los 25 ids y su orden coinciden con los de lumen: **sí**.
-- `--dry` sobre los 25 sitios → 25/25 cargan, 0 bloqueos/captchas, payload medido por
-  sitio (`results/dry.json`).
-- Camino Gemini verificado contra un stub local del endpoint (`GEMINI_BASE_URL` apuntando
-  a un servidor de prueba): request bien formado (imágenes como `inlineData`, schema sin
-  `additionalProperties`, que Gemini no acepta), 429 reintentado y absorbido, tokens
-  leídos de `usageMetadata`, juez invocado con el screenshot final, reporte escrito. Falta
-  probarlo contra el endpoint real, que puede diferir del stub.
-- `--mock` sobre los 4 brazos en sitios reales → los 4 completan sin error. Payload por
-  turno en GitHub (chars de texto / bytes de imagen base64):
+- `dataset.mjs` → our 25 ids and their order match lumen's: **yes**.
+- `--dry` over the 25 sites → 25/25 load, 0 blocks or captchas, payload measured per site
+  (`results/dry.json`).
+- The Gemini path verified against a local stub of the endpoint (`GEMINI_BASE_URL` pointed
+  at a test server): well-formed request (images as `inlineData`, schema without
+  `additionalProperties`, which Gemini rejects), a 429 retried and absorbed, tokens read
+  from `usageMetadata`, judge invoked with the final screenshot, report written. It has
+  not been tried against the real endpoint, which may differ from the stub.
+- `--mock` over the 4 arms on real sites → all four complete without error. Payload per
+  turn on GitHub (text characters / base64 image bytes):
 
-  | brazo | turno 1 | turno 2 | turno 3 |
+  | Arm | Turn 1 | Turn 2 | Turn 3 |
   |---|---|---|---|
-  | `oracle` | 25.363 / 0 | 12.271 / 0 | 3.359 / 0 |
-  | `pixels` | 851 / 86.012 | 920 / 62.304 | 966 / 80.104 |
-  | `hybrid` | 25.588 / 86.016 | 12.496 / 62.172 | 3.584 / 62.172 |
-  | `snap` | 25.588 / 325.848 | 10.304 / 369.644 | 3.584 / 369.644 |
+  | `oracle` | 25,363 / 0 | 12,271 / 0 | 3,359 / 0 |
+  | `pixels` | 851 / 86,012 | 920 / 62,304 | 966 / 80,104 |
+  | `hybrid` | 25,588 / 86,016 | 12,496 / 62,172 | 3,584 / 62,172 |
+  | `snap` | 25,588 / 325,848 | 10,304 / 369,644 | 3,584 / 369,644 |
 
-  Se ve el comportamiento esperado del oráculo: el turno 1 paga el outline completo y los
-  siguientes son diffs (25K → 3,4K chars), mientras `pixels` paga una imagen entera en
-  cada turno. Ojo con `snap`: el PNG de snapdom pesa ~4× el JPEG del screenshot nativo en
-  bytes (el costo en tokens depende de las dimensiones, no de los bytes, pero el tiempo de
-  subida no).
+  The expected behaviour is visible: turn 1 pays for the full outline and the following
+  turns are just the change report (25K → 3.4K characters), while `pixels` pays for a
+  whole image every turn. Note on `snap`: snapDOM's PNG weighs roughly 4× the native JPEG
+  screenshot in bytes. Token cost depends on dimensions rather than bytes, but upload time
+  does not.
 
-**Lo que falta**: la corrida paga. Nadie midió todavía aciertos con estos brazos; las
-únicas filas con resultados en `RESULTS.md` son las de ellos.
+**What is missing**: the paid run. Nobody has measured accuracy with these arms yet; the
+only rows with results in `RESULTS.md` are theirs.
 
-## Costo
+## Cost
 
-Del `--dry` del 2026-08-01 (payload real medido por sitio, cota superior asumiendo que
-ninguna tarea termina antes de los 50 pasos, 3 intentos, 25 tasks):
+From the `--dry` run of 2026-08-01 (real payload measured per site, an upper bound
+assuming no task ends before 50 steps, 3 attempts, 25 tasks):
 
-| brazo | payload 1er turno (mediana) | peor caso USD |
+| Arm | First-turn payload (median) | Worst case USD |
 |---|---|---|
-| `pixels` | 1.365 tok (imagen 1280×800) | $30,5 |
-| `oracle` | ~6.200 tok | $36,5 |
-| `hybrid` | ~7.500 tok | $56,8 |
+| `pixels` | 1,365 tokens (a 1280×800 image) | $30.5 |
+| `oracle` | ~6,200 tokens | $36.5 |
+| `hybrid` | ~7,500 tokens | $56.8 |
 
-La cota es deliberadamente pesimista para el oráculo: asume que cada paso vuelve a
-costar un tercio del primer turno, cuando en la práctica los turnos siguientes son solo
-el diff (p50 medido en `../results/sweep*.json`: decenas de tokens). El costo real
-esperado es una fracción de esto porque las tareas terminan mucho antes de 50 pasos.
+The bound is deliberately pessimistic for the reader arm: it assumes every step costs a
+third of the first turn again, when in practice later turns are only the change report
+(measured median in `../results/sweep.json`: tens of tokens). The realistic cost is a
+fraction of this, because tasks finish well before 50 steps.
 
-## Archivos
+## Files
 
-- `dataset.mjs` — carga, adaptación de fechas, muestreo semilla-42, y el self-check de
-  que nuestros 25 ids son los suyos.
-- `judge.mjs` — el juez de ellos (gemini-2.5-flash), con fallback Anthropic declarado.
-- `run.mjs` — el loop, los 4 brazos, trials, reporte incremental (se guarda tras cada
-  task: matar la corrida no pierde lo hecho).
-- `report.mjs` — tabla comparativa + matriz por task.
-- `data/` — dataset WebVoyager vendorizado (Apache-2.0, ver `data/NOTICE`).
-- `baselines/` — los JSON publicados por lumen para lumen / stagehand / browser-use.
-- `results/` — lo nuestro (`dry.json` y `webvoyager-<brazo>-<modelo>-<ts>.json`).
+- `dataset.mjs` — loading, date adaptation, seed-42 sampling, and the self-check that our
+  25 ids are theirs.
+- `judge.mjs` — their judge (gemini-2.5-flash), with a declared Anthropic fallback.
+- `run.mjs` — the loop, the 4 arms, attempts, and an incremental report (saved after every
+  task: killing the run does not lose what is done).
+- `report.mjs` — comparison table plus a per-task matrix.
+- `data/` — vendored WebVoyager dataset (Apache-2.0, see `data/NOTICE`).
+- `baselines/` — the JSON files published by lumen for lumen, stagehand and browser-use.
+- `results/` — ours (`dry.json` and `webvoyager-<arm>-<model>-<timestamp>.json`).
 
-NOT FOR PUBLICATION — parte del workspace privado `packages/agent`.
+NOT FOR PUBLICATION — part of the private `packages/agent` workspace.
