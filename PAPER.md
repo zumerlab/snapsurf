@@ -1,361 +1,473 @@
-# snapDOM Agent: una forma fiable de comprobar qué cambió en una página web
+# snapDOM Agent: checking whether a web agent's action actually did anything
 
-Borrador reescrito · 2026-08-01 · rama privada `agent-lab`
+Draft, rewritten in English · 2026-08-01 · private branch `agent-lab`
 
-## Resumen
+## Summary
 
-Un agente web necesita saber dos cosas después de hacer clic, escribir o navegar:
-qué cambió en la página y si su acción realmente funcionó. Una captura de pantalla puede
-mostrar que algo se movió, pero no siempre distingue un cambio importante de una
-animación, un reloj o un carrusel. Un árbol de accesibilidad describe controles y textos,
-pero no explica bien cambios visuales ni si un elemento quedó tapado por otro.
+A program that uses a web page — clicking, typing, navigating — has to answer one
+question after every step: *did that work?*
 
-snapDOM Agent añade a snapDOM una observación semántica del DOM ya renderizado. Antes de
-una acción guarda un punto de referencia; después compara la nueva observación
-con la anterior y devuelve cambios como `added`, `removed`, `content`, `state`, `style`,
-`moved` o `resized`. También indica qué elemento cambió, cómo fue reconocido y si un
-control quedó visible o cubierto.
+Most tools answer it by looking again. They take another screenshot, or fetch the
+accessibility tree again, and let the model compare. That works until the page has a
+clock, a spinner or a carousel on it. Then the picture is different even when nothing
+happened, and the model can conclude it succeeded when it didn't.
 
-La propuesta no es sustituir las capturas de pantalla. Es ofrecer una capa de
-verificación para que un agente no confunda ruido visual con una acción exitosa. En un
-corpus determinista de 19 casos, el oráculo resolvió correctamente los 19, sin falsos
-positivos en los 8 casos de ruido ni cambios perdidos en los 11 casos reales. En un
-benchmark formal de 120 ejecuciones, los cuatro métodos comparados completaron 119; la
-única ejecución no completada fue declarada como fallo por el propio agente, por lo que
-no hubo falsos positivos de éxito.
+snapDOM Agent adds a second reading to snapDOM. It walks the page after the browser has
+applied styles and computed layout, and records what it saw. Before an action you save a
+reference point. After the action it walks again and compares the two. It tells you what
+changed, in words a program can act on: something was added, removed, its text changed,
+its state changed, its style changed, it moved, or it got bigger or smaller. It also
+tells you which element, how confident it is that this is the same element as before, and
+whether a control that used to be clickable is now covered by something else.
 
-Este trabajo separa con cuidado tres preguntas: si la representación es correcta, si
-ayuda a un agente a completar tareas y si permite verificar que una acción tuvo efecto.
-Los resultados son prometedores, pero el número de tareas y sitios todavía es pequeño y
-las comparaciones de tiempo no son perfectamente simétricas.
+This is not a replacement for screenshots, and it is not a replacement for any existing
+browser tool. It is one more source of information, and it is best at one specific job:
+telling you that a step did nothing, on a page where the picture changed anyway.
 
-## 1. El problema
+What is measured, with the file that holds each number:
 
-Los agentes que usan páginas web suelen observarlas mediante imágenes, árboles de
-accesibilidad o una combinación de ambos. Esos canales son útiles, pero dejan tres huecos.
+- On 19 hand-written test cases it got all 19 right, with no false alarms on the 8 noise
+  cases (`experiment/results/bench-qa.md`).
+- On 8 deliberately planted silent failures, checking a stated expectation produced 0
+  wrong "it worked" answers. Three other channels produced 6 each out of 8
+  (`experiment/results/c-false-green.md`).
+- On tasks written by other people it completed 28% of the scoring steps — the same range
+  everyone else is in. Our own task suite gave 99%, which means our tasks were easy
+  (`experiment/formal/results/d-third-party.md`).
 
-Primero, una imagen responde bien a “¿cómo se ve?”, pero no siempre a “¿qué cambió?”. Un
-botón puede pasar de deshabilitado a habilitado sin cambiar de aspecto. A la inversa, un
-reloj puede cambiar muchos píxeles aunque la aplicación siga exactamente en el mismo
-estado.
+The third result is the important one to read first. This tool does not make an agent
+better at finishing tasks. It makes the agent's failures visible.
 
-Segundo, el árbol de accesibilidad describe la estructura semántica, pero no contiene
-toda la información visual. Por ejemplo, puede no detectar que una fuente terminó de
-cargar o que un cuadro de diálogo está tapando un botón.
+## 1. The problem
 
-Tercero, muchos agentes continúan trabajando después de una acción sin comprobar su
-efecto. Si el clic no hizo nada y la página tenía movimiento de fondo, el agente puede
-creer que avanzó. En este documento llamamos **falso positivo de éxito** —o
-*false green*— a esa situación: el agente dice que la acción funcionó, pero un juez
-independiente comprueba que no ocurrió el efecto esperado.
+There are three common ways to let a program see a web page, and each leaves a gap.
 
-## 2. Qué hace snapDOM Agent
+**A picture answers "what does it look like", not "what changed".** A button can go from
+disabled to enabled without changing a single pixel. A clock can change hundreds of
+pixels while the application state is identical.
 
-snapDOM Agent es un plugin privado de snapDOM. Se ejecuta dentro de la página, por lo que
-no necesita Chrome DevTools Protocol (CDP) ni lanzar otro navegador. Esto permite usarlo
-en extensiones Manifest V3, copilotos integrados en aplicaciones y webviews de Electron.
+**The accessibility tree describes structure, not appearance or stacking.** It does not
+say that a font finished loading and re-flowed the text, and it does not say that a
+dialog is now sitting on top of the Buy button.
 
-El flujo es sencillo:
+**Most agents never check at all.** They act and move on. If the click did nothing and
+the page had some motion in it anyway, the agent believes it made progress.
 
-1. El agente observa la página y guarda un `checkpoint`.
-2. El agente realiza una acción.
-3. El plugin vuelve a observar la página.
-4. Compara ambas observaciones y devuelve una explicación estructurada.
+That last case has a name in this document: **a wrong success report**. The agent says
+the action worked; an independent check of the application says it did not. Published
+work outside this project measures this as a large share of all agent failures when
+nothing verifies the agent independently, and a small share when something does. Those
+numbers come from tool-use and coding benchmarks, not from browser agents, so treat them
+as a reason to care, not as evidence about this tool (see `docs/LANDSCAPE.md` §2.3).
 
-Una respuesta típica puede decir: “el botón Guardar pasó de deshabilitado a habilitado”
-o “el botón Comprar quedó cubierto por el diálogo de cookies”. Si nada relevante cambió,
-devuelve `changed: false`, aunque un reloj o una animación hayan seguido moviéndose.
+## 2. What it does
 
-La herramienta ofrece cuatro piezas de información:
+It is a plugin for snapDOM. It runs inside the page, as ordinary JavaScript. It does not
+need Chrome DevTools Protocol and it does not launch a second browser. That is what lets
+it work inside a Chrome extension, inside a copilot embedded in someone else's app, or
+inside an Electron webview, where the usual tools cannot run.
 
-- un mapa de los elementos con los que se puede interactuar, con rol, nombre y posición;
-- un resumen jerárquico de la página preparado para un modelo;
-- un checkpoint sin imagen ni DOM serializado para comparar observaciones;
-- un diff semántico que explica los cambios y sus consecuencias para la interacción.
+The loop is:
 
-La imagen sigue estando disponible cuando hace falta comprobar apariencia o diseño. La
-semántica y los píxeles se obtienen como parte de la misma captura de snapDOM. En páginas
-grandes, el recorrido puede dividirse en intervalos cortos para no bloquear la interfaz;
-si la página cambia mientras el recorrido está pausado, la observación se marca como
-`torn` en vez de presentarse como una captura perfectamente atómica.
+1. Look at the page and save a reference point.
+2. Do something.
+3. Look again.
+4. Compare, and report the difference.
 
-## 3. Cómo representa una página
+A typical answer is "the Save button went from disabled to enabled", or "the Buy button
+is now covered by the cookie banner". If nothing relevant changed it says so, even if a
+clock kept ticking the whole time.
 
-### 3.1 Identidad de los elementos
+Four things come out of one look:
 
-Comparar dos DOM no consiste en comparar posiciones. Un framework puede destruir y crear
-de nuevo un nodo aunque, para la persona usuaria, siga siendo el mismo botón. También
-puede reciclar una fila visual para mostrar otro dato.
+- a list of the things you can click, with role, name and position;
+- an indented outline of the page, shaped for a model to read;
+- a reference point with no image and no copy of the page;
+- the comparison against an earlier reference point.
 
-El comparador combina varias señales: `data-testid`, rol accesible, nombre accesible,
-ruta semántica, orden entre hermanos, texto y contexto de los antepasados. No expone una
-probabilidad difícil de interpretar. Clasifica cada coincidencia como `exact`, `strong`,
-`ambiguous`, `new` o `removed`.
+The picture is still available when the question is genuinely visual. Pixels and
+structure come from the same snapDOM capture, so they describe the same moment.
 
-Cuando la posición y el texto se contradicen, el sistema no afirma que conoce la
-identidad. Devuelve `possible-replacement`. Esta decisión es importante en listas
-reordenadas y virtualizadas: es preferible declarar una duda que inventar un cambio de
-contenido.
+On large pages the walk is split into slices so the tab does not freeze. If the page
+changes while the walk is paused, the result is marked `torn` instead of being presented
+as one clean instant.
 
-### 3.2 Tres firmas distintas
+## 3. How it represents a page
 
-Cada nodo mantiene tres tipos de firma:
+### 3.1 Deciding that two elements are the same element
 
-- **contenido**: etiqueta, rol, texto propio, estado interactivo y un subconjunto de
-  estilos visuales;
-- **subárbol**: una firma Merkle que resume el nodo y sus descendientes;
-- **geometría**: posición y tamaño relativos al contenedor más cercano que posiciona o
-  desplaza contenido.
+Comparing two readings of a page is not a matter of comparing positions. A framework can
+destroy an element and build an identical one; for the user it is still the same button.
+The same framework can also reuse one row on screen to display a different record.
 
-La geometría se mantiene separada. Así, mover un botón no se confunde con cambiar su
-texto o su estado, y el movimiento de un hijo no se propaga como si todo el árbol hubiera
-cambiado.
+The matcher combines several clues: a `data-testid` attribute, the accessible role, the
+accessible name, the path through the document, the position among siblings, the text,
+and the surrounding context. It does not report a probability, because a probability is
+hard to act on. It reports one of five words: `exact`, `strong`, `ambiguous`, `new` or
+`removed`.
 
-### 3.3 Estado, privacidad y límites
+When position and text disagree, it does not pick a winner. It reports
+`possible-replacement`. On reordered and recycled lists, saying "I am not sure" is worth
+more than inventing a text change that never happened.
 
-El sistema detecta estados como `disabled`, `checked`, `expanded`, `pressed`, `selected`
-y `open`. Los valores de campos se firman para poder detectar una edición, pero el
-checkpoint solo guarda una máscara. Contraseñas, correos, teléfonos, códigos de un solo
-uso y tarjetas reciben tratamiento sensible.
+### 3.2 Three separate fingerprints per element
 
-También se pueden definir reglas de redacción. La búsqueda no permite usar esas reglas
-como un canal lateral para confirmar si existe un texto oculto. Las capturas de pantalla,
-sin embargo, son píxeles y no quedan protegidas por la redacción semántica.
+Every element gets three:
 
-Canvas se declara como contenido visible pero sin semántica disponible. Los
-iframes inaccesibles también se marcan como no observables. La herramienta no pretende
-entender información que solo existe en píxeles.
+- **content**: tag, role, its own text, its interactive state, and a few visual styles;
+- **subtree**: a hash covering the element and everything under it;
+- **geometry**: position and size, measured relative to the nearest ancestor that
+  positions or scrolls its contents.
 
-## 4. Cómo se evaluó
+Geometry is kept apart on purpose. Moving a button is not the same event as changing its
+text, and a child moving does not make the whole tree look changed.
 
-La evaluación tiene tres capas para no mezclar la calidad de la herramienta con la del
-modelo que la usa.
+While an animation is running on a property that moves or resizes the box, the geometry
+fingerprint is frozen. Otherwise a shimmer or a spinning logo reports motion on every
+frame. The freeze is inherited by descendants: on one real site, 162 of 162 false alarms
+at rest were children of a single animated strip.
 
-### Capa 1: calidad de la representación
+### 3.3 State, privacy, and what it refuses to answer
 
-No participa ningún modelo. Cada caso tiene un resultado correcto escrito a mano. Esto
-permite medir detección, falsos positivos y cambios perdidos de forma determinista.
+It detects `disabled`, `checked`, `expanded`, `pressed`, `selected` and `open`.
 
-### Capa 2: agente dentro del ciclo
+Field values are hashed so an edit is detected, but only a mask is stored. Passwords,
+emails, phone numbers, one-time codes and card fields do not even get the mask. The hash
+is not salted, so someone holding a saved reference point could test a *guess* against
+it. Treat saved reference points from pages with secret values as sensitive.
 
-Un agente resuelve tareas reales con distintos canales de percepción. Se miden tareas
-completadas, acciones, tiempo y, cuando la interfaz lo expone, tokens. Esta capa evalúa el
-sistema completo, por lo que sus resultados dependen del modelo, el prompt y el entorno.
+You can also give it a list of strings to hide. Any name, label, text or state value
+containing one of them leaves as `[redacted]` on every surface. Matching still works,
+because identity travels as hashes rather than as readable text. Asking whether a hidden
+string exists is refused rather than answered, because answering would confirm it. Every
+reading taken with rules active carries a count of how many times each rule matched,
+identified by rule number and never by the rule's text — naming the rule in a report sent
+to a model would leak the thing you asked to hide. Screenshots are pixels and are not
+covered by any of this. Full detail in `docs/PRIVACY.md`.
 
-### Capa 3: verificación
+Canvas elements are reported as visible content with no readable structure. Iframes it
+cannot open are reported the same way. It does not pretend to understand things that only
+exist as pixels, and every change report carries the list of regions it could not read —
+"nothing changed that I can see, and here is what I cannot see."
 
-Se compara lo que el agente cree que ocurrió con un juez independiente. El juez nunca
-usa el propio resultado de snapDOM Agent como verdad. Emplea APIs públicas, constantes
-conocidas, patrones de URL o el estado real de una aplicación de prueba.
+## 4. How it was evaluated
 
-Esta separación evita un razonamiento circular: la herramienta evaluada no decide si
-ella misma acertó.
+Three layers, kept separate so the quality of the tool is not confused with the quality
+of the model using it.
 
-## 5. Resultados
+**Layer 1 — is the reading correct?** No model involved. Each case has a hand-written
+correct answer. This measures detection, false alarms and misses, and gives the same
+result every run.
 
-### 5.1 Detección de cambios
+**Layer 2 — does it help a model finish a task?** A model solves real tasks through
+different channels. This measures the whole system, so the results depend on the model,
+the prompt and the sites.
 
-El corpus contiene 19 casos: 11 cambios reales y 8 casos de ruido. Entre los cambios
-reales hay texto actualizado, un botón habilitado, nodos reemplazados, listas reordenadas
-y contenido en Shadow DOM. El ruido incluye un reloj, scroll, hover residual, una
-animación CSS, regeneración de CSS-in-JS y cambios de píxeles en canvas.
+**Layer 3 — does the agent's claim match reality?** An independent check decides what
+really happened. It never uses this tool's own output as the truth. It reads the
+application state directly, or a public API, or the URL.
 
-| Método | Casos correctos | Falsos positivos en 8 casos de ruido | Cambios perdidos en 11 casos reales |
+That separation is the point: the thing being tested does not get to grade itself.
+
+## 5. Results
+
+Everything in this section was re-run on 2026-08-01 with no API spend, except §5.6, §5.7,
+§5.9 and §5.10, which need a paid model and are reported from their stored runs.
+
+### 5.1 Detecting change
+
+19 cases: 11 real changes, 8 that only look like changes. The real ones include edited
+text, a button becoming enabled, a replaced element, a reordered list and a change inside
+a shadow root. The noise ones include a clock, a scroll, leftover hover styling, a CSS
+animation, a CSS-in-JS class rewrite and a canvas repaint.
+
+| Method | Right | False alarms (of 8 noise cases) | Missed (of 11 real) |
 |---|---:|---:|---:|
 | **snapDOM Agent** | **19/19** | **0** | **0** |
-| Diferencia perceptual de píxeles | 13/19 | 5 | 1 |
-| Diferencia de árbol de accesibilidad | 16/19 | 2 | 1 |
+| Perceptual pixel difference | 13/19 | 5 | 1 |
+| Accessibility tree text diff | 16/19 | 2 | 1 |
 
-La diferencia de píxeles perdió un cambio de `disabled` sin diferencia visual. El árbol
-de accesibilidad perdió, entre otros, un cambio tardío de fuente que sí alteró el render.
-Estos resultados están en `experiment/results/bench-qa.json` y
-`experiment/results/bench-qa.md`.
+The pixel method missed the `disabled` flip, which has no visual difference. The
+accessibility tree missed a late font swap that did change the rendered page.
 
-### 5.2 Cantidad de información
+The same 19 cases were also run through `agent-browser`'s snapshot diff, the closest
+comparable thing that exists in public. As it comes out of the box it scores 11/19,
+because its element references are renumbered between readings and every reading
+therefore looks different. After normalizing those references away it scores 17/19
+(`experiment/results/e1-agent-browser.md`). The remaining distance is concentrated in
+text noise and in changes with no textual representation — a real gap, but a much smaller
+one than the comparison against pixels suggests.
 
-En un barrido de 36 sitios, el diff incremental tuvo una mediana de 19 tokens (en los
-sitios sin ruido en reposo; 36 tokens tomando los 36) frente a
-unos 1.365 tokens por captura de pantalla: aproximadamente 70 veces menos. Esta ventaja
-solo corresponde al diff después de una observación inicial.
+### 5.2 How much information it costs
 
-El primer mapa completo puede ser caro. En 30 de los 36 sitios, el outline inicial era
-más costoso que una captura. El digest compacto redujo un caso de Wikipedia de 12,4 KB a
-3,4 KB, pero la conclusión no cambia: la principal ventaja está en comunicar cambios
-pequeños, no en describir por primera vez una página enorme.
+Across 36 sites, the comparison after an action had a median size of **19 tokens** on the
+sites that were quiet at rest, and 36 tokens counting all 36 sites. A screenshot of the
+same viewport is about 1,365 tokens.
 
-### 5.3 Ruido en sitios reales
+The first reading is a different story. On 30 of the 36 sites, the initial outline cost
+more than a screenshot would have. A compact summary brought one Wikipedia page from
+12.4 KB down to 3.4 KB, and the conclusion still holds: the advantage is in reporting
+small changes, not in describing a large page for the first time.
 
-En reposo, 18 de 36 sitios no produjeron cambios. Los otros 18 contenían movimiento real,
-como carruseles o marquesinas. Las animaciones CSS conocidas se ignoran automáticamente,
-incluso cuando un contenedor animado mueve a sus descendientes. El movimiento generado
-por JavaScript o una página que todavía está cargando contenido puede requerir limitar la
-observación a una región o configurar una regla de ruido.
+The saved reference point is also not small in absolute terms. In the synthetic benchmark
+it is about **3.3× the size of the serialized DOM** (`test/bench.test.js`). It is
+designed to be cheap to *compare*, not cheap to store. Only the difference is small.
 
-Por tanto, `changed: false` es fiable bajo las reglas observadas, pero no debe
-interpretarse como una garantía universal para cualquier página sin estabilización.
+### 5.3 Noise on real sites
 
-### 5.4 Rendimiento
+At rest, 18 of 36 sites produced no changes at all. The other 18 contained real motion —
+carousels, tickers, auto-playing content. Known CSS animations are ignored automatically,
+including when an animated container drags its children along.
 
-El recorrido escala aproximadamente de forma lineal con el número de nodos, con valores
-medidos de 24 a 46 microsegundos por nodo en páginas sintéticas de 282 a 14.000 nodos. En
-una página de unos 13.000 nodos, el trabajo total fue cercano a 1,1 segundos. Al dividir
-el recorrido en intervalos con un presupuesto de 40 ms, el bloqueo máximo observado del
-hilo principal quedó entre 42 y 69 ms.
+Motion driven by JavaScript, and pages still loading content, can still produce changes
+that are real but irrelevant to the task. So "nothing changed" is trustworthy under the
+rules described here, but it is not a guarantee on an arbitrary page that has not been
+allowed to settle.
 
-El costo sigue siendo relevante en documentos muy grandes. La solución práctica es
-observar una región cuando el agente ya conoce dónde está trabajando. Además, el
-checkpoint completo no siempre es pequeño: en una medición anterior, el de Wikipedia
-llegó a ser mayor que el DOM serializado. El diff incremental sí permaneció pequeño.
+### 5.4 Speed
 
-### 5.5 Despliegue sin CDP
+The walk costs roughly the same per element as the page grows: between 14 and 83
+microseconds per element, across synthetic pages of 282 to 23,000 elements and real pages
+of 3,000 to 11,400. Wikipedia's Buenos Aires article (11,351 elements) took 275 ms.
 
-La prueba de una extensión Manifest V3 funcionó en tres de tres sitios bajo CSP real,
-incluido GitHub. La companion pasó 27 de 27 comprobaciones de contrato, presupuesto de
-bloqueo, oclusión, ausencia de cambio y navegación SPA.
+The walk yields control back to the browser every 40 ms. Measured from inside the walk,
+the longest slice was 41 ms in every case, including under a 4× CPU slowdown. Measured
+from outside, by a separate timer in the extension, the longest block was 45–69 ms
+normally and up to 100 ms under a 4× slowdown — an external probe also counts the work
+the browser chose to run in between, so it is the more pessimistic and more honest
+number.
 
-Este punto define el nicho del proyecto: dentro de una extensión o aplicación embebida,
-Playwright y CDP pueden no estar disponibles, mientras que un script en el contexto
-aislado de la extensión sí puede observar la página.
+One case is much worse than the rest: the same Wikipedia article, under a 4× slowdown,
+with something mutating the page once per second, took 3.5 seconds of walk time, against
+0.8 s without the mutation. The tab stays responsive because the slices still hold, but
+the total is four times higher. On very large documents the practical answer is to read
+one region instead of the whole page.
 
-### 5.6 Piloto con un modelo
+### 5.5 Working without CDP
 
-Un piloto de diez tareas comparó cuatro formas de percibir la página con el mismo modelo.
-Fue una sola repetición por combinación, así que sirve para descubrir patrones, no para
-establecer una ventaja estadística.
+A real Manifest V3 extension worked on 3 of 3 sites under their real Content Security
+Policy, including GitHub. Its contract test passes 27 of 27 checks, covering the shape of
+the reply, the main-thread budget under a 4× slowdown, occlusion, correctly reporting no
+change, soft navigation in a single-page app, and five privacy checks
+(`companion/gate.mjs`).
 
-| Canal de percepción | Éxito | Pasos medios |
+This is the situation the project exists for. Inside an extension or an embedded app,
+Playwright and CDP are not available, while a script in the extension's isolated world
+can read the page.
+
+### 5.6 A small pilot with a model
+
+Ten tasks, four ways of seeing the page, same model, one run each. Useful for spotting
+patterns, not for claiming an advantage.
+
+| Channel | Finished | Median steps |
 |---|---:|---:|
-| Captura nativa | 9/10 | 3,4 |
-| Oráculo semántico | 8/10 | 3,3 |
-| Captura nativa + oráculo | **10/10** | 3,1 |
-| Captura de snapDOM + oráculo | **10/10** | **2,9** |
+| Native screenshot | 9/10 | 3.4 |
+| This tool only | 8/10 | 3.3 |
+| Native screenshot + this tool | **10/10** | 3.1 |
+| snapDOM picture + this tool | **10/10** | **2.9** |
 
-El oráculo solo perdió información visual en una tarea. La combinación con imagen
-resolvió las diez. El resultado apoya un diseño híbrido: semántica para localizar y
-verificar; píxeles para apariencia y casos no observables.
+Using it alone lost information on one visual task. Combined with a picture it solved all
+ten. That supports using both: structure to locate things and to verify, pixels for
+appearance and for anything the tool admits it cannot read.
 
-### 5.7 Benchmark formal
+### 5.7 Our own task benchmark
 
-El benchmark formal usó cuatro brazos, diez tareas y tres repeticiones por brazo. Las
-tareas incluyeron extracción de datos, navegación profunda, búsqueda, formularios y una
-acción que deliberadamente no cambia el estado. Cada tarea tuvo un máximo de 15 acciones.
+Four arms, ten tasks, three repetitions. Tasks included extracting data, deep navigation,
+search, a form, and one action that deliberately changes nothing. Fifteen actions maximum
+per task.
 
-| Brazo | Resultado por repetición | Falsos positivos de éxito | Acciones medianas por tarea | Tiempo p50 | Tiempo p95 |
+| Arm | Passed per repetition | Wrong success reports | Median actions | p50 time | p95 time |
 |---|---|---:|---:|---:|---:|
-| Claude + snapDOM Agent | 10/10 · 10/10 · 10/10 | 0 | 5 | 7,0 s | 29 s |
-| Codex + snapDOM Agent | 10/10 · 10/10 · 10/10 | 0 | 6 | 8,0 s | 25 s |
-| Claude + extensión nativa | 10/10 · 10/10 · 10/10 | 0 | 3 | 22 s | 84 s |
-| Codex + herramientas nativas | 10/10 · 9/10 · 10/10 | 0 | 2 | 4,4 s | 61 s |
+| Claude + this tool | 10/10 · 10/10 · 10/10 | 0 | 5 | 7.0 s | 29 s |
+| Codex + this tool | 10/10 · 10/10 · 10/10 | 0 | 6 | 8.0 s | 25 s |
+| Claude + its native extension | 10/10 · 10/10 · 10/10 | 0 | 3 | 22 s | 84 s |
+| Codex + its native tools | 10/10 · 9/10 · 10/10 | 0 | 2 | 4.4 s | 61 s |
 
-En total, el juez externo aprobó 119 de 120 ejecuciones. La ejecución restante fue un
-DNF: eBay devolvió HTTP 403 tanto a `curl` como a Playwright. El agente indicó que no
-había completado la tarea, por lo que no fue un falso positivo de éxito.
+An independent judge approved 119 of 120 runs. The one that did not finish was a site
+returning HTTP 403 to everything, and the agent said it had not finished, so it was not a
+wrong success report.
 
-Los tiempos necesitan contexto. Codex nativo midió principalmente la ejecución del
-navegador y no todas las pausas de razonamiento; los brazos de Claude incluyeron más del
-tiempo completo del runner. Además, una ejecución de script de Codex contó como una
-acción aunque contuviera varias operaciones, mientras que la extensión de Claude tendía
-a realizar una operación por turno. Por eso estos datos describen las interfaces tal
-como se usaron, pero no son una comparación controlada de velocidad pura.
+**A 99% pass rate means the tasks were easy.** It does not mean the channel is better.
+§5.9 is the measurement that shows this.
 
-Los modos de fallo fueron distintos. Codex nativo perdió tiempo con selectores CSS que
-ya no existían. La extensión de Claude superó el límite de contexto al buscar un enlace
-muy profundo en Wikipedia y tuvo clics sintéticos sin efecto. Los brazos con snapDOM
-Agent buscaron dentro de la página en milisegundos y actuaron mediante identificadores
-que repiten el rol y el nombre del objetivo.
+The timings are not a clean comparison. The four arms count different things: one script
+execution that performs several operations counts as one action, while the extension
+tended to do one operation per turn, and the runners include different amounts of
+thinking time. Read the table as a description of four interfaces as they were actually
+used.
 
-### 5.8 Comprobación de acciones
+### 5.8 Catching failures that look like successes
 
-La aplicación `demo-qa` contiene un reloj y un spinner que generan ruido visual. Al
-añadir “Buy milk”, el oráculo detectó el elemento añadido y las tres comprobaciones
-pasaron. Al pulsar un botón que no modifica el estado, devolvió `changed: false` aunque
-el método de píxeles encontró 264 píxeles distintos. La evidencia semántica de esa
-ausencia de cambio ocupó 61 bytes.
+Eight actions were planted in a test page so that each one *appears* to work: a button
+whose handler does nothing, a form rejected without a message, a click swallowed by an
+invisible overlay, a notification that disappears before you look, a row inserted out of
+view, a state change with no visual difference, a double submit, and a single-page
+navigation that changes the URL without loading the content. The page also runs a clock,
+a spinner and a ticker, which is what makes visual checks unreliable in the first place.
+An independent function reads the real state and decides what actually happened.
 
-En uso real también se registraron un comentario borrado en Reddit y tres acciones sin
-efecto en La Nación que el canal visual parecía confirmar. Estos casos no son un
-benchmark controlado, pero explican por qué la verificación debe ser una capacidad de
-primer nivel.
+| Channel | Right | **Wrong success reports** |
+|---|---:|---:|
+| **Stating the expected outcome and checking it** | **8/8** | **0** |
+| Just asking "did anything change?" | 4–6/8 | 2–4 |
+| `agent-browser` snapshot diff | 2/8 | 6 |
+| Screenshot comparison | 2/8 | 6 |
 
-## 6. Robustez cuando el agente se equivoca
+The second row is a range because it is not stable between runs — it depends on what the
+page's own noise happens to do at that moment. That instability is the finding. "Did
+anything change?" is the wrong question on a live page. Stating what you expected and
+checking that specific thing was stable at 8/8 across both runs.
 
-Los modelos cometen errores al usar herramientas: escriben mal una especificación,
-reutilizan un identificador antiguo, buscan un texto inexistente o intentan verificar sin
-crear antes una referencia válida.
+This is why the useful unit is a stated expectation, not a raw difference.
 
-El contrato de snapDOM Agent intenta fallar de forma visible. Un objetivo ambiguo o
-ausente no produce una confirmación verde. Antes de actuar, la herramienta repite el rol
-y el nombre del elemento resuelto. Si está fuera de pantalla o tapado, rechaza o explica
-la acción. En las pruebas de mal uso observadas no apareció ningún falso positivo, y la
-recuperación típica necesitó una o dos llamadas adicionales.
+### 5.9 Tasks written by other people
 
-Queda un riesgo: un identificador antiguo usado en otra sesión podría coincidir con otro
-elemento. La repetición del rol y el nombre reduce ese riesgo, pero no constituye una
-garantía criptográfica de identidad.
+Eight tasks from Mind2Web-Live, on live sites, scored by someone else's criteria (the
+"key nodes" of WebCanvas).
 
-## 7. Qué se puede concluir
+| Benchmark | Result |
+|---|---:|
+| Our own task suite (§5.7) | 99% |
+| **Mind2Web-Live, this tool** | **28%** (8 of 29 key nodes) |
+| Tasks completed end to end | 1 of 8 |
 
-Los resultados respaldan tres conclusiones.
+28% is where published work puts current web agents on live sites. The pattern in the
+data: it reaches the right page almost every time, then loses the middle steps — filters,
+multi-field forms, flows that need a login or earlier state.
 
-1. Un diff semántico puede distinguir mejor que los baselines probados entre cambios de
-   aplicación y ruido visual en un corpus controlado.
-2. La combinación de imagen y semántica es más completa que cualquiera de los dos canales
-   por separado: los píxeles explican apariencia; la estructura explica identidad,
-   estado y posibilidad de interacción.
-3. La contribución más útil es verificar acciones. Saber que un clic no hizo nada evita
-   que el agente siga trabajando sobre una suposición falsa.
+The comparison arm ran out of API credit after 3 of the 8 tasks. On those 3, the
+screenshot arm scored 5 of 8 key nodes against this tool's 3 of 8. Three tasks support no
+conclusion whatsoever, but the direction is against the tool and is recorded for that
+reason.
 
-No se puede concluir todavía que snapDOM Agent sea universalmente más rápido, más barato
-o más preciso que cualquier sistema nativo. Las muestras son pequeñas, los sitios reales
-cambian y los runners tienen capacidades y formas de contabilizar acciones distintas.
+The honest statement: **this phase gives no evidence that reading structure instead of
+pixels helps an agent finish more tasks.** The measured advantages are cost (§5.2) and
+catching wrong success reports (§5.8).
 
-## 8. Amenazas a la validez y trabajo pendiente
+### 5.10 Does a model choose it when nothing tells it to?
 
-- El corpus determinista fue creado por el mismo equipo que construyó la herramienta.
-  Las respuestas esperadas están publicadas por caso y los baselines usan
-  implementaciones estándar, pero falta un corpus independiente más grande.
-- El piloto con modelo tiene una sola repetición por celda.
-- El benchmark formal tiene tres repeticiones y diez tareas. Es suficiente para detectar
-  fallos cualitativos, no para afirmar superioridad general.
-- Los sitios reales no son estacionarios. Contenido, bloqueos, experimentos A/B y
-  protecciones anti-bot cambian entre ejecuciones.
-- Los tiempos de los cuatro brazos no incluyen exactamente los mismos componentes.
-- El texto completo de una página grande puede superar el costo de una imagen. Hay que
-  usar digest, búsqueda y observaciones por región.
-- Las animaciones controladas por JavaScript y el contenido que sigue cargando pueden
-  producir cambios legítimos pero irrelevantes para la tarea.
-- Canvas e iframes inaccesibles necesitan una escalada visual o una integración
-  específica.
-- La repetibilidad solo se afirma dentro del mismo entorno; no entre navegadores,
-  motores o configuraciones distintas.
+With both toolsets available, no instruction to prefer either, and six longer tasks, the
+model chose this tool for 63 of 81 steps that used a channel at all (78%). It still used
+pictures to orient itself. That supports offering both, not replacing one with the other
+(`experiment/formal/results/b-preference.md`).
 
-El siguiente paso útil es repetir la evaluación con tareas creadas por terceros,
-interfaces de tiempo más comparables y un conjunto explícito de errores de uso. También
-conviene medir por separado el costo por tarea completada **y verificada**, no solo el
-porcentaje de tareas completadas.
+### 5.11 It runs inside other tools
 
-## Apéndice A. Reproducción
+The whole reader bundles to 45 KB and can be injected into `agent-browser` through that
+tool's own `eval` command. Its flow keeps working, and the change report comes back on
+top of it (`experiment/results/e5-coexistence.md`). Distribution is this project's
+weakest point, so being able to run inside an existing tool matters more than competing
+with it.
 
-Los datos están versionados dentro de `packages/agent/experiment/results/` y los
-resultados del benchmark formal en `packages/agent/experiment/formal/results/`.
+### 5.12 Do all the entry points agree?
 
-| Evaluación | Comando desde la raíz del repositorio | Resultado esperado |
+There are five ways to use this (see the README). Eight cases from the corpus, plus one
+occlusion case and one single-page navigation, were run through four of them. All four
+gave the same answer every time, with the same change kinds and the same names, and none
+contradicted the hand-written truth (`experiment/parity.mjs`).
+
+Two caveats. The command-line tool and the MCP server are not independent — the second is
+a thin translation of the first. And the corpus is the one the tool was developed
+against, so this shows the entry points are consistent, not that they are correct on
+pages nobody has seen.
+
+## 6. When the model using it makes a mistake
+
+Models misuse tools. They write a broken specification, reuse an identifier from an old
+reading, search for text that does not exist, or ask for a comparison without having
+established a reference point first.
+
+The rule here is that confusion must never come back green. An unknown field in a
+specification, an empty specification and a missing reference point are all hard failures
+with a stated reason. A target that is ambiguous or missing does not produce a
+confirmation. Before acting, the tool repeats the role and name of the element it
+resolved, so the caller can see what it is about to touch. If the target is off screen or
+covered, it refuses and explains. In the misuse rounds that were run, no wrong success
+report appeared, and recovery usually took one or two extra calls.
+
+One risk remains: an old identifier from a previous reading could, in principle, match a
+different element. Repeating role and name reduces that risk. It is not a guarantee.
+
+## 7. What can be concluded
+
+1. On a controlled set of cases, this tells application changes apart from visual noise
+   better than the two baselines tested, and better out of the box than the closest
+   comparable public tool.
+2. Pictures and structure together are more complete than either alone. Pixels explain
+   appearance. Structure explains identity, state, and whether you can click.
+3. The most useful thing it does is confirm or deny that an action had an effect. Knowing
+   that a click did nothing stops an agent from building on a false assumption.
+
+What cannot be concluded: that it makes agents finish more tasks. §5.9 measured that
+directly, on tasks written elsewhere, and found no such evidence.
+
+## 8. Reasons to distrust these numbers
+
+- The 19-case corpus and the 10-task suite were written by the same people who built the
+  tool. The expected answers are published per case and the baselines are standard
+  implementations, but this is not the same as an independent benchmark.
+- The pilot in §5.6 is one run per cell.
+- §5.7 is 10 tasks and 3 repetitions, and its 99% is explained by the tasks being easy.
+- §5.9 is 8 tasks, one run, with the comparison arm incomplete.
+- Live sites are not stable. Content, blocks, A/B tests and bot defenses change between
+  runs.
+- The four arms in §5.7 do not measure identical spans of time.
+- The full text of a large page can cost more than an image. Use the compact summary, the
+  search, and per-region readings.
+- JavaScript-driven motion and pages still loading can produce real but irrelevant
+  changes.
+- Canvas and unreadable iframes need a picture or a specific integration.
+- Repeatability is only claimed within one environment. No claim is made across browsers
+  or engines.
+- **The tests did not cover every way the tool ships.** On 2026-08-01 the globally
+  installed copy was found broken: three of its verbs threw an error inside the page,
+  because the bundle was defined twice and the two copies drifted apart. Every test ran
+  against the repository tree, so nothing caught it. The duplication is gone and the
+  tests now also run against the installed copy, but the lesson stands — a passing test
+  suite only covers the paths it was pointed at.
+
+## 9. What would improve this most
+
+- Finish §5.9: run the comparison arm completely and widen the task set.
+- Run a public benchmark end to end. The WebVoyager harness in `experiment/webvoyager/`
+  is ready and verified without spending anything — 25 of 25 sites load, all four
+  channels complete the loop — but no accuracy number of our own exists on it yet.
+- Report cost per task *completed and verified*, rather than pass rate alone.
+- Test the matcher against a public grounding benchmark. It works on our corpus; its
+  behaviour on the long tail of professional interfaces is unknown.
+
+## Appendix A. Reproducing this
+
+Data lives in `experiment/results/` and `experiment/formal/results/`. Everything below
+runs without an API key.
+
+| What | Command from the repository root | Expected |
 |---|---|---|
-| Detección de cambios | `node packages/agent/experiment/bench-qa.mjs` | 19/19; 0 falsos positivos; 0 cambios perdidos |
-| Companion | `node packages/agent/companion/gate.mjs` | 27/27 |
-| Escalado | `node packages/agent/experiment/scaling.mjs` | costo aproximadamente lineal por nodo |
-| Barrido de sitios | `node packages/agent/experiment/sweep.mjs` | 18/35 sin ruido en reposo |
-| Demo de verificación | `node packages/agent/demo-qa/run-demo.mjs` | cambio real detectado; no-op como `changed:false` |
-| Juez formal | `node packages/agent/experiment/formal/judge.mjs <archivo.json>` | veredicto y falsos positivos por entrada |
-| Resumen formal | `node packages/agent/experiment/formal/report.mjs` | tablas agregadas por brazo y tarea |
+| Unit tests | `npx vitest run packages/agent/test --browser.headless` | 50 pass |
+| Reading quality, no model | `npx vitest run packages/agent/experiment/signal.test.js --browser.headless` | 8 pass |
+| Change detection (§5.1) | `node packages/agent/experiment/bench-qa.mjs` | 19/19, 0 false alarms |
+| Comparable tool (§5.1) | `node packages/agent/experiment/e1-agent-browser.mjs` | 11/19 as-is, 17/19 normalized |
+| Entry points agree (§5.12) | `node packages/agent/experiment/parity.mjs` | 0 disagreements |
+| Extension contract (§5.5) | `node packages/agent/companion/gate.mjs` | 27/27 |
+| Every verb, both installs | `node packages/agent/experiment/abis-verbs.mjs [--daemon <path>]` | 19/19 |
+| Speed (§5.4) | `node packages/agent/experiment/scaling.mjs` | cost per element roughly flat |
+| Real-site noise (§5.3) | `node packages/agent/experiment/sweep.mjs` | 18 of 36 quiet |
+| Wrong success reports (§5.8) | `node packages/agent/experiment/c-false-green.mjs` | 8/8 and 0 for the stated-expectation arm |
+| Verification demo | `node packages/agent/demo-qa/run-demo.mjs` | real change detected, no-op reported as no change |
+| Public benchmark, dry run | `node packages/agent/experiment/webvoyager/run.mjs --dry --headless` | 25/25 sites load |
 
-## Apéndice B. Artefactos principales
+Paid: `experiment/formal/` (§5.7, §5.10), `experiment/formal/d-third-party.mjs` (§5.9),
+and a real run of `experiment/webvoyager/run.mjs`.
 
-- `src/`: implementación del snapshot, identidad, matching, diff, queries, privacidad y
-  plugin.
-- `test/`: pruebas de API, corpus, integración, rendimiento y privacidad.
-- `corpus/`: páginas, mutaciones y resultados correctos escritos a mano.
-- `experiment/`: runners, puntuación, tareas y comparaciones.
-- `docs/adr/`: decisiones de arquitectura y correcciones realizadas a partir de las
-  pruebas.
-- `FIELD.md` y `EXPERIMENT.md`: notas completas de campo y evolución experimental.
+## Appendix B. Where things are
+
+- `src/` — the reader, identity matching, comparison, queries, privacy, and the plugin.
+- `test/` — unit tests for the API, the corpus, performance and privacy.
+- `corpus/` — pages, mutations and hand-written correct answers.
+- `experiment/` — every runner, scoring script and comparison.
+- `docs/adr/` — decisions, including the ones later proved wrong.
+- `docs/PRIVACY.md` — exactly what text leaves the page.
+- `docs/LANDSCAPE.md` — the surrounding field, including where this project is behind.
+- `FIELD.md`, `EXPERIMENT.md` — full notes from the field passes and the experiments.
+- `TESTPLAN.md` — what is tested, what is not, and what result would prove us wrong.
