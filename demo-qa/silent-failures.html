@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Silent failures — TESTPLAN Fase C</title>
+<style>
+  body { font-family: system-ui, sans-serif; width: 720px; margin: 30px auto; color: #111 }
+  header { display: flex; align-items: center; gap: 8px; color: #666; font-size: 13px; margin-bottom: 18px }
+  .spinner { width: 18px; height: 18px; border: 3px solid #ddd; border-top-color: #4a7dff;
+             border-radius: 50%; animation: spin 1.1s linear infinite; display: inline-block }
+  @keyframes spin { to { transform: rotate(360deg) } }
+  .marquee { overflow: hidden; white-space: nowrap; color: #999; font-size: 12px }
+  .marquee span { display: inline-block; animation: slide 6s linear infinite }
+  @keyframes slide { from { transform: translateX(100%) } to { transform: translateX(-100%) } }
+  section { border: 1px solid #ddd; border-radius: 6px; padding: 12px 14px; margin: 10px 0 }
+  h2 { font-size: 15px; margin: 0 0 8px }
+  button, input { font-size: 14px; padding: 5px 9px }
+  ul { margin: 8px 0; padding-left: 20px }
+  #intercept-wrap { position: relative; display: inline-block }
+  #intercept-shield { position: absolute; inset: 0; z-index: 5 }
+  #toast { position: fixed; top: 10px; right: 10px; background: #222; color: #fff;
+           padding: 8px 12px; border-radius: 4px; display: none }
+  #far { height: 400px; overflow: auto; border: 1px dashed #ccc; padding: 6px }
+  .spacer { height: 380px }
+</style>
+</head>
+<body>
+
+<!-- Ruido ambiental deliberado: un canal sin semántica no puede distinguir esto
+     de un cambio real. Es la condición que hace flaky a toda aserción visual. -->
+<header>
+  <span class="spinner" role="presentation"></span>
+  <span>sync</span>
+  <span id="clock" data-testid="clock">--:--:--</span>
+  <span class="marquee"><span>ofertas · envíos · novedades · ofertas · envíos · novedades</span></span>
+</header>
+
+<h1>Panel de pruebas</h1>
+
+<!-- F1: no-op puro -->
+<section>
+  <h2>F1 · Actualizar</h2>
+  <button id="f1">Actualizar datos</button>
+  <p id="f1-out">Última sincronización: hace un rato</p>
+</section>
+
+<!-- F2: submit que falla en silencio (validación rechaza, sin mensaje) -->
+<section>
+  <h2>F2 · Suscribirse</h2>
+  <input id="f2-email" type="text" aria-label="Email" placeholder="tu@email.com">
+  <button id="f2">Suscribirme</button>
+  <ul id="f2-list"></ul>
+</section>
+
+<!-- F3: click interceptado por un overlay transparente -->
+<section>
+  <h2>F3 · Comprar</h2>
+  <span id="intercept-wrap">
+    <button id="f3">Comprar ahora</button>
+    <span id="intercept-shield"></span>
+  </span>
+  <p id="f3-out">Carrito: 0 items</p>
+</section>
+
+<!-- F4: el efecto ocurre y desaparece antes de que nadie mire -->
+<section>
+  <h2>F4 · Guardar borrador</h2>
+  <button id="f4">Guardar borrador</button>
+  <p id="f4-out">Borradores guardados: 0</p>
+</section>
+
+<!-- F5: la acción funciona pero el resultado queda fuera del viewport -->
+<section>
+  <h2>F5 · Agregar al final de una lista larga</h2>
+  <button id="f5">Agregar fila</button>
+  <div id="far"><div class="spacer">…contenido largo…</div><ul id="f5-list"><li>fila inicial</li></ul></div>
+</section>
+
+<!-- F6: cambio de estado sin ningún delta visual -->
+<section>
+  <h2>F6 · Habilitar envío</h2>
+  <button id="f6">Validar formulario</button>
+  <button id="f6-target" disabled style="border:1px solid #888;background:#fff;color:#111">Enviar</button>
+</section>
+
+<!-- F7: doble efecto (parece que funcionó, funcionó DOS veces) -->
+<section>
+  <h2>F7 · Agregar item</h2>
+  <button id="f7">Agregar item</button>
+  <ul id="f7-list"></ul>
+</section>
+
+<!-- F8: navegación SPA que cambia la URL pero deja el contenido a medio hidratar -->
+<section>
+  <h2>F8 · Ir a detalle (SPA)</h2>
+  <button id="f8">Ver detalle</button>
+  <div id="f8-content"><p>listado inicial</p></div>
+</section>
+
+<div id="toast">Borrador guardado</div>
+
+<script>
+// Ruido: reloj vivo (cambia píxeles cada segundo, no cambia estado de la app)
+const clock = document.getElementById('clock')
+const tick = () => { clock.textContent = new Date().toTimeString().slice(0, 8) }
+tick(); setInterval(tick, 1000)
+
+// ── Las ocho fallas. Cada una PARECE haber funcionado. ──────────────────────────────
+// El contrato del test: `truth` dice qué pasó de verdad en el estado de la app, y un
+// juez independiente lo lee del DOM sin pasar por ningún canal de percepción.
+
+// F1 — no-op puro: el handler existe y no hace nada
+document.getElementById('f1').addEventListener('click', () => {})
+
+// F2 — submit que falla mudo: la "validación" rechaza y no muestra error
+document.getElementById('f2').addEventListener('click', () => {
+  const v = document.getElementById('f2-email').value
+  if (!v.includes('@')) { document.getElementById('f2-email').value = ''; return } // rechaza EN SILENCIO
+  const li = document.createElement('li'); li.textContent = v
+  document.getElementById('f2-list').appendChild(li)
+})
+
+// F3 — click interceptado: el overlay transparente se come el evento
+document.getElementById('f3').addEventListener('click', () => {
+  const out = document.getElementById('f3-out')
+  out.textContent = 'Carrito: ' + (parseInt(out.textContent.match(/\d+/)[0]) + 1) + ' items'
+})
+
+// F4 — efecto efímero: el toast aparece y se va en 400ms; el contador NO sube
+document.getElementById('f4').addEventListener('click', () => {
+  const t = document.getElementById('toast')
+  t.style.display = 'block'
+  setTimeout(() => { t.style.display = 'none' }, 400)
+})
+
+// F5 — funciona, pero el resultado queda fuera del viewport
+document.getElementById('f5').addEventListener('click', () => {
+  const li = document.createElement('li'); li.textContent = 'fila agregada'
+  document.getElementById('f5-list').appendChild(li)
+})
+
+// F6 — cambio de estado puro: mismo pixel, distinto significado
+document.getElementById('f6').addEventListener('click', () => {
+  document.getElementById('f6-target').disabled = false
+})
+
+// F7 — doble efecto: un solo click inserta DOS items
+document.getElementById('f7').addEventListener('click', () => {
+  for (let i = 0; i < 2; i++) {
+    const li = document.createElement('li'); li.textContent = 'item'
+    document.getElementById('f7-list').appendChild(li)
+  }
+})
+
+// F8 — SPA: la URL cambia ya, el contenido llega (o no) mucho después
+document.getElementById('f8').addEventListener('click', () => {
+  history.pushState({}, '', '/detalle/42')
+  document.getElementById('f8-content').innerHTML = '<p>cargando…</p>'
+  // se queda a medio hidratar a propósito: nunca completa
+})
+
+// ── Juez: lee el ESTADO REAL, sin pasar por ningún canal de percepción ──────────────
+window.__truth = () => ({
+  f1: { happened: false, why: 'handler vacío' },
+  f2: { happened: document.querySelectorAll('#f2-list li').length > 0, why: 'validación rechaza sin email válido y limpia el input' },
+  f3: { happened: !/: 0 items/.test(document.getElementById('f3-out').textContent), why: 'overlay intercepta el click' },
+  f4: { happened: false, why: 'toast efímero, el contador no sube' },
+  f5: { happened: document.querySelectorAll('#f5-list li').length > 1, why: 'funciona pero fuera del viewport' },
+  f6: { happened: !document.getElementById('f6-target').disabled, why: 'cambio de estado sin delta visual' },
+  f7: { count: document.querySelectorAll('#f7-list li').length, happened: document.querySelectorAll('#f7-list li').length === 2, why: 'un click inserta DOS' },
+  f8: { url: location.pathname, hydrated: !/cargando/.test(document.getElementById('f8-content').textContent), why: 'URL cambia, contenido queda a medias' },
+})
+</script>
+</body>
+</html>
