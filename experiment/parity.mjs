@@ -79,13 +79,57 @@ setTimeout(async () => {
   catch (e) { window.__mutateErr = String(e) }
 }, 1500)
 </script></body></html>`
-  const file = join(TMP, `${name}.html`)
-  await writeFile(file, html)
-  return pathToFileURL(file).href
+  await writeFile(join(TMP, `${name}.html`), html)
+  return serve(name)
 }
+
+// Las fixtures se sirven por HTTP, no file://: `history.pushState` a un path nuevo
+// lanza SecurityError bajo origen opaco (file://), la URL no cambia y el caso SPA
+// daba una FALSA alarma de `navigated`. Verificado en la primera corrida de esta fase.
+const { createServer } = await import('node:http')
+const PORT = 8391
+const staticSrv = createServer(async (req, res) => {
+  // leer ANTES de mandar headers: un 404 (favicon) después de writeHead(200)
+  // tira ERR_HTTP_HEADERS_SENT y mata el runner al final de la corrida
+  const name = decodeURIComponent((req.url || '').split('?')[0]).replace(/^\//, '')
+  let body = null
+  try { body = await readFile(join(TMP, name), 'utf8') } catch { /* no existe */ }
+  if (body === null) { res.writeHead(404, { 'content-type': 'text/plain' }); res.end('nope'); return }
+  res.writeHead(200, { 'content-type': 'text/html' })
+  res.end(body)
+})
+await new Promise((r) => staticSrv.listen(PORT, '127.0.0.1', r))
+const serve = (name) => `http://127.0.0.1:${PORT}/${name}.html`
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const kindsOf = (changes) => [...new Set((changes || []).map((c) => c.kind))].sort().join('+') || '-'
+
+// ── Fixtures extra: los dos contratos que el corpus no cubre ─────────────────────────
+// occlusion: `becameCovered` es una de las diferenciaciones que afirmamos (oclusión
+// PROACTIVA en el mapa, no como error post-click) — tiene que valer en las 4 vías.
+// spa: `navigated` es donde una divergencia daemon/companion ya nos mordió una vez.
+const EXTRA = {
+  'overlay-covers': `<!doctype html><html><body>
+<button id="target" style="position:absolute;top:100px;left:50px;width:200px;height:40px">Comprar ahora</button>
+<script>setTimeout(() => {
+  const o = document.createElement('div')
+  o.setAttribute('role','dialog'); o.setAttribute('aria-label','Aviso de cookies')
+  o.style.cssText = 'position:absolute;top:90px;left:40px;width:300px;height:80px;background:#fff;border:1px solid #000'
+  o.textContent = 'Aceptamos cookies'
+  document.body.appendChild(o)
+}, 1500)</script></body></html>`,
+  'spa-softnav': `<!doctype html><html><body>
+<h1>Inicio</h1><div id="content"><a href="/x">un link</a></div>
+<script>setTimeout(() => {
+  history.pushState({}, '', '/parity-spa-probe')
+  document.getElementById('content').innerHTML = '<p>contenido nuevo de la ruta</p>'
+}, 1500)</script></body></html>`,
+}
+async function extraWrapper(name) {
+  await writeFile(join(TMP, `${name}.html`), EXTRA[name])
+  return serve(name)
+}
+const coveredOf = (delta) => ((delta && delta.becameCovered) || []).length
 
 // ── S1: SDK directo ──────────────────────────────────────────────────────────────────
 async function runSdk(urls) {
@@ -112,9 +156,15 @@ window.__buildUi = buildUi
       await new Promise((r) => setTimeout(r, 2200))
       const second = await window.__observe(document.body, { previous: cp })
       const ui = window.__buildUi(second, {})
-      return { changed: !!ui.changed, changes: (ui.changes || []).map((c) => ({ kind: c.kind })) }
+      const d = ui.actionabilityDelta || {}
+      return {
+        changed: !!ui.changed,
+        changes: (ui.changes || []).map((c) => ({ kind: c.kind })),
+        covered: (d.becameCovered || []).length,
+      }
     })
-    out[name] = { changed: res.changed, kinds: kindsOf(res.changes) }
+    // navigated no es asunto del SDK: lo agregan las superficies que rastrean URL
+    out[name] = { changed: res.changed, kinds: kindsOf(res.changes), covered: res.covered, navigated: null }
     await page.close()
   }
   await browser.close()
@@ -140,8 +190,14 @@ async function runDaemon(urls) {
     const look = await daemonCmd('look')
     const meta = look.meta || {}
     // el texto del look es la superficie que lee un humano/LLM; los kinds salen de ahí
-    const kinds = [...new Set([...(look.text || '').matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
-    out[name] = { changed: !!meta.changed, kinds }
+    const text = look.text || ''
+    const kinds = [...new Set([...text.matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
+    const cov = text.match(/became covered: (.+)$/m)
+    out[name] = {
+      changed: !!meta.changed, kinds,
+      covered: cov ? cov[1].split(' · ').length : 0,
+      navigated: !!meta.navigated,
+    }
   }
   await new Promise((r) => { const s = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
   try { srv.kill() } catch { /* ya murió */ }
@@ -167,7 +223,12 @@ async function runMcp(urls) {
     const sc = v.result?.structuredContent || {}
     const text = v.result?.content?.[0]?.text || ''
     const kinds = [...new Set([...text.matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
-    out[name] = { changed: !!sc.changed, kinds }
+    const cov = text.match(/became covered: (.+)$/m)
+    out[name] = {
+      changed: !!sc.changed, kinds,
+      covered: cov ? cov[1].split(' · ').length : 0,
+      navigated: !!sc.navigated,
+    }
   }
   srv.kill()
   await sleep(1500)
@@ -204,7 +265,11 @@ async function runCompanion(urls) {
     await ask({ type: 'SNAPDOM_OBSERVE' }) // baseline
     await page.waitForTimeout(2200)
     const r2 = await ask({ type: 'SNAPDOM_OBSERVE' })
-    out[name] = { changed: !!(r2 && r2.changed), kinds: kindsOf(r2 && r2.changes) }
+    out[name] = {
+      changed: !!(r2 && r2.changed), kinds: kindsOf(r2 && r2.changes),
+      covered: coveredOf(r2 && r2.actionabilityDelta),
+      navigated: !!(r2 && r2.navigated),
+    }
     await page.close()
   }
   await ctx.close()
@@ -214,6 +279,7 @@ async function runCompanion(urls) {
 // ── Run ──────────────────────────────────────────────────────────────────────────────
 const urls = {}
 for (const c of CASES) urls[c.name] = await wrapper(c.name)
+for (const name of Object.keys(EXTRA)) urls[name] = await extraWrapper(name)
 
 console.log('S1 SDK…');       const s1 = await runSdk(urls)
 console.log('S2 CLI daemon…'); const s2 = await runDaemon(urls)
@@ -221,6 +287,7 @@ console.log('S3 MCP…');        const s3 = await runMcp(urls)
 console.log('S4 companion…');  const s4 = await runCompanion(urls)
 
 const surfaces = { S1: s1, S2: s2, S3: s3, S4: s4 }
+const CASE_NAMES = new Set(CASES.map((c) => c.name))
 console.log('\n| fixture | truth | S1 SDK | S2 CLI | S3 MCP | S4 comp | paridad |')
 console.log('|---|:---:|---|---|---|---|:---:|')
 let disagreements = 0
@@ -236,8 +303,23 @@ for (const c of CASES) {
   const mark = agree ? (kindsAgree ? '✅' : '⚠️ kinds') : '❌'
   console.log(`| ${c.name} | ${c.truth} | ${cells.map((x) => `${x.changed} (${x.kinds})`).join(' | ')} | ${mark} |`)
 }
+// ── Contratos extra: oclusión (las 4) y navigated (las 3 que rastrean URL) ──────────
+console.log('\n| contrato | S1 SDK | S2 CLI | S3 MCP | S4 comp | paridad |')
+console.log('|---|---|---|---|---|:---:|')
+const occ = Object.values(surfaces).map((s) => (s['overlay-covers'] || {}).covered)
+const occAgree = occ.every((n) => n > 0)
+if (!occAgree) disagreements++
+console.log(`| becameCovered (overlay tapa botón) | ${occ.map((n) => `${n} cubierto(s)`).join(' | ')} | ${occAgree ? '✅' : '❌'} |`)
+
+// S1 no participa: el SDK entrega el diff, la URL la rastrean las superficies
+const navCells = ['S2', 'S3', 'S4'].map((k) => (surfaces[k]['spa-softnav'] || {}).navigated)
+const navAgree = navCells.every((v) => v === true)
+if (!navAgree) disagreements++
+console.log(`| navigated tras pushState | n/a (por diseño) | ${navCells.map(String).join(' | ')} | ${navAgree ? '✅' : '❌'} |`)
+
 console.log(`\nDesacuerdos de \`changed\`: ${disagreements}/${CASES.length} · casos que contradicen la truth en alguna superficie: ${wrong}/${CASES.length}`)
 console.log(disagreements === 0 && wrong === 0
   ? 'PARIDAD OK — las cuatro superficies son el mismo oráculo sobre este corpus'
   : 'PARIDAD ROJA — hay que identificar QUÉ superficie diverge antes de mostrar esto a un tercero')
+staticSrv.close()
 process.exit(disagreements === 0 && wrong === 0 ? 0 : 1)

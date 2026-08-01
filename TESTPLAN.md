@@ -101,15 +101,29 @@ truth, y los kinds coinciden exactamente en las cuatro superficies.**
 | scroll-only | false | — | — | — | — |
 | residual-hover | false | — | — | — | — |
 
+Más los dos contratos que el corpus no cubría:
+
+| contrato | S1 SDK | S2 CLI | S3 MCP | S4 companion |
+|---|---|---|---|---|
+| `becameCovered` (overlay tapa un botón) | 1 | 1 | 1 | 1 |
+| `navigated` tras `pushState` | n/a por diseño | true | true | true |
+
+**Falsa alarma diagnosticada (vale como resultado):** la primera corrida dio
+`navigated:false` en las tres superficies y marcó PARIDAD ROJA. No era un bug del
+producto: `history.pushState` a un path nuevo lanza `SecurityError` bajo origen opaco
+(`file://`), así que la URL nunca cambiaba y `false` era la respuesta *correcta*. El
+runner ahora sirve las fixtures por HTTP. Es la misma lección de la saga de perf —
+medir el instrumento antes de acusar al sistema— y el motivo por el que el harness
+quedó documentado.
+
 Caveats declarados (el resultado vale menos de lo que parece si no se dicen):
 - **S2 y S3 no son independientes**: el MCP es un traductor fino sobre el daemon, así
   que comparten motor. Las vías genuinamente independientes son tres: SDK crudo,
   familia daemon, y bundle de la companion.
-- **Cobertura parcial vs lo planificado**: faltan los 2 casos de SPA y los 2 de
-  oclusión que este plan pedía. La paridad está probada sobre cambios de contenido/
-  estado/estructura y sobre ruido, no sobre navegación blanda ni `becameCovered`.
 - El corpus es el mismo contra el que se desarrolló el oráculo: esto prueba
   consistencia entre vías, **no** corrección en páginas nuevas.
+- `navigated` es contrato de las superficies que rastrean URL; el SDK entrega el diff
+  y no participa. Es diseño, no hueco.
 
 ---
 
