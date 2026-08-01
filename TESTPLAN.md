@@ -360,6 +360,49 @@ por peso invertido, pero va después de C porque C decide si hay producto.
 
 ---
 
+## 2-bis. RESULTADOS DEL CICLO (2026-08-01)
+
+Corrido de forma autónoma en una sesión. Todo determinista, sin gasto de API.
+
+| Fase | Resultado | Reporte |
+|---|---|---|
+| **A** paridad de superficies | ✅ 8/8 fixtures + oclusión + SPA, cuatro superficies de acuerdo | (en este doc) |
+| **E1** agent-browser en bench-qa | ✅ corrido: **11/19 tal cual sale · 17/19 normalizado** vs nuestro 19/19 | `results/e1-agent-browser.md` |
+| **E2** contratos afirmados | ⚠️ **2 ventajas confirmadas, 1 suposición nuestra refutada, 1 límite propio** | `results/e2-contracts.md` |
+| **A-bis** verbos sin cobertura | ✅ 13/13 + 2 hallazgos (ranking engaña, doc de `rec` desactualizada) | `results/abis-verbs.md` |
+| **C** false-green diferencial | ✅ **0 vs 6 falsos verdes sobre 8** (criterio pedía ≥30 pts, dio 75) | `results/c-false-green.md` |
+| **E5** coexistencia | ✅ **el oráculo corre DENTRO de agent-browser** por su `eval --stdin` | `results/e5-coexistence.md` |
+
+### Los tres resultados que cambian el pitch
+
+1. **La tesis se sostiene, pero el margen depende del rival.** Contra pixel-diff
+   (13/19) y a11y-tree (16/19) la distancia es grande; contra un agent-browser bien
+   normalizado es 19/19 vs 17/19. La ventaja está concentrada en **ruido textual** y
+   **cambios sin representación textual**.
+2. **El valor NO es el diff, es la aserción.** En la Fase C nuestro propio `look`
+   crudo produjo 2 falsos verdes; el `assert` de postcondición produjo 0. Es la
+   confirmación medida del reencuadre a **runtime de postcondiciones**.
+3. **agent-browser puede ser canal, no rival.** 45 KB por su `eval` y su flujo queda
+   intacto.
+
+### Lo que este ciclo corrigió de nuestras propias afirmaciones
+
+- ~~"un diff textual del a11y tree pierde el flip de `disabled`"~~ → **falso**, lo
+  detecta (viaja en la serialización).
+- ~~"sus refs no sobreviven un remount"~~ → **falso**, sobreviven (`e1 → e1`).
+- ~~"seguimos la identidad a través de reordenamientos"~~ → **con matices**: depende
+  de la riqueza de los nombres; con nombres cortos declara incertidumbre.
+- ~~"una navegación aborta la grabación"~~ → **no ocurre** (doc desactualizada).
+
+### Higiene de medición
+
+Cinco bugs de método propios, todos encontrados y corregidos antes de creer ningún
+número: `diffPixels` mal invocado (0,000% en todo), click programático que atravesaba
+el overlay, click por coordenadas fuera del viewport, asimetría `eval` vs click real
+contra el rival, y un juez que medía "¿mutó algo?" en vez de "¿se cumplió la
+postcondición?". Más el `execFile`+`input` de E5. **Ningún resultado de este ciclo
+sobrevivió a su primera corrida sin revisión.**
+
 ## 3. Orden propuesto y criterio de corte
 
 ```
