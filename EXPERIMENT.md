@@ -316,3 +316,50 @@ suggestions listbox (the diff shows it closing, no navigation); a SECOND Enter s
 The oracle reported everything needed at every step — state change on type, listbox
 appearing/closing, URL unchanged. Protocol gap, not a product bug: the agent rule is
 "if Enter didn't navigate and a listbox just closed, press Enter again."
+
+---
+
+# WebVoyager-25 — el benchmark del competidor (harness listo, 2026-08-01)
+
+`experiment/webvoyager/` replica la evaluación que publica **lumen** (Om Labs, MIT), un
+agente de navegador *vision-first* que reporta 25/25 en un subset de 25 tareas de
+WebVoyager contra browser-use (25/25) y stagehand (19/25), todos con
+`claude-sonnet-4-6` y juez `gemini-2.5-flash`.
+
+Replicado idéntico: dataset (byte-idéntico), **los mismos 25 ids en el mismo orden**
+(su muestreo estratificado semilla-42 está portado y verificado), adaptación de fechas,
+`maxSteps` 50, timeout 600 s, 3 intentos con feedback del juez, contrato del juez y
+schema del reporte. Lo único que cambia es el canal de percepción: `pixels` (control
+vision-first) · `oracle` · `hybrid` · `snap` (una captura snapdom → píxeles+semántica del
+mismo instante).
+
+**Hallazgo que no costó nada**: su 100% es pass@3 *con pistas del juez* — el harness
+reinyecta el motivo del rechazo en el intento siguiente. El pass@1 es recuperable de sus
+propios archivos (un `trial > 1` implica intento 1 reprobado): lumen 23/25 (92%),
+browser-use 25/25, stagehand 16/25 (64%). Sus `avgSteps`/`avgTokens` son además los del
+intento que quedó registrado, no el costo total de resolver la tarea. Nuestro reporte
+publica las dos columnas y además el costo acumulado de todos los intentos.
+
+Estado: verificado sin gastar — 25/25 sitios cargan sin bloqueo (`--dry`), los 4 brazos
+completan el loop en sitios reales (`--mock`), y el payload por turno muestra el
+comportamiento esperado del oráculo (25K chars el primer turno → 3,4K en los turnos de
+diff, contra una imagen entera por turno en `pixels`). **Falta la corrida real**: no hay
+todavía ningún número de aciertos propio en este benchmark.
+
+**Se puede correr entero sin gastar**: el proveedor sale del id del modelo, así que
+`--model gemini-2.5-flash` con una key gratuita de AI Studio corre el benchmark completo
+por $0, con el mismo loop y los mismos tokens medidos (`usageMetadata`). El tier gratis
+limita rate, y por eso cada llamada pasa por `retry.mjs` (back-off ante 429/5xx
+respetando `retry-after`): la corrida se estira, no se cae. El camino Gemini está
+verificado contra un stub local del endpoint; falta probarlo contra el real. Costo si se
+prefiere el modelo exacto de ellos (`claude-sonnet-4-6`), cota superior medida:
+$30,5 (`pixels`) · $36,5 (`oracle`) · $56,8 (`hybrid`).
+
+Advertencia de método al usar Gemini como actor: cambia el modelo respecto del de ellos,
+así que la comparación **externa** contra sus filas se debilita (una diferencia puede ser
+del modelo, no del canal). La comparación **interna** `oracle` vs `pixels` —misma key,
+mismo loop— es la que responde la pregunta del producto y no se ve afectada.
+
+Método, flags y lecturas honestas: `experiment/webvoyager/README.md`.
+Esto cierra el hueco #2 de `TESTPLAN.md` §5 para lumen a nivel de *harness*; queda
+abierto a nivel de *medición* hasta que se corra.

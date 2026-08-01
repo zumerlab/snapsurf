@@ -1,0 +1,12 @@
+WebVoyager_data.jsonl and reference_answer.json are vendored verbatim from
+
+  WebVoyager — https://github.com/MinorJerry/WebVoyager
+  He et al., "WebVoyager: Building an End-to-End Web Agent with Large Multimodal Models"
+  Licensed under the Apache License, Version 2.0.
+
+Vendored (not fetched at run time) so the task set is pinned: a benchmark whose input
+can change upstream between runs is not reproducible. The copy here is byte-identical to
+both the upstream repo and to the copy lumen ran (verified 2026-08-01 by diff).
+
+No modification was made to the files. Date adaptation happens at load time in
+dataset.mjs, never on disk.

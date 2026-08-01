@@ -1,0 +1,346 @@
+{
+  "model": "claude-sonnet-4-6",
+  "trials": 3,
+  "maxSteps": 50,
+  "rows": [
+    {
+      "id": "Google Flights--17",
+      "site": "Google Flights",
+      "httpStatus": 200,
+      "mapTotal": 72,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 3996,
+        "hybrid_first": 5361
+      },
+      "title": "Find Cheap Flights Worldwide & Book Your Ticket - Google Fli",
+      "blocked": false
+    },
+    {
+      "id": "Allrecipes--22",
+      "site": "Allrecipes",
+      "httpStatus": 200,
+      "mapTotal": 213,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6144,
+        "hybrid_first": 7509
+      },
+      "title": "Allrecipes | Recipes, How-Tos, Videos and More",
+      "blocked": false
+    },
+    {
+      "id": "BBC News--39",
+      "site": "BBC News",
+      "httpStatus": 200,
+      "mapTotal": 118,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6577,
+        "hybrid_first": 7942
+      },
+      "title": "BBC News - Breaking news, video and the latest top stories f",
+      "blocked": false
+    },
+    {
+      "id": "Allrecipes--42",
+      "site": "Allrecipes",
+      "httpStatus": 200,
+      "mapTotal": 213,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6144,
+        "hybrid_first": 7509
+      },
+      "title": "Allrecipes | Recipes, How-Tos, Videos and More",
+      "blocked": false
+    },
+    {
+      "id": "Coursera--40",
+      "site": "Coursera",
+      "httpStatus": 200,
+      "mapTotal": 197,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6577,
+        "hybrid_first": 7942
+      },
+      "title": "Coursera | Online Courses, Certificates, & Degrees",
+      "blocked": false
+    },
+    {
+      "id": "Amazon--16",
+      "site": "Amazon",
+      "httpStatus": 202,
+      "mapTotal": 192,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6471,
+        "hybrid_first": 7836
+      },
+      "title": "Amazon.com. Spend less. Smile more.",
+      "blocked": false
+    },
+    {
+      "id": "Wolfram Alpha--38",
+      "site": "Wolfram Alpha",
+      "httpStatus": 200,
+      "mapTotal": 78,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 3234,
+        "hybrid_first": 4599
+      },
+      "title": "Wolfram|Alpha: Computational Intelligence",
+      "blocked": false
+    },
+    {
+      "id": "Wolfram Alpha--41",
+      "site": "Wolfram Alpha",
+      "httpStatus": 200,
+      "mapTotal": 78,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 3234,
+        "hybrid_first": 4599
+      },
+      "title": "Wolfram|Alpha: Computational Intelligence",
+      "blocked": false
+    },
+    {
+      "id": "Cambridge Dictionary--31",
+      "site": "Cambridge Dictionary",
+      "httpStatus": 200,
+      "mapTotal": 127,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 5360,
+        "hybrid_first": 6725
+      },
+      "title": "Cambridge Dictionary | English Dictionary, Translations & Th",
+      "blocked": false
+    },
+    {
+      "id": "Google Flights--19",
+      "site": "Google Flights",
+      "httpStatus": 200,
+      "mapTotal": 72,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 3996,
+        "hybrid_first": 5361
+      },
+      "title": "Find Cheap Flights Worldwide & Book Your Ticket - Google Fli",
+      "blocked": false
+    },
+    {
+      "id": "Huggingface--24",
+      "site": "Huggingface",
+      "httpStatus": 200,
+      "mapTotal": 105,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6524,
+        "hybrid_first": 7889
+      },
+      "title": "Hugging Face – The AI community building the future.",
+      "blocked": false
+    },
+    {
+      "id": "Amazon--31",
+      "site": "Amazon",
+      "httpStatus": 200,
+      "mapTotal": 286,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 5814,
+        "hybrid_first": 7179
+      },
+      "title": "Amazon.com. Spend less. Smile more.",
+      "blocked": false
+    },
+    {
+      "id": "Cambridge Dictionary--9",
+      "site": "Cambridge Dictionary",
+      "httpStatus": 200,
+      "mapTotal": 127,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 5360,
+        "hybrid_first": 6725
+      },
+      "title": "Cambridge Dictionary | English Dictionary, Translations & Th",
+      "blocked": false
+    },
+    {
+      "id": "Coursera--12",
+      "site": "Coursera",
+      "httpStatus": 200,
+      "mapTotal": 197,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6577,
+        "hybrid_first": 7942
+      },
+      "title": "Coursera | Online Courses, Certificates, & Degrees",
+      "blocked": false
+    },
+    {
+      "id": "Google Map--31",
+      "site": "Google Map",
+      "httpStatus": 200,
+      "mapTotal": 31,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 3025,
+        "hybrid_first": 4390
+      },
+      "title": "Google Maps",
+      "blocked": false
+    },
+    {
+      "id": "GitHub--25",
+      "site": "GitHub",
+      "httpStatus": 200,
+      "mapTotal": 114,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6033,
+        "hybrid_first": 7398
+      },
+      "title": "GitHub · Change is constant. GitHub keeps you ahead. · GitHu",
+      "blocked": false
+    },
+    {
+      "id": "Booking--20",
+      "site": "Booking",
+      "httpStatus": 202,
+      "mapTotal": 240,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6975,
+        "hybrid_first": 8340
+      },
+      "title": "Booking.com | Official site | The best hotels, flights, car ",
+      "blocked": false
+    },
+    {
+      "id": "ESPN--7",
+      "site": "ESPN",
+      "httpStatus": 200,
+      "mapTotal": 261,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 7178,
+        "hybrid_first": 8543
+      },
+      "title": "ESPN - Serving Sports Fans. Anytime. Anywhere.",
+      "blocked": false
+    },
+    {
+      "id": "Google Search--27",
+      "site": "Google Search",
+      "httpStatus": 200,
+      "mapTotal": 20,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 1311,
+        "hybrid_first": 2676
+      },
+      "title": "Google",
+      "blocked": false
+    },
+    {
+      "id": "Apple--17",
+      "site": "Apple",
+      "httpStatus": 200,
+      "mapTotal": 156,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6159,
+        "hybrid_first": 7524
+      },
+      "title": "Apple",
+      "blocked": false
+    },
+    {
+      "id": "BBC News--18",
+      "site": "BBC News",
+      "httpStatus": 200,
+      "mapTotal": 118,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6550,
+        "hybrid_first": 7915
+      },
+      "title": "BBC News - Breaking news, video and the latest top stories f",
+      "blocked": false
+    },
+    {
+      "id": "Booking--30",
+      "site": "Booking",
+      "httpStatus": 202,
+      "mapTotal": 267,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6791,
+        "hybrid_first": 8156
+      },
+      "title": "Booking.com | Official site | The best hotels, flights, car ",
+      "blocked": false
+    },
+    {
+      "id": "ArXiv--2",
+      "site": "ArXiv",
+      "httpStatus": 200,
+      "mapTotal": 259,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6170,
+        "hybrid_first": 7535
+      },
+      "title": "arXiv.org e-Print archive",
+      "blocked": false
+    },
+    {
+      "id": "Google Map--40",
+      "site": "Google Map",
+      "httpStatus": 200,
+      "mapTotal": 31,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 3025,
+        "hybrid_first": 4390
+      },
+      "title": "Google Maps",
+      "blocked": false
+    },
+    {
+      "id": "Apple--6",
+      "site": "Apple",
+      "httpStatus": 200,
+      "mapTotal": 156,
+      "tokens": {
+        "pixels_first": 1365,
+        "oracle_first": 6159,
+        "hybrid_first": 7524
+      },
+      "title": "Apple",
+      "blocked": false
+    }
+  ],
+  "budgetUsd": {
+    "pixels": {
+      "worstCaseUsd": 30.5438,
+      "note": "25 tasks × 3 trials × 50 steps (upper bound: no task ends early)"
+    },
+    "oracle": {
+      "worstCaseUsd": 36.3074,
+      "note": "25 tasks × 3 trials × 50 steps (upper bound: no task ends early)"
+    },
+    "hybrid": {
+      "worstCaseUsd": 56.68,
+      "note": "25 tasks × 3 trials × 50 steps (upper bound: no task ends early)"
+    }
+  }
+}
