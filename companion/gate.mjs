@@ -79,7 +79,7 @@ const first = await page.evaluate(async () => {
 check('ready message carries result', !!first, first ? '' : 'no ready/result within 60s')
 if (!first) { await ctx.close(); process.exit(1) }
 const r1 = first.result
-check('contract === 7', r1.contract === 7, `contract: ${r1.contract}`)
+check('contract === 8', r1.contract === 8, `contract: ${r1.contract}`)
 check('torn/changesTotal-class fields present', 'torn' in r1, `torn: ${r1.torn}`)
 check('walk wall-time sane (< 8s)', first.wallMs < 8000, `${first.wallMs}ms for ${r1.actionables} actionables`)
 check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
@@ -181,6 +181,33 @@ const nav = await ask({ type: 'SNAPDOM_OBSERVE' })
 check('navigated:true + baselineUrl after SPA pushState',
   nav.ready && nav.result?.navigated === true && (nav.result?.baselineUrl || '').includes('/wiki/Buenos_Aires'),
   `navigated: ${nav.result?.navigated} · baselineUrl: ${nav.result?.baselineUrl}`)
+
+// ── privacy: auditable redaction (F3). Rules ride the message; digest strings must
+// carry [redacted], the report must count hits BY INDEX (never rule text), and a
+// text predicate probing the hidden term must fail loud instead of answering.
+const red = await ask({ type: 'SNAPDOM_OBSERVE', privacy: { redact: ['Buenos Aires'] } })
+const digestStrings = [
+  ...(red.result?.digest?.heads || []).flatMap((h) => [h.text, h.section]),
+  ...(red.result?.digest?.top || []).flatMap((t) => [t.name, t.section]),
+  ...(red.result?.digest?.marks || []).map((m) => m.name),
+].filter(Boolean)
+const leak = digestStrings.find((s) => /buenos aires/i.test(s))
+check('privacy: no redacted term in digest strings', red.ready && !leak, leak ? `LEAK: "${leak}"` : `${digestStrings.length} strings clean`)
+check('privacy: [redacted] visibly present', digestStrings.some((s) => s.includes('[redacted]')), 'placeholder shown, not silently dropped')
+check('privacy: report counts by rule index, no rule text',
+  red.result?.privacy?.rulesActive === 1 && red.result?.privacy?.nodesRedacted > 0
+  && (red.result.privacy.hitsByRule || []).every((h) => /^#\d+$/.test(h.rule))
+  && !/buenos aires/i.test(JSON.stringify(red.result.privacy)),
+  JSON.stringify(red.result?.privacy))
+const probe = await ask({ type: 'SNAPDOM_ASSERT', spec: { exists: 'Buenos Aires', keepBaseline: true } })
+check('privacy: exists probe on hidden term fails loud (blocked, not "absent")',
+  probe.ready && probe.result.pass === false && probe.result.checks?.some((c) => c.actual === 'blocked by privacy rule'),
+  JSON.stringify(probe.result?.checks?.find((c) => c.type === 'exists')))
+const cleared = await ask({ type: 'SNAPDOM_OBSERVE', privacy: null })
+check('privacy: clearing rules restores plain digest (no report field)',
+  cleared.ready && cleared.result.privacy === undefined
+  && (cleared.result?.digest?.heads || []).some((h) => /buenos aires/i.test(h.text || '')),
+  `privacy: ${JSON.stringify(cleared.result?.privacy)} · heads restored`)
 
 await ctx.close()
 const failed = results.filter((r) => !r.pass)

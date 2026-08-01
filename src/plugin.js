@@ -40,38 +40,75 @@ function normalizePrivacyRules(privacy) {
   return redact
 }
 
-function redactText(value, rules) {
+/** Mutable tally the redaction pass fills. Rules are tracked by INDEX, never by
+ *  text: the report travels to the consumer (an LLM), and naming the rule would
+ *  leak the very string the caller asked to hide. The operator who wrote the rule
+ *  list maps indexes back to terms. */
+export function createPrivacyTally() {
+  return { rules: new Map(), fields: new Map(), nodes: new Set() }
+}
+
+function recordHit(tally, ruleIndex, field, id) {
+  if (!tally) return
+  tally.rules.set(ruleIndex, (tally.rules.get(ruleIndex) || 0) + 1)
+  tally.fields.set(field, (tally.fields.get(field) || 0) + 1)
+  if (id) tally.nodes.add(id)
+}
+
+/** Serializable summary of a tally — counts only, no redacted content, no rule text. */
+export function summarizePrivacyTally(tally, ruleCount) {
+  return {
+    rulesActive: ruleCount,
+    hitsByRule: [...tally.rules].sort((a, b) => a[0] - b[0]).map(([i, hits]) => ({ rule: `#${i}`, hits })),
+    fields: Object.fromEntries([...tally.fields].sort()),
+    nodesRedacted: tally.nodes.size,
+  }
+}
+
+/** One-string redactor for consumers that read the LIVE DOM (daemon `text` verb,
+ *  section headings, name upgrades): same rules, no tally. Returns the input
+ *  untouched when no rules are configured. */
+export function redactString(value, privacy) {
+  const rules = normalizePrivacyRules(privacy)
+  if (!rules.length) return value
+  return redactText(value, rules)
+}
+
+function redactText(value, rules, tally, field, id) {
   if (typeof value !== 'string' || !value.trim()) return value
   const lower = value.toLowerCase()
-  for (const rule of rules) {
-    if (lower.includes(rule)) return '[redacted]'
+  for (let i = 0; i < rules.length; i++) {
+    if (lower.includes(rules[i])) {
+      recordHit(tally, i, field, id)
+      return '[redacted]'
+    }
   }
   return value
 }
 
 /** Redact the readable fields of a node/ref/change entry ({name?, label?, coveredBy?}). */
-function redactRef(ref, rules) {
+function redactRef(ref, rules, tally) {
   const next = { ...ref }
-  if (next.name) next.name = redactText(next.name, rules)
-  if (next.label) next.label = redactText(next.label, rules)
-  if (next.coveredBy) next.coveredBy = redactRef(next.coveredBy, rules)
+  if (next.name) next.name = redactText(next.name, rules, tally, 'name', next.id)
+  if (next.label) next.label = redactText(next.label, rules, tally, 'label', next.id)
+  if (next.coveredBy) next.coveredBy = redactRef(next.coveredBy, rules, tally)
   return next
 }
 
-function redactState(state, rules) {
+function redactState(state, rules, tally, id) {
   const out = {}
-  for (const [k, v] of Object.entries(state)) out[k] = typeof v === 'string' ? redactText(v, rules) : v
+  for (const [k, v] of Object.entries(state)) out[k] = typeof v === 'string' ? redactText(v, rules, tally, 'state', id) : v
   return out
 }
 
-export function applyPrivacy(snapshot, privacy) {
+export function applyPrivacy(snapshot, privacy, tally) {
   const rules = normalizePrivacyRules(privacy)
   if (!snapshot || !rules.length) return snapshot
   const nodes = new Map()
   for (const [id, n] of snapshot.nodes) {
-    const next = redactRef(n, rules)
-    if (next.text) next.text = redactText(next.text, rules)
-    if (next.state) next.state = redactState(next.state, rules)
+    const next = redactRef(n, rules, tally)
+    if (next.text) next.text = redactText(next.text, rules, tally, 'text', id)
+    if (next.state) next.state = redactState(next.state, rules, tally, id)
     nodes.set(id, next)
   }
   return { ...snapshot, nodes }
@@ -79,19 +116,19 @@ export function applyPrivacy(snapshot, privacy) {
 
 /** The diff is the product's main output — it must honor the same rules as the views.
  *  Matching is untouched: it rides fingerprints/hashes, never the readable strings. */
-export function applyDiffPrivacy(diff, privacy) {
+export function applyDiffPrivacy(diff, privacy, tally) {
   const rules = normalizePrivacyRules(privacy)
   if (!diff || !rules.length) return diff
   const changes = diff.changes.map((c) => {
-    const next = redactRef(c, rules)
-    if (next.beforeName) next.beforeName = redactText(next.beforeName, rules)
-    if (next.before) next.before = redactState(next.before, rules)
-    if (next.after) next.after = redactState(next.after, rules)
+    const next = redactRef(c, rules, tally)
+    if (next.beforeName) next.beforeName = redactText(next.beforeName, rules, tally, 'name', next.id)
+    if (next.before) next.before = redactState(next.before, rules, tally, next.id)
+    if (next.after) next.after = redactState(next.after, rules, tally, next.id)
     return next
   })
   const delta = diff.actionabilityDelta && {
-    becameCovered: diff.actionabilityDelta.becameCovered.map((r) => redactRef(r, rules)),
-    becameVisible: diff.actionabilityDelta.becameVisible.map((r) => redactRef(r, rules)),
+    becameCovered: diff.actionabilityDelta.becameCovered.map((r) => redactRef(r, rules, tally)),
+    becameVisible: diff.actionabilityDelta.becameVisible.map((r) => redactRef(r, rules, tally)),
   }
   return { ...diff, changes, actionabilityDelta: delta }
 }
@@ -291,8 +328,10 @@ export const getLastSnapshot = () => LAST_SNAPSHOT
  */
 export function buildUi(observation, options = {}) {
   const { snapshot, diff } = observation
-  const viewSnapshot = applyPrivacy(snapshot, options.privacy)
-  const viewDiff = applyDiffPrivacy(diff, options.privacy)
+  const privacyRules = normalizePrivacyRules(options.privacy)
+  const tally = privacyRules.length ? createPrivacyTally() : null
+  const viewSnapshot = applyPrivacy(snapshot, options.privacy, tally)
+  const viewDiff = applyDiffPrivacy(diff, options.privacy, tally)
   const querySnapshot = snapshot
   const query = makeQueryApi(querySnapshot)
   LAST_SNAPSHOT = querySnapshot
@@ -326,6 +365,10 @@ export function buildUi(observation, options = {}) {
     changes: viewDiff ? viewDiff.changes : undefined,
     actionabilityDelta: viewDiff ? viewDiff.actionabilityDelta : undefined,
 
+    // Auditable redaction report (only when rules are active): counts by rule index
+    // and field, never the redacted content or the rule text itself.
+    privacy: tally ? summarizePrivacyTally(tally, privacyRules.length) : undefined,
+
     checkpoint: (opts) => makeCheckpoint(viewSnapshot, { excludeText: options.excludeText, ...(opts || {}) }),
 
     getByRole: query.getByRole,
@@ -334,6 +377,10 @@ export function buildUi(observation, options = {}) {
     getByTestId: query.getByTestId,
 
     __snapshot: querySnapshot,
+    // The privacy-filtered view. Consumers that render page strings themselves
+    // (the daemon digest, click echoes) MUST read names/text from here — __snapshot
+    // stays raw for element resolution and the query API.
+    __view: viewSnapshot,
   }
   return ui
 }

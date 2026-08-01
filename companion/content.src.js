@@ -14,7 +14,17 @@
  * The digest includes the DIFF against the previous observation of the same
  * document — the Claude extension stops paying screenshots to know what changed.
  */
-import { observeChunked, buildUi } from '../src/plugin.js'
+import { observeChunked, buildUi, redactString } from '../src/plugin.js'
+
+// Session privacy rules (F3). Set by any SNAPDOM_OBSERVE/SNAPDOM_ASSERT message
+// carrying `privacy: {redact:[...]}` (or `privacy: null` to clear); sticky for the
+// rest of the session. Every string the digest emits passes through the view or
+// `priv()`; the report travels by rule INDEX only — naming the rule would leak the
+// term it hides.
+let PRIVACY = null
+const priv = (s) => redactString(s, PRIVACY)
+const privacyOpts = () => (PRIVACY ? { privacy: PRIVACY } : {})
+const viewOf = (ui) => ui.__view || ui.__snapshot
 import { makeSlicer } from '../src/snapshot.js'
 import { inflateCheckpointChunked } from '../src/checkpoint.js'
 
@@ -97,11 +107,11 @@ function sectionOfRaw(el) {
         const isFlatList = hs.length > 3
         const h = hs[0]
         if (!isFlatList && h && h !== el && !h.contains(el) && !el.contains(h)) {
-          const t = (h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)
+          const t = priv((h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60))
           if (t && t !== ownText) return t
         }
         const al = cur.getAttribute('aria-label')
-        if (al && al.slice(0, 60) !== ownText) return al.slice(0, 60)
+        if (al && al.slice(0, 60) !== ownText) return priv(al.slice(0, 60))
       }
     }
     cur = cur.parentElement
@@ -124,7 +134,7 @@ async function digestOf(ui, topN, headsN) {
   for (const id of ui.__snapshot.order) {
     const p = pause()
     if (p) await p
-    const n = ui.__snapshot.nodes.get(id)
+    const n = viewOf(ui).nodes.get(id)
     if (!n) continue
     if (n.role === 'heading' && heads.length < headsN) {
       const el = ui.__snapshot.elements.get(id)
@@ -168,7 +178,7 @@ async function findMatches(ui, query) {
   const add = (id, role, name) => {
     if (!name || out.has(id) || !norm(name).includes(q)) return
     const el = ui.__snapshot.elements.get(id)
-    const n = ui.__snapshot.nodes.get(id)
+    const n = viewOf(ui).nodes.get(id)
     let href = null
     try {
       const raw = el && el.getAttribute && el.getAttribute('href')
@@ -178,7 +188,7 @@ async function findMatches(ui, query) {
     // snapshot name/text arrive pre-truncated (~80c) — take the LONGER of snapshot
     // vs live DOM text so the 300c contract holds (the h2 was 127c, arrived 80c)
     const fromSnap = ((n && (n.name || n.text)) || name || '').replace(/\s+/g, ' ').trim()
-    const fromDom = el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''
+    const fromDom = el ? priv((el.textContent || '').replace(/\s+/g, ' ').trim()) : ''
     const full = (fromDom.length > fromSnap.length ? fromDom : fromSnap).slice(0, 300)
     const v = vboxOf(n && n.bbox)
     out.set(id, {
@@ -196,7 +206,7 @@ async function findMatches(ui, query) {
     if (out.size >= 20) break
     const p = pause()
     if (p) await p
-    const n = ui.__snapshot.nodes.get(id)
+    const n = viewOf(ui).nodes.get(id)
     add(id, n.role, n.name || n.text)
   }
   return [...out.values()].slice(0, 20)
@@ -215,7 +225,7 @@ async function runObserve(opts = {}) {
   const obs = await observeChunked(document.body, baseline ? { previous: baseline } : {})
   const pause = makeSlicer(40)
   t = performance.now()
-  const ui = buildUi(obs, {})
+  const ui = buildUi(obs, privacyOpts())
   pacc('buildUi', t)
   let p = pause()
   if (p) await p
@@ -230,11 +240,11 @@ async function runObserve(opts = {}) {
   const labelOfChange = (c) => {
     let label = c.name && String(c.name).slice(0, 60)
     if (!label && c.id) {
-      const n = ui.__snapshot.nodes.get(c.id)
+      const n = viewOf(ui).nodes.get(c.id)
       if (n) label = ((n.name || n.text || '')).slice(0, 60) || undefined
       if (!label) {
         const el = ui.__snapshot.elements.get(c.id)
-        if (el) label = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) || undefined
+        if (el) label = priv((el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)) || undefined
       }
     }
     return label
@@ -272,7 +282,7 @@ async function runObserve(opts = {}) {
     // protocol (four consumer rounds bitten by stale bundles — result-in-message,
     // ignore, chunked walk all "missing" because the extension was never reloaded)
     // v7: navigated/baselineUrl signal for SPA soft navigations (panel field ask)
-    contract: 7,
+    contract: 8,
     // origin+pathname only: the Claude extension's sanitizer redacts URLs carrying
     // query strings ("[BLOCKED: Cookie/query string data]")
     url: location.origin + location.pathname,
@@ -288,6 +298,8 @@ async function runObserve(opts = {}) {
     // whose screenshots are scaled (dpr) compute scale = screenshotWidth / viewport.width.
     viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
     walkMs,
+    // v8: auditable redaction report — counts by rule index/field, never rule text
+    privacy: ui.privacy,
     // chunked walk: the tab stays responsive; torn counts DOM mutations that landed
     // WHILE the walk was parked — a non-zero torn means re-observe if it matters
     torn: obs.torn || 0,
@@ -447,7 +459,11 @@ async function runAssert(spec, obsId, profFlag) {
       })
       push(checks, 'becameCovered', spec.becameCovered, hit ? 'found' : 'absent', hit)
     }
-    if (spec.exists) {
+    if (spec.exists && PRIVACY && PRIVACY.redact && PRIVACY.redact.some((r) => { const lr = String(r).toLowerCase(); const lq = String(spec.exists).toLowerCase(); return lq.includes(lr) || lr.includes(lq) })) {
+      // a text predicate touching a redact rule would confirm the hidden term's
+      // presence (1-bit probe) — fail loud instead of answering
+      push(checks, 'exists', spec.exists, 'blocked by privacy rule', false)
+    } else if (spec.exists) {
       // accessible names AND page text (panel 3i: paragraph prose must be findable).
       // innerText arrives with line breaks — collapse whitespace on BOTH sides or a
       // query spanning a wrap point reads absent ("Switch branches/tags", github round)
@@ -492,7 +508,7 @@ async function runAssert(spec, obsId, profFlag) {
     lastObs = await observeChunked(document.body, baseline ? { previous: baseline } : {})
     pause.reset()
     let t = performance.now()
-    ui = buildUi(lastObs, {})
+    ui = buildUi(lastObs, privacyOpts())
     pacc('buildUi', t)
     const p = pause()
     if (p) await p
@@ -529,8 +545,9 @@ async function runAssert(spec, obsId, profFlag) {
     pacc('evidence', t)
   }
   return {
-    type: 'assert', contract: 7, obsId, ts: Date.now(),
+    type: 'assert', contract: 8, obsId, ts: Date.now(),
     walkMs: Math.round(performance.now() - t0), attempts,
+    privacy: ui ? ui.privacy : undefined,
     torn: (lastObs && lastObs.torn) || 0,
     hasBaseline,
     baselineUrl: baseUrl || undefined,
@@ -549,6 +566,7 @@ async function runAssert(spec, obsId, profFlag) {
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SNAPDOM_ASSERT') {
     const obsId = e.data.obsId ?? null
+    if ('privacy' in e.data) PRIVACY = e.data.privacy && Array.isArray(e.data.privacy.redact) && e.data.privacy.redact.length ? { redact: e.data.privacy.redact.map(String) } : null
     ;(async () => {
       let out
       try { out = await runAssert(e.data.spec || {}, obsId, e.data.prof) } catch (err) {
@@ -574,6 +592,8 @@ window.addEventListener('message', (e) => {
   }
   if (e.data && e.data.type === 'SNAPDOM_OBSERVE') {
     const obsId = e.data.obsId ?? e.data.token ?? null // token kept for old snippets
+    // session privacy rules ride on any message; sticky until replaced or cleared
+    if ('privacy' in e.data) PRIVACY = e.data.privacy && Array.isArray(e.data.privacy.redact) && e.data.privacy.redact.length ? { redact: e.data.privacy.redact.map(String) } : null
     ;(async () => {
       let out
       try { out = await runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, prof: e.data.prof, obsId }) } catch (err) {

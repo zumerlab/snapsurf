@@ -116,9 +116,12 @@ async function ensureDaemon() {
 const TOOLS = [
   {
     name: 'browser_open',
-    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation.',
-    inputSchema: { type: 'object', properties: { url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' } }, required: ['url'] },
-    run: async ({ url }) => cmd('open', [url]),
+    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an auditable `privacy` report (hit counts by rule INDEX — rule text never travels). Input values are never exposed regardless (masked+hashed by design).',
+    inputSchema: { type: 'object', properties: { url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
+    run: async ({ url, redact }) => {
+      if (Array.isArray(redact)) await cmd('redact', [redact.length ? redact.join(',') : 'off'])
+      return cmd('open', [url])
+    },
   },
   {
     name: 'browser_find',

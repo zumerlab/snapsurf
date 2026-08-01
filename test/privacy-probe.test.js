@@ -69,4 +69,47 @@ describe('privacy probe', () => {
     const ui = await inspect(root, { privacy: PRIVACY })
     expect(ui.context).toContain('Order ref')
   })
+
+  // ── F3: auditable redaction report ─────────────────────────────────────────────
+
+  it('report: counts hits by rule index and field, never exposing rule text or content', async () => {
+    const root = mount('<button>Delete account</button><p>Reach us: email us anytime</p><button>Save</button>')
+    const ui = await inspect(root, { privacy: PRIVACY })
+    expect(ui.privacy).toBeDefined()
+    expect(ui.privacy.rulesActive).toBe(2)
+    expect(ui.privacy.nodesRedacted).toBeGreaterThan(0)
+    // rule identifiers are indexes, and neither rule text nor redacted content leaks
+    const wire = JSON.stringify(ui.privacy)
+    for (const { rule } of ui.privacy.hitsByRule) expect(rule).toMatch(/^#\d+$/)
+    expect(wire.toLowerCase()).not.toContain('delete account')
+    expect(wire.toLowerCase()).not.toContain('email')
+    // both rules matched something on this page
+    const indexes = ui.privacy.hitsByRule.map((h) => h.rule)
+    expect(indexes).toContain('#0')
+    expect(indexes).toContain('#1')
+  })
+
+  it('report: absent when no rules are configured, and empty-hit when rules match nothing', async () => {
+    const root = mount('<button>Save</button>')
+    const none = await inspect(root)
+    expect(none.privacy).toBeUndefined()
+    const miss = await inspect(root, { privacy: { redact: ['nothing-here-xyz'] } })
+    expect(miss.privacy).toBeDefined()
+    expect(miss.privacy.rulesActive).toBe(1)
+    expect(miss.privacy.hitsByRule).toEqual([])
+    expect(miss.privacy.nodesRedacted).toBe(0)
+  })
+
+  it('report: diff redactions are tallied too', async () => {
+    const root = mount('<button>Save</button>')
+    const before = await inspect(root, { privacy: PRIVACY })
+    const previous = before.checkpoint()
+    const btn = document.createElement('button')
+    btn.textContent = 'Delete account'
+    root.appendChild(btn)
+    const after = await inspect(root, { previous, privacy: PRIVACY })
+    expect(after.changed).toBe(true)
+    expect(after.privacy.hitsByRule.some((h) => h.rule === '#0' && h.hits > 0)).toBe(true)
+    expect(Object.keys(after.privacy.fields)).toContain('name')
+  })
 })
