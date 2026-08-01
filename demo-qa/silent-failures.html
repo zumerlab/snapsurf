@@ -160,6 +160,20 @@ document.getElementById('f8').addEventListener('click', () => {
 })
 
 // ── Juez: lee el ESTADO REAL, sin pasar por ningún canal de percepción ──────────────
+window.__intent = () => ({
+  // ¿se cumplió EXACTAMENTE el efecto pretendido? Es la pregunta de QA, distinta de
+  // "¿mutó algo el DOM?" — F7 muta (inserta 2) y F8 muta (cambia la URL), y aun así
+  // ninguno cumple lo que el agente pretendía.
+  f1: false,
+  f2: [...document.querySelectorAll('#f2-list li')].some(li => /@/.test(li.textContent)),
+  f3: /: 1 items/.test(document.getElementById('f3-out').textContent),
+  f4: /guardados: 1/.test(document.getElementById('f4-out').textContent),
+  f5: [...document.querySelectorAll('#f5-list li')].some(li => /fila agregada/.test(li.textContent)),
+  f6: !document.getElementById('f6-target').disabled,
+  f7: document.querySelectorAll('#f7-list li').length === 1,
+  f8: /\/detalle\//.test(location.pathname) && !/cargando/.test(document.getElementById('f8-content').textContent),
+})
+
 window.__truth = () => ({
   f1: { happened: false, why: 'handler vacío' },
   f2: { happened: document.querySelectorAll('#f2-list li').length > 0, why: 'validación rechaza sin email válido y limpia el input' },
