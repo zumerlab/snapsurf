@@ -421,6 +421,12 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
           const u = new URL(raw, location.href)
           // see the find path: mailto:/tel: have origin "null" and everything in the href
           href = (u.origin === 'null' ? String(raw) : u.pathname + u.search).slice(0, 48)
+          // A redact policy covers the href too. It used to cover only names/labels/text,
+          // so `redact:["security"]` returned `/about/[redacted]` as the URL while
+          // `href:"/security"` rode along in the same payload — self-contradictory, and
+          // worse than no policy because the attestation invites trust. Secrets live in
+          // path segments and query values routinely (/users/jdoe, ?email=…).
+          href = window.__agentRedact(href)
         }
       } catch { /* noop */ }
       // An EMPTY form field's accessible name is its placeholder — a PROMPT, not data.
@@ -478,8 +484,20 @@ const inFind = (query) => {
   const add = (id, r, n, b) => {
     if (!n || cands.has(id)) return
     let name = String(n)
-    if (!norm(name).includes(q)) return
     const el = ui.__snapshot.elements.get(id)
+    // The search window and the display window must be the SAME window. Snapshot names
+    // are capped at ~80 chars while the returned text runs to 160, so matching on the
+    // name alone created a band the tool showed you and would never match — reported as
+    // a bare `[]`, indistinguishable from "the page does not contain this".
+    // The cheap name test still runs first; only when it fails AND the name is at the
+    // cap (so there is more text behind it) do we pay for the DOM read.
+    if (!norm(name).includes(q)) {
+      if (name.length < 78 || !el) return
+      let deep = ''
+      try { deep = window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()) } catch { return }
+      if (!norm(deep).includes(q)) return
+      name = deep
+    }
     // snapshot name/text arrive pre-truncated (~80c) — take the live DOM text when
     // longer, so long headlines survive whole (companion round 6 lesson)
     if (el) {
@@ -523,6 +541,9 @@ const inFind = (query) => {
           // about the external Homepage link (npm → preactjs.com)
           : ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search).slice(0, 140)
       } catch { shortHref = String(href).slice(0, 140) }
+      // same policy as the digest: an href is not exempt. mailto:/tel: pass through
+      // intact ONLY when no rule matches them — documented passthrough is not a bypass.
+      shortHref = window.__agentRedact(shortHref)
     }
     // `n` stays for compatibility; `text` is the same string under a name that says what
     // it is. A field called `name` reads as an accessible-name label, so callers went
@@ -765,13 +786,37 @@ const HANDLERS = {
     const navMs = Date.now() - tNav
     const s = await settle(S, 3500, 500)
     let challenge = await detectChallenge(S, resp)
+    let challengeCleared
     if (challenge && waitChallengeMs) {
+      // A waiting flag must never be able to DELETE the signal it exists to serve. The
+      // first version re-detected with the response dropped, which threw away the
+      // `cf-mitigated` header — often the only evidence — so passing the flag returned an
+      // unflagged, empty-looking digest. A caller who took the extra precaution ended up
+      // less informed than one who did not, and more likely to trust the result.
+      //
+      // So the wait may only downgrade to "cleared" if the document ACTUALLY changed.
+      // Same page after waiting ⇒ the block stands, with its original evidence intact.
+      const fingerprint = () => inPage(S, () => [
+        document.title || '',
+        document.body ? (document.body.innerText || '').length : 0,
+        location.href,
+      ].join('|')).catch(() => null)
+      const before = await fingerprint()
       const until = Date.now() + waitChallengeMs
-      while (challenge && Date.now() < until) {
+      let after = before
+      while (Date.now() < until) {
         await S.page.waitForTimeout(1000)
-        challenge = await detectChallenge(S, resp)
-        // the interstitial usually reloads itself; re-read the settled document
-        if (challenge) { try { resp = null } catch { /* keep */ } }
+        after = await fingerprint()
+        if (after !== before) break
+      }
+      if (after === before) {
+        challengeCleared = false          // nothing moved: keep the finding as it was
+      } else {
+        // the page changed — re-judge from the NEW document (the first response's
+        // headers describe the interstitial, not what replaced it)
+        const again = await detectChallenge(S, null)
+        challengeCleared = !again
+        challenge = again ? { ...again, waited: true } : null
       }
     }
     const tWalk = Date.now()
@@ -780,7 +825,7 @@ const HANDLERS = {
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
-    S.meta = { mapTotal: o.mapTotal, ...(challenge ? { blocked: true, challenge } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    S.meta = { mapTotal: o.mapTotal, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
