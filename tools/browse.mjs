@@ -194,6 +194,18 @@ const redactLiteral = (t) => {
   return out
 }
 
+
+// A redact rule is matched as a LITERAL, case-insensitive substring — never as a regex.
+// An operator who writes `Smith.*` expecting a pattern gets a rule that matches nothing,
+// an attestation saying the policy is applied, and the term still in the payload: a leak
+// wearing a green badge. It cannot be reported per observation (saying "this rule matched
+// nothing" would disclose whether the term is on the page), so it is reported when the
+// rule is SET, where it discloses nothing at all.
+const REGEXY = /(\.\*|\.\+|\\[dwsDWS]|\[[^\]]*\]|\([^)]*\)|\|)/
+const ruleWarnings = (rules) => (rules || [])
+  .map((r, i) => (REGEXY.test(r) ? `rule #${i} contains regex syntax; rules are matched as LITERAL text, so it will only match if that exact string appears on the page` : null))
+  .filter(Boolean)
+
 const MUTATING = new Set(['click', 'type', 'enter'])
 
 const browser = await chromium.launch({ headless: !ARGS.includes('--headed') })
@@ -215,6 +227,7 @@ const syncPrivacy = async () => {
   }
 }
 let POLICY_REV = REDACT ? 1 : 0
+let redactWarnings = []
 if (REDACT) await syncPrivacy()
 // Every allowlist block is AUDITABLE (codex v5: "the policy seems effective but a
 // client can't demonstrate what was blocked"): first block per origin gets a JSONL
@@ -809,6 +822,7 @@ const HANDLERS = {
       REDACT = clean.length ? clean : null
       POLICY_REV++
       await syncPrivacy()
+      redactWarnings = ruleWarnings(REDACT)
       args = args.filter((_, i) => i !== rjIdx && i !== rjIdx + 1)
     }
     const compact = args.includes('--compact')
@@ -889,7 +903,7 @@ const HANDLERS = {
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
-    S.meta = { mapTotal: o.mapTotal, ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    S.meta = { mapTotal: o.mapTotal, ...(redactWarnings.length ? { ruleWarnings: redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
@@ -1026,9 +1040,10 @@ const HANDLERS = {
     REDACT = arg === 'off' ? null : arg.split(',').map((s) => s.trim()).filter(Boolean)
     POLICY_REV++
     await syncPrivacy()
-    S.meta = { privacyRules: REDACT ? REDACT.length : 0 }
+    redactWarnings = ruleWarnings(REDACT)
+    S.meta = { privacyRules: REDACT ? REDACT.length : 0, ...(redactWarnings.length ? { ruleWarnings: redactWarnings } : {}) }
     return REDACT
-      ? `privacy: ${REDACT.length} rule(s) set — applied to the current page and every observation from now on (report travels with each observation)`
+      ? `privacy: ${REDACT.length} rule(s) set — applied to the current page and every observation from now on (report travels with each observation)${redactWarnings.map((w) => `\n⚠ ${w}`).join('')}`
       : 'privacy: rules cleared'
   },
   async shot([file], S) {

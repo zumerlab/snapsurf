@@ -23,10 +23,11 @@
     "test:bundles": "node companion/build.mjs && cd ../.. && git diff --exit-code -- packages/agent/companion/content.bundle.js",
     "test:regression": "npm run test && npm run test:lint && npm run test:bundles && node experiment/bench-qa.mjs && node experiment/parity.mjs && node experiment/abis-verbs.mjs && npm run test:contract && npm run test:doc-contract && node demo-qa/run-demo.mjs",
     "test:global": "node experiment/abis-verbs.mjs --daemon $HOME/.claude/snapdom-agent/browse.mjs",
-    "test:gates": "npm run test:regression && npm run test:global && node companion/gate.mjs",
+    "test:gates": "npm run test:regression && npm run test:adversarial && npm run test:global && node companion/gate.mjs",
     "prepack": "node -e \"throw new Error('@zumer/snapdom-agent is PRIVATE and must never be packed or published. See LICENSE.')\"",
     "prepublishOnly": "node -e \"throw new Error('@zumer/snapdom-agent is PRIVATE and must never be published. See LICENSE.')\"",
     "test:contract": "node experiment/contract-gates.mjs",
-    "test:doc-contract": "node experiment/doc-contract.mjs"
+    "test:doc-contract": "node experiment/doc-contract.mjs",
+    "test:adversarial": "node experiment/adversarial-round.mjs"
   }
 }
