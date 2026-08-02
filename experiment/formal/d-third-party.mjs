@@ -1,21 +1,21 @@
 /**
- * d-third-party.mjs — TESTPLAN Fase D: benchmark de TERCEROS.
+ * d-third-party.mjs — TESTPLAN phase D: somebody else's benchmark.
  *
- * Nuestro benchmark formal da 119/120 con tareas que escribimos nosotros — y ese 100%
- * sugiere que son fáciles, no que el canal sea superior (los benchmarks públicos miden
- * ~30% de éxito real). Esta fase corre tareas que NO escribimos, juzgadas con criterios
- * que NO escribimos.
+ * Our formal benchmark gives 119/120 with tasks we wrote ourselves, and that 100%
+ * suggests they are easy rather than that the channel is better (public benchmarks
+ * measure about 30% real success). This phase runs tasks we did NOT write, judged by
+ * criteria we did NOT write.
  *
- * Fuente: `iMeanAI/Mind2Web-Live` (WebCanvas) — tareas sobre sitios VIVOS con "key
- * nodes" anotados. Se usa el subconjunto cuyos key nodes son 100% evaluables por URL
- * (`url_included_match` / `url_exactly_match`): 23 de las primeras 40 tareas. Los
- * matchers de element-path quedan fuera a propósito — evaluarlos requeriría replicar
- * su harness de DOM, y prefiero un subconjunto chico y objetivo a uno grande y opinable.
+ * Source: `iMeanAI/Mind2Web-Live` (WebCanvas) — tasks on LIVE sites with annotated "key
+ * nodes". We use the subset whose key nodes are fully judgeable by URL
+ * (`url_included_match` / `url_exactly_match`): 23 of the first 40 tasks. The
+ * element-path matchers are left out on purpose — judging them would mean replicating
+ * their DOM harness, and a small objective subset beats a large arguable one.
  *
  *   node packages/agent/experiment/formal/d-third-party.mjs --arm oracle|pixels [--tasks N]
  *
- * Métrica: key nodes completados / key nodes totales, por brazo. Es la métrica de
- * WebCanvas, no una nuestra.
+ * Metric: key nodes completed / total key nodes, per arm. It is WebCanvas's metric,
+ * not ours.
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -43,9 +43,9 @@ const all = raw.rows.map((r) => r.row).map((r) => ({
 const TASKS = all.filter((t) => t.evaluation.every((e) => e.match_function_name.startsWith('url')))
   .filter((t) => t.evaluation.every((e) => e.match_function_name !== 'url_semantic_match'))
   .slice(0, NTASKS)
-console.log(`${TASKS.length} tareas de terceros (key nodes 100% evaluables por URL)\n`)
+console.log(`${TASKS.length} third-party tasks (key nodes fully judgeable by URL)\n`)
 
-// ── El agente: mismos dos canales que la Fase B ──────────────────────────────────────
+// ── The agent: the same two channels as phase B ─────────────────────────────────────
 const TOOLS = [
   { name: 'navigate', description: 'Navigate the browser to a URL.', input_schema: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] } },
   { name: 'take_screenshot', description: 'Take a screenshot of the current browser viewport and return it as an image.', input_schema: { type: 'object', properties: {}, required: [] } },
@@ -90,7 +90,7 @@ async function runTool(name, input) {
   }
 }
 
-// ── El juez es de ELLOS: sus key nodes, sus match functions ──────────────────────────
+// ── The judge is THEIRS: their key nodes, their match functions ─────────────────────
 const scoreKeyNodes = (evaluation, urls) => evaluation.map((node) => {
   const ref = (node.content.url || node.content.reference_answer || '').toLowerCase()
   const hit = node.match_function_name === 'url_exactly_match'
@@ -115,10 +115,10 @@ for (const task of TASKS) {
   const t0 = Date.now()
   while (turns < 25) {
     turns++
-    // Reintento con backoff ante 429/5xx, y el error REGISTRADO — no silenciado.
-    // Mi primera versión hacía `catch { break }` y produjo 5 episodios de 0 pasos que
-    // parecían "0 key nodes" legítimos: exactamente el fallo mudo que este proyecto
-    // persigue en las páginas, cometido en el harness.
+    // Retry with back-off on 429/5xx, and the error RECORDED, not swallowed.
+    // My first version did `catch { break }` and produced 5 runs of 0 steps that read as
+    // legitimate "0 key nodes": exactly the silent failure this project hunts in pages,
+    // committed in the harness itself.
     let resp = null, lastErr = null
     for (let attempt = 0; attempt < 5 && !resp; attempt++) {
       try {
@@ -160,6 +160,6 @@ const totD = results.reduce((s, r) => s + r.completed, 0)
 const full = results.filter((r) => r.completed === r.keyNodes).length
 console.log(`\n── ${ARM} ──`)
 console.log(`key nodes completados: ${totD}/${totN} (${(100 * totD / totN).toFixed(0)}%)`)
-console.log(`tareas con TODOS los key nodes: ${full}/${results.length}`)
+console.log(`tasks with ALL their key nodes: ${full}/${results.length}`)
 console.log(`costo: $${(results.reduce((s, r) => s + r.tokensIn, 0) / 1e6 * 5 + results.reduce((s, r) => s + r.tokensOut, 0) / 1e6 * 25).toFixed(2)}`)
 console.log(`→ results/d-third-party-${ARM}.json`)

@@ -372,6 +372,28 @@ a thin translation of the first. And the corpus is the one the tool was develope
 against, so this shows the entry points are consistent, not that they are correct on
 pages nobody has seen.
 
+### 5.13 Pointing at the right place
+
+A separate experiment asked a narrower question on real pages: *give me the (x, y) you
+would click for this goal.* A hit is the point landing inside the intended element. Three
+regions, 6 goals, 2 repetitions, 12 answers per channel (`REGION.md`).
+
+| Channel | Evidence | Hits | Confidently wrong |
+|---|---|---:|---:|
+| Full-resolution image | 17–406 KB | 8/12 | 4 |
+| Image at quarter scale | 3–53 KB | 1/12 | 8 |
+| **The list of clickable things** | **0.6–10.6 KB** | **12/12** | 2 |
+| Quarter-scale image plus the list | 3.6–63 KB | 12/12 | 2 |
+
+Two things worth keeping from it. Shrinking the image to save tokens destroys the task —
+67% down to 8% — and it fails *confidently*, which is the failure an agent acts on. And
+the list is the only channel that gives exact coordinates instead of an estimate.
+
+**The uncomfortable number in that experiment**: the list cost 2,095 tokens against 781
+for the full image. Images are charged by area, so a large screenshot can be cheaper in
+tokens than the JSON describing it, even while being 25–38× larger in bytes. The honest
+claim there is precision, not cost.
+
 ## 6. When the model using it makes a mistake
 
 Models misuse tools. They write a broken specification, reuse an identifier from an old
@@ -469,5 +491,6 @@ and a real run of `experiment/webvoyager/run.mjs`.
 - `docs/adr/` — decisions, including the ones later proved wrong.
 - `docs/PRIVACY.md` — exactly what text leaves the page.
 - `docs/LANDSCAPE.md` — the surrounding field, including where this project is behind.
-- `FIELD.md`, `EXPERIMENT.md` — full notes from the field passes and the experiments.
+- `FIELD.md`, `EXPERIMENT.md`, `REGION.md` — full notes from the field passes and the
+  experiments.
 - `TESTPLAN.md` — what is tested, what is not, and what result would prove us wrong.

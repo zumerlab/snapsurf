@@ -125,10 +125,10 @@ try {
 // --readonly: the observer verbs stay; the mutating ones (click/type/enter) are refused
 // and the refusal is logged. --allow d1,d2: navigation AND every subresource request
 // outside the allowlist is aborted (subdomains implied — es.wikipedia.org ∈ wikipedia.org).
-// Un typo en una bandera de política arrancaba el daemon COMPLETAMENTE PERMISIVO sin
-// avisar: `serve --readonl` daba policy:(unrestricted) y ejecutaba clicks destructivos.
-// Es exactamente el fallo mudo que el contrato de assert prohíbe, cometido en el
-// arranque. Ahora una bandera desconocida es un error duro, no un silencio.
+// A typo in a policy flag used to start the daemon COMPLETELY UNRESTRICTED without a
+// word: `serve --readonl` gave policy:(unrestricted) and ran destructive clicks. That is
+// exactly the silent failure the assert contract forbids, committed at startup. An
+// unknown flag is now a hard error instead of a silence.
 const KNOWN_FLAGS = new Set(['--headed', '--readonly', '--allow', '--redact'])
 const TAKES_VALUE = new Set(['--allow', '--redact'])
 for (let i = 0; i < ARGS.length; i++) {
@@ -164,9 +164,9 @@ const hostAllowed = (u) => {
   } catch { return false }
 }
 // Sanitizador de URL — se aplica a toda superficie (salida, meta, JSONL, checkpoints).
-// Codex (ronda F3): un documento `data:` lleva su contenido DENTRO de la URL, así que
-// redactar el DOM no alcanzaba: el término salía literal por `open`, `look`, el eco del
-// click, el checkpoint y el log. Los esquemas no jerárquicos nunca serializan su carga.
+// F3 round: a `data:` document carries its content INSIDE the URL, so redacting the DOM
+// was not enough — the term escaped literally through `open`, `look`, the click echo, the
+// checkpoint and the log. Non-hierarchical schemes never serialize their payload.
 const OPAQUE_SCHEME = /^(data|javascript|blob|filesystem):/i
 const safeUrl = (u) => {
   if (!u) return u
@@ -177,7 +177,7 @@ const safeUrl = (u) => {
     const x = new URL(u)
     out = (x.protocol === 'file:' ? 'file://' : x.origin) + x.pathname + (x.search ? `?«${x.search.length - 1} chars»` : '')
   } catch { out = String(u) }
-  // una URL jerárquica también puede contener un término redactado en su path
+  // a hierarchical URL can also carry a redacted term in its path
   return REDACT && REDACT.length ? redactLiteral(out) : out
 }
 const redactLiteral = (t) => {
@@ -571,10 +571,9 @@ const CHECKPOINTS = new Map()
 const HANDLERS = {
   async open(args) {
     // Forma atómica `open <url> --redact-json '["a","b"]'`: la política y la navegación
-    // ocurren en la MISMA operación bajo el mutex del daemon, así que dos consumidores
-    // concurrentes no pueden observar bajo las reglas del otro. Las reglas llegan como
-    // JSON, no unidas por comas, para que una regla pueda contener una coma.
-    // Ambos son hallazgos de la ronda adversarial F3 de Codex.
+    // happen in the SAME operation under the daemon's lock, so two concurrent callers
+    // cannot read under each other's rules. Rules arrive as JSON rather than joined by
+    // commas, so a rule can itself contain a comma. Both are F3 round findings.
     const rjIdx = args.indexOf('--redact-json')
     if (rjIdx > -1) {
       let rules = null
@@ -767,8 +766,8 @@ const HANDLERS = {
       const entry = { name, session: SESSION, epoch, url: safeUrl(page.url()), rawUrl: page.url(), ts: new Date().toISOString(), cp }
       CHECKPOINTS.set(name, entry)
       const file = join(LOGDIR, `${SESSION}-cp-${name}.json`)
-      // `rawUrl` solo vive en memoria para comparar documentos: al archivo va la URL
-      // saneada, o un `data:` con carga sensible quedaría persistido en disco.
+      // `rawUrl` lives in memory only, to compare documents. The file gets the sanitized
+      // URL, or a `data:` document with a sensitive payload would be persisted to disk.
       await writeFile(file, JSON.stringify({ ...entry, rawUrl: undefined }))
       meta = { checkpoint: name, file }
       return `checkpoint "${name}" saved (obs #${epoch} · ${entry.url}) → ${file}`
@@ -1106,9 +1105,9 @@ async function handle(res, body) {
       // localized prose — codex-mcp asked for changed/url/epoch/matches as FIELDS.
       res.statusCode = ok ? 200 : 500
       res.setHeader('content-type', 'application/json')
-      // `__audit` lleva los conteos de redacción y es SOLO para el JSONL de operador:
-      // se elimina en el borde. Codex demostró que publicarlos al consumidor convierte
-      // el reporte en un oráculo de presencia y frecuencia de la página.
+      // `__audit` carries the redaction counts and is for the operator's JSONL ONLY; it
+      // is stripped at the edge. Publishing those counts to the caller turns the report
+      // into a presence-and-frequency oracle for the page.
       const { __audit: _drop, ...consumerMeta } = meta || {}
       res.end(JSON.stringify({ v: 1, ok: ok && !(meta && meta.denied), text: outText, error, epoch, url: safeUrl(urlAfter), meta: consumerMeta }))
     } else if (ok) {
@@ -1135,8 +1134,8 @@ async function handle(res, body) {
         // records THAT rules changed and how many, never the terms
         : cmd === 'redact' ? [args[0] === 'off' ? 'off' : '«rules»']
           : cmd === 'open' ? [safeUrl(args[0])]
-            // defensa en profundidad: los logs se comparten, así que un término
-            // redactado tampoco viaja ahí aunque venga de la consulta del operador
+            // defence in depth: logs get shared, so a redacted term does not travel
+            // there either, even when it came from the operator's own query
             : (REDACT && REDACT.length ? args.map((a) => redactLiteral(String(a))) : args),
       epoch, urlBefore: trimUrl(urlBefore), urlAfter: trimUrl((() => { try { return page.url() } catch { return null } })()),
       durationMs: Date.now() - t0,

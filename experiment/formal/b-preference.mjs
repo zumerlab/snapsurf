@@ -1,20 +1,20 @@
 /**
- * b-preference.mjs — TESTPLAN Fase B: preferencia REVELADA del modelo.
+ * b-preference.mjs — TESTPLAN phase B: what the model REVEALS it prefers.
  *
- * La pregunta del user: ¿al propio LLM le resulta preferible usar el oráculo antes
- * que sus herramientas habituales? Y sobre todo: ¿EN QUÉ TIPO DE TAREA?
+ * The question: does the model itself prefer this tool over its usual ones? And above
+ * all: FOR WHAT KIND OF TASK?
  *
- * El sesgo a evitar: la skill `agent-browse` le DICE a Claude que use el oráculo.
- * Medir con eso puesto mide obediencia, no preferencia. Acá no hay skill, no hay
- * instrucción de preferencia y los dos canales se describen con el mismo registro.
+ * The bias to avoid: the `agent-browse` skill TELLS Claude to use this tool. Measuring
+ * with it on measures obedience, not preference. Here there is no skill, no instruction
+ * to prefer either, and both channels are described in the same register.
  *
- * Los dos canales operan el MISMO browser real (nuestro daemon), así que la elección
- * es genuina: cualquiera de los dos resuelve la tarea.
+ * Both channels drive the SAME real browser (our daemon), so the choice is genuine:
+ * either one can solve the task.
  *
- *   node packages/agent/experiment/formal/b-preference.mjs [--tasks N] [--arm free|pixels|oracle]
+ *   node packages/agent/experiment/formal/b-preference.mjs --arm free|pixels|oracle
  *
- * Mide: elección por PASO (no por tarea), tokens acumulados por turno (punto de
- * cruce), acciones, tiempo y éxito juzgado.
+ * Measures: choice per STEP (not per task), accumulated tokens per turn (the crossover
+ * point), success, and wall time.
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -35,8 +35,11 @@ const ARM = (argv[argv.indexOf('--arm') + 1] || 'free')
 const NTASKS = Number(argv[argv.indexOf('--tasks') + 1]) || 99
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-// ── Misiones LARGAS: el benchmark formal usa tareas de 2-8 acciones donde todos los
-// brazos llegan (119/120). Acá hacen falta misiones donde el canal pueda importar.
+// ── LONG missions: the formal benchmark uses 2-8 action tasks where every arm arrives
+// (119/120). This needs missions where the channel can actually matter.
+// NOTE: the task prompts below are deliberately left in Spanish. They are the stimulus
+// the recorded results were measured with — translating them would change the
+// experiment and make `results/b-preference.md` unreproducible.
 const TASKS = [
   { id: 'm1', kind: 'extracción acumulada',
     prompt: 'En https://news.ycombinator.com, armá una tabla con las 5 historias más comentadas de la portada: título y cantidad de comentarios. Devolvé la tabla en texto.' },
@@ -48,12 +51,12 @@ const TASKS = [
     prompt: 'En http://127.0.0.1:8399/app.html hacé click en el botón "Actualizar datos" y después decime si la aplicación cambió de estado o no. La página tiene un reloj y animaciones que se mueven solas: eso NO cuenta como cambio de estado.' },
   { id: 'm5', kind: 'SPA + hidratación',
     prompt: 'En http://127.0.0.1:8399/app.html hacé click en "Ver detalle" y decime si la navegación se completó de verdad (URL y contenido), o si quedó a medias.' },
-  { id: 'm6', kind: 'recuperación de acción bloqueada',
+  { id: 'm6', kind: 'recovering from a blocked action',
     prompt: 'En http://127.0.0.1:8399/app.html intentá comprar: hacé click en "Comprar ahora" y después confirmá si el carrito realmente subió a 1 item. Si no funcionó, explicá por qué.' },
 ]
 
-// ── Los dos canales, descritos con el MISMO registro ─────────────────────────────────
-// Nada de "recomendado", "preferí", "más barato": eso sería sembrar la respuesta.
+// ── The two channels, described in the SAME register ────────────────────────────────
+// No "recommended", "prefer", "cheaper": that would plant the answer.
 const TOOLS = [
   { name: 'take_screenshot',
     description: 'Take a screenshot of the current browser viewport and return it as an image.',
@@ -94,7 +97,7 @@ const ORACLE_TOOLS = new Set(['observe_page', 'find_element', 'click_element', '
 const toolsFor = (arm) => TOOLS.filter((t) =>
   arm === 'pixels' ? !ORACLE_TOOLS.has(t.name) : arm === 'oracle' ? !PIXEL_TOOLS.has(t.name) : true)
 
-// ── El daemon: los dos canales sobre el MISMO browser ────────────────────────────────
+// ── The daemon: both channels over the SAME browser ─────────────────────────────────
 const cmd = (c, args = []) => fetch('http://127.0.0.1:8377/cmd', {
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true }),
@@ -179,7 +182,7 @@ async function episode(task, arm) {
 }
 
 // ── Run ──────────────────────────────────────────────────────────────────────────────
-// app local con las fallas silenciosas (m2/m4/m5/m6 la usan)
+// the local app with the planted silent failures (m2/m4/m5/m6 use it)
 const { createServer } = await import('node:http')
 const APP = await readFile(join(AGENT, 'demo-qa/silent-failures.html'), 'utf8')
 const srv = createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end(APP) })
@@ -194,7 +197,7 @@ for (const task of TASKS.slice(0, NTASKS)) {
   const r = await episode(task, ARM)
   const px = r.steps.filter((s) => s.channel === 'pixels').length
   const or = r.steps.filter((s) => s.channel === 'oracle').length
-  console.log(`${r.steps.length} pasos · píxeles ${px} / oráculo ${or} · ${(r.tokensIn / 1000).toFixed(0)}k in · ${(r.wallMs / 1000).toFixed(0)}s`)
+  console.log(`${r.steps.length} steps · pixels ${px} / tool ${or} · ${(r.tokensIn / 1000).toFixed(0)}k in · ${(r.wallMs / 1000).toFixed(0)}s`)
   results.push(r)
   await writeFile(join(OUT, `b-preference-${ARM}.json`), JSON.stringify(results, null, 2) + '\n')
 }
@@ -207,9 +210,9 @@ srv.close()
 const allSteps = results.flatMap((r) => r.steps).filter((s) => s.tool)
 const px = allSteps.filter((s) => s.channel === 'pixels').length
 const or = allSteps.filter((s) => s.channel === 'oracle').length
-console.log(`\n── Elección por PASO (arm=${ARM}) ──`)
-console.log(`píxeles: ${px} · oráculo: ${or} · neutrales: ${allSteps.length - px - or} (total ${allSteps.length})`)
-console.log('\n| tarea | tipo | pasos | píxeles | oráculo | tokens in | seg |')
+console.log(`\n── Choice per STEP (arm=${ARM}) ──`)
+console.log(`pixels: ${px} · tool: ${or} · neutral: ${allSteps.length - px - or} (total ${allSteps.length})`)
+console.log('\n| task | kind | steps | pixels | tool | tokens in | s |')
 console.log('|---|---|---:|---:|---:|---:|---:|')
 for (const r of results) {
   const p = r.steps.filter((s) => s.channel === 'pixels').length
@@ -218,7 +221,7 @@ for (const r of results) {
 }
 const costIn = results.reduce((s, r) => s + r.tokensIn, 0) / 1e6 * 5
 const costOut = results.reduce((s, r) => s + r.tokensOut, 0) / 1e6 * 25
-console.log(`\ncosto estimado de esta corrida: $${(costIn + costOut).toFixed(2)} (${MODEL})`)
+console.log(`\nestimated cost of this run: $${(costIn + costOut).toFixed(2)} (${MODEL})`)
 console.log(`→ results/b-preference-${ARM}.json`)
 
 // The fixture server keeps the process alive on a lingering keep-alive socket:

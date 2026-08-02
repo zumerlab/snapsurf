@@ -20,10 +20,3 @@ export function hash(...parts) {
   return (fnv1a(s, 0x811c9dc5).toString(16).padStart(8, '0') +
           fnv1a(s, 0x9747b28c).toString(16).padStart(8, '0'))
 }
-
-/** Short ids for nodes: content-independent, stable within one inspect() run. */
-let __idSeq = 0
-export function nextId() {
-  return 'n_' + (++__idSeq).toString(36)
-}
-export function resetIds() { __idSeq = 0 }

@@ -1,15 +1,14 @@
 /**
- * e2-contracts.mjs — TESTPLAN Fase E2: los tres contratos donde AFIRMAMOS ventaja,
- * puestos a prueba contra `vercel-labs/agent-browser` con la misma página.
+ * e2-contracts.mjs — TESTPLAN phase E2: the three contracts where we CLAIM an advantage,
+ * tested against `vercel-labs/agent-browser` on the same page.
  *
- *   C1 oclusión  — ¿avisa que el elemento quedó tapado ANTES de que le hagas click?
+ *   C1 occlusion — does it warn the element is covered BEFORE you click it?
  *                  (nosotros: proactivo en el mapa · ellos, según su doc: error
  *                  reactivo post-click)
- *   C2 identidad — ¿sobreviven sus refs @eN a un remount de React o a una lista
- *                  reordenada? Ellos documentan que NO son estables; nosotros
- *                  medimos los n_xxx deterministas para el mismo DOM. Se verifican
- *                  LAS DOS mitades: la suya y la nuestra.
- *   C3 SPA       — qué reporta cada uno tras una navegación blanda.
+ *   C2 identity  — do their @eN references survive a React remount or a reordered list?
+ *                  They document them as NOT stable; our n_xxx ids are deterministic for
+ *                  the same DOM. BOTH halves are checked: theirs and ours.
+ *   C3 soft nav  — what each one reports after a client-side navigation.
  *
  *   node packages/agent/experiment/e2-contracts.mjs
  */
@@ -33,7 +32,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 // ── Páginas de prueba ────────────────────────────────────────────────────────────────
 const PAGES = {
-  // C1: un botón real que a los 1200ms queda tapado por un banner de cookies
+  // C1: a real button that gets covered by a cookie banner at 1200ms
   occlusion: `<!doctype html><html><body style="margin:0">
 <button id="buy" style="position:absolute;top:120px;left:60px;width:220px;height:44px">Comprar ahora</button>
 <script>setTimeout(() => {
@@ -44,7 +43,7 @@ const PAGES = {
   document.body.appendChild(o)
 }, 1200)</script></body></html>`,
 
-  // C2a: remount — el MISMO botón, destruido y recreado idéntico (lo que hace React)
+  // C2a: remount — the SAME button, destroyed and rebuilt identically (what React does)
   remount: `<!doctype html><html><body>
 <div id="host"><button id="save">Guardar</button><button>Cancelar</button></div>
 <script>setTimeout(() => {
@@ -54,7 +53,7 @@ const PAGES = {
   host.innerHTML = html          // recrea idéntico
 }, 1200)</script></body></html>`,
 
-  // C2b: lista reordenada — los mismos items, distinto orden
+  // C2b: reordered list — the same items, different order
   reorder: `<!doctype html><html><body>
 <ul id="list"><li><a href="/a">Alfa</a></li><li><a href="/b">Beta</a></li><li><a href="/c">Gamma</a></li></ul>
 <script>setTimeout(() => {
@@ -64,7 +63,7 @@ const PAGES = {
 
   // C3: navegación SPA
   spa: `<!doctype html><html><body>
-<h1>Listado</h1><div id="c"><p>items del listado</p></div>
+<h1>Listing</h1><div id="c"><p>list items</p></div>
 <script>setTimeout(() => {
   history.pushState({}, '', '/detalle/7')
   document.getElementById('c').innerHTML = '<p>vista de detalle</p>'
@@ -83,7 +82,7 @@ const srv = createServer(async (req, res) => {
 await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
 const url = (k) => `http://127.0.0.1:${PORT}/${k}.html`
 
-// ── Nuestro lado: daemon propio ──────────────────────────────────────────────────────
+// ── Our side: our own daemon ────────────────────────────────────────────────────────
 const daemon = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'serve'], { stdio: 'ignore' })
 const cmd = (c, args = []) => fetch('http://127.0.0.1:8377/cmd', {
   method: 'POST', headers: { 'content-type': 'application/json' },
@@ -109,7 +108,7 @@ await ab(['open', url('occlusion')])
 const abBefore = await ab(['snapshot'])
 await sleep(1800)
 const abAfter = await ab(['snapshot'])
-// ¿su snapshot dice de alguna forma que el botón quedó tapado/no clickeable?
+// does their snapshot say in any way that the button is covered or unclickable?
 const mentionsCovered = /covered|obscured|hidden|intercept|occlud/i.test(abAfter)
 const stillListsButton = /Comprar ahora/.test(abAfter)
 const theirsOcc = mentionsCovered
@@ -118,11 +117,11 @@ const theirsOcc = mentionsCovered
 // y el click: ¿avisa o lo intenta igual?
 const abClick = await ab(['click', 'button'])
 const theirsClick = /__ERR__|error|intercept|not clickable/i.test(abClick)
-  ? `su click FALLA reactivamente: ${abClick.slice(0, 90).replace(/\n/g, ' ')}`
+  ? `their click FAILS reactively: ${abClick.slice(0, 90).replace(/\n/g, ' ')}`
   : `su click no se queja: ${abClick.slice(0, 60).replace(/\n/g, ' ')}`
-record('C1 oclusión (¿aviso ANTES del click?)', oursOcc, `${theirsOcc} · ${theirsClick}`,
+record('C1 occlusion (warned BEFORE the click?)', oursOcc, `${theirsOcc} · ${theirsClick}`,
   oursOcc.startsWith('becameCovered') && !mentionsCovered
-    ? 'VENTAJA NUESTRA confirmada: proactivo vs sin señal previa'
+    ? 'OUR ADVANTAGE confirmed: reported in advance vs no prior signal'
     : 'revisar — el resultado no confirma la afirmación')
 
 // ── C2 · Identidad ante remount y reorder ────────────────────────────────────────────
@@ -147,9 +146,9 @@ for (const [page, label] of [['remount', 'remount (nodo destruido y recreado id�
   record(`C2 identidad · ${label}`,
     `n_xxx ${id1} → ${id2} · ${oursStable ? 'ESTABLE' : 'cambió'}`,
     `@ref ${ref1} → ${ref2} · ${theirsStable ? 'ESTABLE' : 'cambió'}`,
-    oursStable && !theirsStable ? 'VENTAJA NUESTRA confirmada'
+    oursStable && !theirsStable ? 'OUR ADVANTAGE confirmed'
       : oursStable && theirsStable ? 'empate: ambos estables'
-        : !oursStable && !theirsStable ? 'ninguno estable — nuestra afirmación NO se sostiene acá'
+        : !oursStable && !theirsStable ? 'neither stable — our claim does NOT hold here'
           : 'ELLOS estables y nosotros no — hallazgo en contra')
 }
 
@@ -168,9 +167,9 @@ await sleep(1800)
 const spaDiff = await ab(['diff', 'snapshot', '-b', join(TMP, 'spa-before.txt')])
 const theirsSpa = /url|navigat|route/i.test(spaDiff)
   ? 'su diff menciona el cambio de URL'
-  : 'su diff muestra el cambio de contenido pero NO señala que la URL cambió'
+  : 'their diff shows the content change but does NOT signal the URL moved'
 record('C3 navegación SPA', oursSpa, theirsSpa,
-  oursSpa.startsWith('navigated:true') ? 'VENTAJA NUESTRA: el cruce de página es explícito' : 'revisar')
+  oursSpa.startsWith('navigated:true') ? 'OUR ADVANTAGE: the page crossing is explicit' : 'needs review')
 
 // ── Cierre ───────────────────────────────────────────────────────────────────────────
 await new Promise((r) => { const s = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'stop'], { stdio: 'ignore' }); s.on('exit', r) })

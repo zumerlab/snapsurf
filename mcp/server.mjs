@@ -119,10 +119,10 @@ const TOOLS = [
     description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
     inputSchema: { type: 'object', properties: { url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
     run: async ({ url, redact }) =>
-      // Reglas como JSON y en la MISMA llamada que la navegación. Antes se hacían dos
-      // llamadas y las reglas viajaban unidas por comas: (1) dos requests MCP
-      // concurrentes podían observar bajo la política de la otra, (2) una regla que
-      // contuviera una coma se partía en dos (hallazgos de la ronda F3 de Codex).
+      // Rules as JSON, in the SAME call as the navigation. It used to be two calls with
+      // the rules joined by commas, which meant (1) two concurrent MCP requests could read
+      // under each other's policy, and (2) a rule containing a comma was split in two.
+      // Both are F3 round findings.
       cmd('open', Array.isArray(redact) ? [url, '--redact-json', JSON.stringify(redact)] : [url]),
   },
   {
@@ -259,7 +259,7 @@ const TOOLS = [
   },
 ]
 
-// ── MCP stdio (JSON-RPC 2.0, un mensaje por línea) ───────────────────────────────────
+// ── MCP stdio (JSON-RPC 2.0, one message per line) ───────────────────────────────────
 const write = (msg) => process.stdout.write(JSON.stringify(msg) + '\n')
 const reply = (id, result) => write({ jsonrpc: '2.0', id, result })
 const replyErr = (id, code, message) => write({ jsonrpc: '2.0', id, error: { code, message } })

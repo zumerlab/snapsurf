@@ -16,6 +16,11 @@
  * misses, exactly like a real in-page agent.
  *
  * NOT FOR PUBLICATION — part of the private packages/agent workspace.
+ *
+ * NOTE: the fixture page copy, the task goals and the model prompts below are
+ * deliberately in Spanish. They are the stimulus the recorded results were measured
+ * with — translating them would change the experiment and make the numbers in
+ * EXPERIMENT.md unreproducible.
  */
 import { chromium } from 'playwright'
 import { writeFile, mkdir, readFile } from 'node:fs/promises'

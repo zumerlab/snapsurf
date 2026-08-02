@@ -44,7 +44,7 @@ function normalizePrivacyRules(privacy) {
  *  text: the report travels to the consumer (an LLM), and naming the rule would
  *  leak the very string the caller asked to hide. The operator who wrote the rule
  *  list maps indexes back to terms. */
-export function createPrivacyTally() {
+function createPrivacyTally() {
   return { rules: new Map(), fields: new Map(), nodes: new Set() }
 }
 
@@ -56,7 +56,7 @@ function recordHit(tally, ruleIndex, field, id) {
 }
 
 /** Serializable summary of a tally — counts only, no redacted content, no rule text. */
-export function summarizePrivacyTally(tally, ruleCount) {
+function summarizePrivacyTally(tally, ruleCount) {
   return {
     rulesActive: ruleCount,
     hitsByRule: [...tally.rules].sort((a, b) => a[0] - b[0]).map(([i, hits]) => ({ rule: `#${i}`, hits })),
@@ -78,10 +78,10 @@ function redactText(value, rules, tally, field, id) {
   if (typeof value !== 'string' || !value.trim()) return value
   const lower = value.toLowerCase()
   let matched = false
-  // TODAS las reglas que matchean se contabilizan, no solo la primera: la atribución
-  // first-match hacía que `redact sec,secret` reportara 0 hits para `secret` aunque
-  // matcheara cada aparición (hallazgo medio de Codex — el contrato decía "hits por
-  // regla" y la implementación medía otra cosa). El reemplazo sigue siendo único.
+  // EVERY rule that matches is counted, not just the first one: first-match attribution
+  // made `redact sec,secret` report 0 hits for `secret` even though it matched every
+  // occurrence. The contract promised "hits per rule" and the implementation measured
+  // something else. The replacement itself is still applied once.
   for (let i = 0; i < rules.length; i++) {
     if (lower.includes(rules[i])) { recordHit(tally, i, field, matched ? null : id); matched = true }
   }
@@ -103,7 +103,7 @@ function redactState(state, rules, tally, id) {
   return out
 }
 
-export function applyPrivacy(snapshot, privacy, tally) {
+function applyPrivacy(snapshot, privacy, tally) {
   const rules = normalizePrivacyRules(privacy)
   if (!snapshot || !rules.length) return snapshot
   const nodes = new Map()
@@ -118,7 +118,7 @@ export function applyPrivacy(snapshot, privacy, tally) {
 
 /** The diff is the product's main output — it must honor the same rules as the views.
  *  Matching is untouched: it rides fingerprints/hashes, never the readable strings. */
-export function applyDiffPrivacy(diff, privacy, tally) {
+function applyDiffPrivacy(diff, privacy, tally) {
   const rules = normalizePrivacyRules(privacy)
   if (!diff || !rules.length) return diff
   const changes = diff.changes.map((c) => {
@@ -136,7 +136,7 @@ export function applyDiffPrivacy(diff, privacy, tally) {
 }
 
 /** Relabel matched after-nodes to their stable before ids (§2: identity persists). */
-export function applyStableIds(snapshot, idMap) {
+function applyStableIds(snapshot, idMap) {
   if (!idMap || !idMap.size) return snapshot
   const rename = (id) => idMap.get(id) || id
   const nodes = new Map()

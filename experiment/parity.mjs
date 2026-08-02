@@ -1,24 +1,24 @@
 /**
- * parity.mjs — TESTPLAN Fase A: ¿las cuatro superficies contestan lo MISMO?
+ * parity.mjs — TESTPLAN phase A: do the four modes give the SAME answer?
  *
- * Cada superficie tiene su propio gate (vitest para el SDK, GATE.md para el MCP,
- * gate.mjs para la companion) y ninguno cruza. Ya nos mordió una vez: el
+ * Each mode has its own gate (vitest for the library, GATE.md for MCP, gate.mjs for
+ * the extension) and none of them cross. It bit us once already: the
  * falso-positivo de `navigated` en file:// existía en el daemon y no en la
  * companion, y apareció de casualidad en un demo run.
  *
- * Corre las MISMAS fixtures del corpus (truth escrita a mano) por:
- *   S1 SDK        — inspect() directo en la página
- *   S2 CLI daemon — browse.mjs serve + open/look por HTTP
- *   S3 MCP        — browser_open + browser_verify por stdio
+ * Runs the SAME corpus fixtures (hand-written truth) through:
+ *   S1 library    — inspect() directly in the page
+ *   S2 daemon     — browse.mjs serve + open/look over HTTP
+ *   S3 MCP        — browser_open + browser_verify over stdio
  *   S4 Companion  — extensión MV3 real + postMessage
  *
- * Compara `changed` y el conjunto de kinds. Discrepancia = bug de UNA superficie,
- * y el reporte tiene que decir cuál.
+ * Compares `changed` and the set of kinds. A disagreement is a bug in ONE mode, and
+ * the report has to say which.
  *
  *   node packages/agent/experiment/parity.mjs
  *
- * LANDMINE: el puerto 8377 es compartido — S2 levanta su daemon y S3 hace que el
- * servidor MCP levante el suyo. Corren SECUENCIALES, con stop verificado entre medio.
+ * LANDMINE: port 8377 is shared — S2 starts its own daemon and S3 makes the MCP server
+ * start one. They run SEQUENTIALLY, with a verified stop in between.
  */
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -33,8 +33,8 @@ const CORPUS = join(AGENT, 'corpus')
 const TMP = '/tmp/snapdom-parity'
 await mkdir(TMP, { recursive: true })
 
-// 4 cambios reales + 4 de ruido: la paridad tiene que valer en ambos sentidos
-// (todas dicen "cambió" y todas dicen "no cambió por el ruido").
+// 4 real changes + 4 noise: agreement has to hold in both directions — all of them say
+// "changed" and all of them say "the noise did not change anything".
 const CASES = [
   { name: 'text-update', truth: true },
   { name: 'list-row-inserted', truth: true },
@@ -46,8 +46,8 @@ const CASES = [
   { name: 'residual-hover', truth: false },
 ]
 
-// ── Fixtures: mismo montaje que bench-qa y que test/corpus.test.js ───────────────────
-// mutate.js son módulos ES reales → bundlear con esbuild (nunca inline por regex).
+// ── Fixtures: same setup as bench-qa and test/corpus.test.js ────────────────────────
+// mutate.js files are real ES modules → bundle with esbuild, never inline by regex.
 const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 const bundles = new Map()
 async function bundleMutate(name) {
@@ -62,7 +62,7 @@ async function bundleMutate(name) {
 }
 
 // La mutación dispara a +1500ms: toda superficie observa el baseline al abrir,
-// espera, y vuelve a observar. Un solo timing para las cuatro.
+// waits, and reads again. One timing for all four.
 async function wrapper(name) {
   const page = await readFile(join(CORPUS, name, 'page.html'), 'utf8')
   const bundle = await bundleMutate(name)
@@ -83,14 +83,14 @@ setTimeout(async () => {
   return serve(name)
 }
 
-// Las fixtures se sirven por HTTP, no file://: `history.pushState` a un path nuevo
+// Fixtures are served over HTTP, not file://: `history.pushState` to a new path
 // lanza SecurityError bajo origen opaco (file://), la URL no cambia y el caso SPA
-// daba una FALSA alarma de `navigated`. Verificado en la primera corrida de esta fase.
+// produced a FALSE `navigated` alarm. Found on this phase's first run.
 const { createServer } = await import('node:http')
 const PORT = 8391
 const staticSrv = createServer(async (req, res) => {
   // leer ANTES de mandar headers: un 404 (favicon) después de writeHead(200)
-  // tira ERR_HTTP_HEADERS_SENT y mata el runner al final de la corrida
+  // throws ERR_HTTP_HEADERS_SENT and kills the runner at the end of the run
   const name = decodeURIComponent((req.url || '').split('?')[0]).replace(/^\//, '')
   let body = null
   try { body = await readFile(join(TMP, name), 'utf8') } catch { /* no existe */ }
@@ -104,10 +104,10 @@ const serve = (name) => `http://127.0.0.1:${PORT}/${name}.html`
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const kindsOf = (changes) => [...new Set((changes || []).map((c) => c.kind))].sort().join('+') || '-'
 
-// ── Fixtures extra: los dos contratos que el corpus no cubre ─────────────────────────
-// occlusion: `becameCovered` es una de las diferenciaciones que afirmamos (oclusión
-// PROACTIVA en el mapa, no como error post-click) — tiene que valer en las 4 vías.
-// spa: `navigated` es donde una divergencia daemon/companion ya nos mordió una vez.
+// ── Extra fixtures: the two contracts the corpus does not cover ─────────────────────
+// occlusion: `becameCovered` is one of the advantages we claim (reported in the map
+// BEFORE the click, not as a post-click error) — it has to hold in all 4 modes.
+// spa: `navigated` is where a daemon/extension divergence bit us once.
 const EXTRA = {
   'overlay-covers': `<!doctype html><html><body>
 <button id="target" style="position:absolute;top:100px;left:50px;width:200px;height:40px">Comprar ahora</button>
@@ -149,7 +149,7 @@ window.__buildUi = buildUi
     await page.goto(url)
     await page.addScriptTag({ content: sdk })
     await page.waitForTimeout(300)
-    // baseline → (la mutación cae sola a +1500ms) → segunda observación con previous
+    // reference point → (the mutation fires by itself at +1500ms) → second reading
     const res = await page.evaluate(async () => {
       const first = await window.__observe(document.body, {})
       const cp = window.__buildUi(first, {}).checkpoint()
@@ -163,7 +163,7 @@ window.__buildUi = buildUi
         covered: (d.becameCovered || []).length,
       }
     })
-    // navigated no es asunto del SDK: lo agregan las superficies que rastrean URL
+    // navigated is not the library's business: modes that track a URL add it
     out[name] = { changed: res.changed, kinds: kindsOf(res.changes), covered: res.covered, navigated: null }
     await page.close()
   }
@@ -171,7 +171,7 @@ window.__buildUi = buildUi
   return out
 }
 
-// ── S2: CLI daemon por HTTP ──────────────────────────────────────────────────────────
+// ── S2: the daemon over HTTP ────────────────────────────────────────────────────────
 const daemonCmd = (cmd, args = []) =>
   fetch('http://127.0.0.1:8377/cmd', {
     method: 'POST', headers: { 'content-type': 'application/json' },
@@ -189,7 +189,7 @@ async function runDaemon(urls) {
     await sleep(2200)
     const look = await daemonCmd('look')
     const meta = look.meta || {}
-    // el texto del look es la superficie que lee un humano/LLM; los kinds salen de ahí
+    // the printed text is what a human or model reads; the kinds come from there
     const text = look.text || ''
     const kinds = [...new Set([...text.matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
     const cov = text.match(/became covered: (.+)$/m)
@@ -205,7 +205,7 @@ async function runDaemon(urls) {
   return out
 }
 
-// ── S3: MCP por stdio ────────────────────────────────────────────────────────────────
+// ── S3: MCP over stdio ──────────────────────────────────────────────────────────────
 async function runMcp(urls) {
   const srv = spawn(process.execPath, [join(AGENT, 'mcp/server.mjs')], { stdio: ['pipe', 'pipe', 'ignore'] })
   const pending = new Map()
@@ -288,7 +288,7 @@ console.log('S4 companion…');  const s4 = await runCompanion(urls)
 
 const surfaces = { S1: s1, S2: s2, S3: s3, S4: s4 }
 const CASE_NAMES = new Set(CASES.map((c) => c.name))
-console.log('\n| fixture | truth | S1 SDK | S2 CLI | S3 MCP | S4 comp | paridad |')
+console.log('\n| fixture | truth | S1 SDK | S2 CLI | S3 MCP | S4 extension | agree |')
 console.log('|---|:---:|---|---|---|---|:---:|')
 let disagreements = 0
 let wrong = 0
@@ -303,23 +303,23 @@ for (const c of CASES) {
   const mark = agree ? (kindsAgree ? '✅' : '⚠️ kinds') : '❌'
   console.log(`| ${c.name} | ${c.truth} | ${cells.map((x) => `${x.changed} (${x.kinds})`).join(' | ')} | ${mark} |`)
 }
-// ── Contratos extra: oclusión (las 4) y navigated (las 3 que rastrean URL) ──────────
-console.log('\n| contrato | S1 SDK | S2 CLI | S3 MCP | S4 comp | paridad |')
+// ── Extra contracts: occlusion (all 4) and navigated (the 3 that track a URL) ───────
+console.log('\n| contract | S1 SDK | S2 CLI | S3 MCP | S4 extension | agree |')
 console.log('|---|---|---|---|---|:---:|')
 const occ = Object.values(surfaces).map((s) => (s['overlay-covers'] || {}).covered)
 const occAgree = occ.every((n) => n > 0)
 if (!occAgree) disagreements++
-console.log(`| becameCovered (overlay tapa botón) | ${occ.map((n) => `${n} cubierto(s)`).join(' | ')} | ${occAgree ? '✅' : '❌'} |`)
+console.log(`| becameCovered (an overlay covers a button) | ${occ.map((n) => `${n} covered`).join(' | ')} | ${occAgree ? '✅' : '❌'} |`)
 
-// S1 no participa: el SDK entrega el diff, la URL la rastrean las superficies
+// S1 does not take part: the library returns the comparison, the modes track the URL
 const navCells = ['S2', 'S3', 'S4'].map((k) => (surfaces[k]['spa-softnav'] || {}).navigated)
 const navAgree = navCells.every((v) => v === true)
 if (!navAgree) disagreements++
-console.log(`| navigated tras pushState | n/a (por diseño) | ${navCells.map(String).join(' | ')} | ${navAgree ? '✅' : '❌'} |`)
+console.log(`| navigated after pushState | n/a (by design) | ${navCells.map(String).join(' | ')} | ${navAgree ? '✅' : '❌'} |`)
 
-console.log(`\nDesacuerdos de \`changed\`: ${disagreements}/${CASES.length} · casos que contradicen la truth en alguna superficie: ${wrong}/${CASES.length}`)
+console.log(`\nDisagreements on \`changed\`: ${disagreements}/${CASES.length} · cases contradicting the truth in some mode: ${wrong}/${CASES.length}`)
 console.log(disagreements === 0 && wrong === 0
-  ? 'PARIDAD OK — las cuatro superficies son el mismo oráculo sobre este corpus'
-  : 'PARIDAD ROJA — hay que identificar QUÉ superficie diverge antes de mostrar esto a un tercero')
+  ? 'MODES AGREE — all four give the same answers on this corpus'
+  : 'MODES DISAGREE — identify WHICH mode diverges before showing this to anyone')
 staticSrv.close()
 process.exit(disagreements === 0 && wrong === 0 ? 0 : 1)

@@ -334,39 +334,11 @@ with 2 repetitions.
 
 ---
 
-## Cycle results (2026-08-01)
+## What the cycle produced
 
-Run in one session. Everything deterministic except phases B and D, which needed a model.
-
-| Phase | Result | Report |
-|---|---|---|
-| **A** modes agree | ✅ 8/8 plus occlusion and navigation, four modes agree | this document |
-| **E1** comparable tool | ✅ **11/19 as shipped, 17/19 normalized** against our 19/19 | `results/e1-agent-browser.md` |
-| **E2** claimed contracts | ⚠️ **2 confirmed, 1 of our assumptions disproved, 1 shared limit** | `results/e2-contracts.md` |
-| **A-bis** untested verbs | ✅ 19/19 on **both** installs, plus 2 findings | `results/abis-verbs.md` |
-| **C** silent failures | ✅ **0 against 6 out of 8** | `results/c-false-green.md` |
-| **E5** coexistence | ✅ **it runs inside agent-browser** through its `eval` | `results/e5-coexistence.md` |
-| **B** what the model picks | ✅ **78% of steps**, no skill biasing it; 5× fewer tokens | `results/b-preference.md` |
-| **D** somebody else's tasks | ⚠️ **28% against our own 99%**; comparison arm incomplete | `results/d-third-party.md` |
-
-### The five results that changed the pitch
-
-1. **The core claim survives, but the margin depends on what you compare against.**
-   Against a pixel comparison (13/19) and an accessibility-tree diff (16/19) the distance
-   is large. Against a well-normalized agent-browser it is 19/19 against 17/19. The
-   advantage is concentrated in **text noise** and in **changes with no textual
-   representation**.
-2. **The value is not the comparison, it is the stated expectation.** In phase C our own
-   raw "did anything change?" produced 2 to 4 wrong success reports; checking a stated
-   outcome produced 0.
-3. **agent-browser is a channel, not a competitor.** 45 KB through its `eval`, its flow
-   untouched.
-4. **The model prefers this tool when it can choose** — 78% of steps, all six tasks,
-   nothing biasing it. But it still uses pixels to orient itself, which supports using
-   both rather than replacing one.
-5. **Our tasks were easy, and now that is measured.** 99% on ours against **28% on
-   somebody else's**. The 119/120 measures the channel on reachable tasks, not capability.
-   On that outside corpus **there is no evidence the structural channel improves success**.
+Every phase above carries its own result. They are not repeated here, and the numbers
+live in `PAPER.md` — this section keeps only what a results table cannot: the claims we
+had to withdraw, and the mistakes we made measuring.
 
 ### What this cycle corrected in our own claims
 
@@ -394,30 +366,21 @@ catch in pages.
 
 ---
 
-## Order and cut-off
+## What is still open
 
-```
-A ✅ → E1 ($0, attacks the central claim) → A-bis → C + E3 (same run) → E5 → B → D
-                                              ↑ E2 and E4 ride along with E1
-```
+- **E3**: add `agent-browser` as a fourth arm in `experiment/formal/`. Nearly free, the
+  harness already exists.
+- **Phase D properly**: the comparison arm ran out of credit after 3 of 8 tasks. About $4
+  to finish it, about $25–30 to widen to 23 tasks with repetitions.
+- **A decision, not a test**: whether `rec` becomes evidence attached to a failed check,
+  or stays a demo utility. Until that is settled its tests are a smoke test of a feature
+  with no user.
+- **Phase 4 of `PLAN.md`**: the cold-integration gate, which has never been run.
 
-- **A first**: free, and showing somebody modes that disagree with each other burns
-  credibility.
-- **E1 immediately after**: deterministic, no model, $0, and aimed straight at the claim
-  everything else hangs from.
-- **A-bis before C**: cheap, and there is no point taking a bundle with untested verbs
-  into a comparison.
-- **C and E3 in the same run**: agent-browser becomes an arm of the silent-failure app
-  instead of paying for the setup twice.
-- **E5 after C**: if there is a demonstrated difference, coexistence becomes distribution.
-- **B before D** because B is cheaper and its result changes what D should measure.
-
-**Honest cut-off**: phase C showed a 75-point difference and phase A is clean, so there is
-a case for looking for a first real user (phase 4 of `PLAN.md`). Phase D says the framing
-must stay narrow while doing it: this is a **runtime for checking postconditions**, not a
-general improvement to agent capability.
-
----
+The cut-off criterion was met: phase C showed a 75-point difference on silent failures
+and phase A is clean, so there is a case for looking for a first real user. Phase D says
+the framing must stay narrow while doing it — this checks postconditions, it does not
+make an agent more capable.
 
 ## Not in this plan, on purpose
 

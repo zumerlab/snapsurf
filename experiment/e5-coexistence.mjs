@@ -1,11 +1,11 @@
 /**
  * e5-coexistence.mjs — TESTPLAN Fase E5: ¿podemos correr DENTRO de agent-browser?
  *
- * La jugada estratégica del LANDSCAPE: si nuestro oráculo funciona dentro de su
- * flujo sin reemplazarlos, dejan de ser rival y pasan a ser canal de distribución
- * — que es la debilidad #1 que el relevamiento nos encontró.
+ * The strategic question from LANDSCAPE: if our reader works inside their flow without
+ * replacing it, they stop being a competitor and become a distribution channel — which
+ * addresses the biggest weakness the survey found.
  *
- * Mismo browser, misma sesión, misma acción: su diff y el nuestro, lado a lado.
+ * Same browser, same session, same action: their comparison and ours, side by side.
  *
  *   node packages/agent/experiment/e5-coexistence.mjs
  */
@@ -25,8 +25,8 @@ await mkdir(TMP, { recursive: true })
 const ab = (args, opts = {}) => run('agent-browser', args, { timeout: 60000, maxBuffer: 16 << 20, ...opts })
   .then((r) => r.stdout.trim()).catch((e) => `__ERR__ ${e.message.slice(0, 120)}`)
 
-// Página con una falla del tipo que los píxeles no ven (estado sin delta visual)
-// MÁS ruido ambiental (reloj vivo) que ensucia cualquier diff textual.
+// A page with the kind of failure pixels cannot see (a state change with no visual
+// difference) PLUS ambient noise (a live clock) that dirties any text comparison.
 await writeFile(join(TMP, 'app.html'), `<!doctype html><html><body>
 <h2>Formulario</h2><span id="clock">--:--:--</span>
 <button id="go">Validar</button>
@@ -43,7 +43,7 @@ const srv = createServer(async (req, res) => {
 })
 await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
 
-// ── Nuestro SDK, bundleado para inyección ────────────────────────────────────────────
+// ── Our reader, bundled for injection ───────────────────────────────────────────────
 const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 await writeFile(join(TMP, 'entry.mjs'), `import { observe, buildUi } from '${join(AGENT, 'src/plugin.js')}'
 window.__sdObserve = observe
@@ -56,9 +56,9 @@ console.log(`SDK bundleado: ${(SDK.length / 1024).toFixed(0)} KB\n`)
 // ── El flujo de coexistencia ─────────────────────────────────────────────────────────
 console.log(await ab(['open', `http://127.0.0.1:${PORT}/app.html`]))
 
-// 1) inyección por SU eval (--stdin evita los límites de argumento del shell).
-// OJO: execFile NO acepta la opción `input` (es de execFileSync) — hay que escribir
-// al stdin del hijo a mano, si no la inyección falla EN SILENCIO.
+// 1) injection through THEIR eval (--stdin avoids the shell's argument limits).
+// NOTE: execFile does NOT accept the `input` option (that is execFileSync) — you have to
+// write to the child's stdin by hand, or the injection fails SILENTLY.
 const inject = await new Promise((resolve) => {
   const ch = spawn('agent-browser', ['eval', '--stdin'])
   let o = ''
@@ -68,18 +68,18 @@ const inject = await new Promise((resolve) => {
   ch.stdin.end()
 })
 const injected = await ab(['eval', 'typeof window.__sdObserve'])
-console.log(`inyección por su \`eval --stdin\`: ${injected}`)
+console.log(`injected through their \`eval --stdin\`: ${injected}`)
 
-// 2) baseline: SU snapshot y NUESTRO checkpoint, del mismo instante
+// 2) baseline: THEIR snapshot and OUR reference point, from the same moment
 const theirBefore = await ab(['snapshot'])
 await writeFile(join(TMP, 'their-before.txt'), theirBefore)
 await ab(['eval', '(async () => { const o = await window.__sdObserve(document.body, {}); window.__cp = window.__sdBuildUi(o, {}).checkpoint(); return "ok" })()'])
 
-// 3) la acción, con SU comando de click (no tocamos su flujo)
-console.log(`acción con su click: ${await ab(['click', '#go'])}`)
+// 3) the action, with THEIR click command (we do not touch their flow)
+console.log(`action through their click: ${await ab(['click', '#go'])}`)
 await new Promise((r) => setTimeout(r, 1200))   // deja correr el reloj: ruido real
 
-// 4) los dos diffs, del mismo browser y la misma acción
+// 4) the two comparisons, same browser, same action
 const theirDiff = await ab(['diff', 'snapshot', '-b', join(TMP, 'their-before.txt')])
 const ourDiffRaw = await ab(['eval', `(async () => {
   const o = await window.__sdObserve(document.body, { previous: window.__cp })
@@ -91,7 +91,7 @@ try { ourDiff = JSON.parse(JSON.parse(ourDiffRaw)) } catch { ourDiff = { raw: ou
 
 console.log('\n── SU diff (a11y tree, textual) ' + '─'.repeat(30))
 console.log(theirDiff.split('\n').slice(0, 14).join('\n'))
-console.log('\n── NUESTRO diff (semántico), mismo browser y misma acción ' + '─'.repeat(5))
+console.log('\n── OUR comparison (semantic), same browser and same action ' + '─'.repeat(5))
 console.log(JSON.stringify(ourDiff, null, 2))
 
 const ourNames = (ourDiff.changes || []).map((c) => `${c.kind} ${c.role} "${c.name}"`)
@@ -102,9 +102,9 @@ const weCaughtState = ourNames.some((n) => n.startsWith('state'))
 console.log('\n── Veredicto ' + '─'.repeat(45))
 console.log(`inyección dentro de su runtime      : ${injected === '"function"' ? 'SÍ' : 'NO'}`)
 console.log(`su flujo intacto (open/click suyos) : SÍ`)
-console.log(`nuestro diff nombra el cambio de estado: ${weCaughtState ? 'SÍ — ' + ourNames.filter((n) => n.startsWith('state')).join(', ') : 'NO'}`)
+console.log(`our comparison names the state change: ${weCaughtState ? 'YES — ' + ourNames.filter((n) => n.startsWith('state')).join(', ') : 'NO'}`)
 console.log(`el reloj ensucia su diff            : ${theyShowClock ? 'SÍ' : 'no'}`)
-console.log(`el reloj ensucia el nuestro         : ${weShowClock ? 'SÍ' : 'no'}`)
+console.log(`the clock dirties ours              : ${weShowClock ? 'YES' : 'no'}`)
 
 await writeFile(join(AGENT, 'experiment/results/e5-coexistence.json'),
   JSON.stringify({ sdkKB: +(SDK.length / 1024).toFixed(0), injected, theirDiff, ourDiff, theyShowClock, weShowClock, weCaughtState }, null, 2) + '\n')

@@ -65,11 +65,6 @@ export const NAME_FROM_CONTENT_ROLES = new Set([
   'switch', 'tooltip', 'treeitem', 'legend', 'caption', 'term', 'definition', 'summary',
 ])
 
-/** @param {Element} el @returns {string} */
-export function computeAccessibleName(el) {
-  return computeName(el).name
-}
-
 /** Tags whose text is code or metadata, never something a user reads. */
 const NON_TEXTUAL = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'])
 

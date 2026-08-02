@@ -11,7 +11,7 @@ import { normalizeText, isIgnored, collectAnimatedProps } from './noise.js'
 
 /** §3 initial visualStyleSubset — explicitly empirical; adjust only with corpus
  *  evidence + ADR. outline/box-shadow deliberately absent (focus-ring noise). */
-export const VISUAL_STYLE_SUBSET = [
+const VISUAL_STYLE_SUBSET = [
   'display', 'visibility', 'opacity', 'color', 'background-color',
   'font-family', 'font-size', 'font-weight', 'border', 'transform', 'z-index',
 ]
@@ -360,7 +360,7 @@ export function takeSnapshot(root, noise) {
 // field (panel gate round). MessageChannel posts are plain tasks: no 4ms clamp,
 // no background throttling; and yielding only after budgetMs of actual work keeps
 // the yield count proportional to work done. Max main-thread block ≈ budgetMs.
-export const yieldToLoop = () => new Promise((res) => {
+const yieldToLoop = () => new Promise((res) => {
   const { port1, port2 } = new MessageChannel()
   port1.onmessage = () => { port1.close(); res() }
   port2.postMessage(0)

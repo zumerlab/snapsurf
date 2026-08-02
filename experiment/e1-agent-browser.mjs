@@ -1,28 +1,29 @@
 /**
  * e1-agent-browser.mjs — TESTPLAN Fase E1: `vercel-labs/agent-browser` como cuarto
- * brazo determinista, sobre las MISMAS 19 fixtures con truth escrita a mano que ya
- * usan el oráculo, pixel-diff y a11y-diff en `bench-qa.mjs`.
+ * deterministic arm, over the SAME 19 fixtures with hand-written truth already used by
+ * our reader, the pixel comparison and the accessibility-tree diff in `bench-qa.mjs`.
  *
- * Es el rival más comparable que existe y nunca lo habíamos corrido: hasta ahora
+ * It is the most comparable public tool and we had never run it: until now
  * solo lo teníamos fichado a nivel documental en docs/LANDSCAPE.md.
  *
- *   npm install -g agent-browser   (probado con 0.33.1)
+ *   npm install -g agent-browser   (tested with 0.33.1)
  *   node packages/agent/experiment/e1-agent-browser.mjs
  *
- * JUSTICIA (regla del TESTPLAN: un benchmark que se gana haciendo trampa no sirve
- * ni para convencernos a nosotros). Se reportan DOS variantes:
+ * FAIRNESS (a TESTPLAN rule: a benchmark won by cheating does not even convince us).
+ * Two variants are reported:
  *
- *   as-is       — lo que su `diff snapshot -b <archivo>` imprime, sin tocar nada.
+ *   as-is       — what their `diff snapshot -b <file>` prints, untouched.
  *                 Es la vía explícita y documentada de su --help.
- *   ref-stripped— el mismo diff pero borrando ` ref=eN` de ambos lados antes de
- *                 comparar. Sus refs se RENUMERAN en cada snapshot (medido: una
- *                 página 100% estática diffea "3 additions, 3 removals"), así que
+ *   ref-stripped— the same diff with ` ref=eN` removed from both sides before
+ *                 comparing. Their references are RENUMBERED on every snapshot
+ *                 (measured: a fully static page diffs as "3 additions, 3 removals"), so
  *                 sin esta normalización el ruido de refs domina todo. Un consumidor
- *                 razonable haría este post-proceso; medir solo as-is sería injusto.
+ *                 any reasonable caller would post-process this; reporting only as-is
+ *                 would be unfair.
  *
- * Antes de escribir esto se agotaron las alternativas de configuración: flujo
+ * Before writing this, the configuration alternatives were exhausted: an in-session
  * in-session sin -b (peor: "4 additions, 0 unchanged" en página estática),
- * `--compact` (los refs igual cambian) y no existe flag para omitir refs.
+ * `--compact` (references still change), and there is no flag to omit references.
  */
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -42,7 +43,7 @@ await mkdir(TMP, { recursive: true })
 const ab = (args) => run('agent-browser', args, { timeout: 120000, maxBuffer: 8 << 20 })
   .then((r) => r.stdout).catch((e) => `__ERR__ ${e.message}`)
 
-// ── Fixtures: idénticas a bench-qa (mismo montaje que test/corpus.test.js) ───────────
+// ── Fixtures: identical to bench-qa (same setup as test/corpus.test.js) ─────────────
 const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 async function buildFixture(name) {
   const page = await readFile(join(CORPUS, name, 'page.html'), 'utf8')
@@ -50,7 +51,7 @@ async function buildFixture(name) {
     entryPoints: [join(CORPUS, name, 'mutate.js')],
     bundle: true, format: 'iife', globalName: '__mutateMod', write: false, platform: 'browser',
   })
-  // modo MANUAL: el brazo controla el antes/después, igual que los brazos
+  // MANUAL mode: the arm controls before and after, like the other arms
   // competidores de bench-qa (window.__runMutation)
   const html = `<!doctype html><html><body>
 <script>
@@ -81,7 +82,7 @@ await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
 
 // ── Comparación ──────────────────────────────────────────────────────────────────────
 const stripRefs = (s) => s.replace(/\s*\[?ref=e\d+\]?/g, '').replace(/,\s*\]/g, ']').trimEnd()
-// diff de líneas mínimo: ¿son distintos los conjuntos de líneas?
+// minimal line diff: are the sets of lines different?
 const lineDiffers = (a, b) => {
   const norm = (s) => s.split('\n').map((l) => l.trimEnd()).filter(Boolean)
   const A = norm(a), B = norm(b)
@@ -103,7 +104,7 @@ for (const name of names) {
   const beforeFile = join(TMP, `${name}.before.txt`)
   await writeFile(beforeFile, before)
 
-  // dispara la mutación por su propio `eval` y espera a que asiente
+  // fire the mutation through their own `eval` and wait for it to settle
   await ab(['eval', 'window.__runMutation()'])
   await new Promise((r) => setTimeout(r, 1200))
 
@@ -134,7 +135,7 @@ console.log('\n| brazo | correctos | falsos positivos (ruido) | cambios perdidos
 console.log('|---|---:|---:|---:|')
 console.log(`| agent-browser \`diff snapshot\` (as-is) | ${a.ok}/${rows.length} | ${a.fp}/${a.noise} | ${a.miss}/${a.real} |`)
 console.log(`| agent-browser + normalización sin refs | ${s.ok}/${rows.length} | ${s.fp}/${s.noise} | ${s.miss}/${s.real} |`)
-console.log('\nReferencia (bench-qa.md, mismas fixtures): oráculo 19/19 · 0/8 FP · 0/11 perdidos ·')
+console.log('\nReference (bench-qa.md, same fixtures): this tool 19/19 · 0/8 false alarms · 0/11 missed ·')
 console.log('pixel-diff 13/19 · 5/8 FP · 1/11 · a11y-tree 16/19 · 2/8 FP · 1/11')
 
 await writeFile(join(AGENT, 'experiment/results/e1-agent-browser.json'), JSON.stringify({ rows, asIs: a, stripped: s }, null, 2) + '\n')
