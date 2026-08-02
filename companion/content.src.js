@@ -572,7 +572,7 @@ window.addEventListener('message', (e) => {
       try { out = await runAssert(e.data.spec || {}, obsId, e.data.prof) } catch (err) {
         // a malformed spec is STILL a failed assertion with a pass field — a result
         // without pass reads as success to `if (r.pass === false)` harnesses (panel 3f)
-        out = { type: 'assert', obsId, ts: Date.now(), pass: false, checks: [{ type: 'error', expected: 'valid spec/execution', actual: String(err), pass: false }], error: String(err) }
+        out = { type: 'assert', contract: 8, obsId, ts: Date.now(), pass: false, checks: [{ type: 'error', expected: 'valid spec/execution', actual: String(err), pass: false }], error: String(err) }
       }
       // The result rides IN the ready message: the shared DOM slot is a race the
       // obsId handshake never protected (round 2). The node stays for compat.
@@ -597,7 +597,10 @@ window.addEventListener('message', (e) => {
     ;(async () => {
       let out
       try { out = await runObserve({ top: e.data.top, heads: e.data.heads, fullUrl: e.data.fullUrl, match: e.data.match, prof: e.data.prof, obsId }) } catch (err) {
-        out = { error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId }
+        // `contract` rides on the ERROR path too: a consumer that version-checks every
+        // reply must get an answer even when the walk threw, or a stale snippet reads an
+        // error as "protocol moved" (or worse, skips the check).
+        out = { contract: 8, error: String(err), url: location.origin + location.pathname, ts: Date.now(), obsId }
         const node = document.getElementById(NODE_ID) || Object.assign(document.documentElement.appendChild(document.createElement('script')), { type: 'application/json', id: NODE_ID })
         node.textContent = JSON.stringify(out)
       }
