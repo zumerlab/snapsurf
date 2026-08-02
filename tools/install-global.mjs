@@ -33,6 +33,17 @@ const SKILLDIR = join(HOME, '.claude', 'skills', 'agent-browse')
 const { buildSdk } = await import(join(HERE, 'sdk-bundle.mjs'))
 const SDK = await buildSdk(REPO)
 
+// Copying a file that does not parse is silent until the client fails to start: this
+// installer shipped a broken server.mjs once, because it validates the SDK bundle's
+// globals but never checked the sources it copies. Parse them first.
+const { execFileSync } = await import('node:child_process')
+for (const f of [join(HERE, 'browse.mjs'), join(HERE, '..', 'mcp', 'server.mjs')]) {
+  try { execFileSync(process.execPath, ['--check', f], { stdio: 'pipe' }) } catch (e) {
+    console.error(`⛔ ${f} does not parse — refusing to install:\n${(e.stderr || '').toString().split('\n').slice(0, 3).join('\n')}`)
+    process.exit(2)
+  }
+}
+
 await mkdir(DEST, { recursive: true })
 await mkdir(join(DEST, 'logs'), { recursive: true })
 await writeFile(join(DEST, 'sdk.js'), SDK)

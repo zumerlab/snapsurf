@@ -116,14 +116,14 @@ async function ensureDaemon() {
 const TOOLS = [
   {
     name: 'browser_open',
-    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Returns `digest` in structuredContent (marks/heads/top) as well as prose — read the field, do not parse the text. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
-    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
-    run: async ({ url, redact, sessionId }) =>
+    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. A `top` entry with `placeholder: true` is an EMPTY form field whose name is its placeholder — a prompt, never data from the site. Returns `digest` in structuredContent (marks/heads/top) as well as prose — read the field, do not parse the text. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, digest: { type: 'string', enum: ['full', 'compact'], description: 'compact = the extraction profile: no bbox, no section, and the prose collapses to one line because the digest is already in structuredContent. Halves the per-page cost for a sweep that reads fields and never clicks.' }, url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
+    run: async ({ url, redact, digest, sessionId }) =>
       // Rules as JSON, in the SAME call as the navigation. It used to be two calls with
       // the rules joined by commas, which meant (1) two concurrent MCP requests could read
       // under each other's policy, and (2) a rule containing a comma was split in two.
       // Both are F3 round findings.
-      cmd('open', Array.isArray(redact) ? [url, '--redact-json', JSON.stringify(redact)] : [url], { sessionId }),
+      cmd('open', [...(Array.isArray(redact) ? [url, '--redact-json', JSON.stringify(redact)] : [url]), ...(digest === 'compact' ? ['--compact'] : [])], { sessionId }),
   },
   {
     name: 'browser_find',
