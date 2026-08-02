@@ -271,16 +271,36 @@ between `«««` and `»»»`. Do not let a model read it as a command.
 
 ## Checking that it works
 
-Nothing here needs an API key.
+Nothing here needs an API key. From `packages/agent`:
 
 ```bash
-npx vitest run packages/agent/test --browser.headless      # 50 unit tests
-node packages/agent/experiment/bench-qa.mjs                # 19/19 detection, 0 false alarms
-node packages/agent/experiment/parity.mjs                  # all entry points agree
-node packages/agent/companion/gate.mjs                     # extension, 27/27
-node packages/agent/experiment/abis-verbs.mjs              # every verb, 19/19
-node packages/agent/demo-qa/run-demo.mjs                   # the verification demo
+npm test              # 58 unit tests in a real browser (~5 s)
+npm run test:regression   # the above + lint + bundle freshness + all offline gates (~3.5 min)
+npm run test:global   # the same verbs against the ~/.claude install (needs it installed)
+npm run test:gates    # everything, including the extension gate (needs network)
 ```
+
+`test:regression` is the one to run before trusting a change. It covers:
+
+| Check | What it catches |
+|---|---|
+| 58 unit tests | the library: queries, identity, privacy, checkpoints, the plugin contract |
+| lint | style and undefined variables in `src/` and `test/` |
+| bundle freshness | a `content.bundle.js` older than the source it is built from |
+| `bench-qa` | detection quality on the 19 hand-written cases |
+| `parity` | the five modes disagreeing with each other |
+| `abis-verbs` | every daemon verb, including the ones no other test touches |
+| `demo-qa` | the end-to-end assertion flow through the MCP server |
+
+**The unit tests also run as part of the repository's own `npm test`** at the root — they
+are collected with the core suite (118 files, 919 tests).
+
+**What is still not covered automatically**: `tools/browse.mjs` (1,148 lines),
+`mcp/server.mjs` and `companion/content.src.js` have no unit tests. They are exercised
+end-to-end by the gates above, which is weaker — a gate proves the happy path works, not
+that a branch inside it is correct. There is also no CI: every command here is one somebody
+has to remember to run. That is exactly how three bugs shipped on 2026-08-01 (see
+`TESTPLAN.md` §history).
 
 `PAPER.md` Appendix A lists the rest, including the ones that cost money.
 

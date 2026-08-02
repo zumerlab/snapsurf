@@ -423,3 +423,13 @@ Written so we do not repeat them.
    43 seconds of real work. A CI run with a timeout would have reported a red result on a
    run that succeeded. New rule: any harness with a server closes its connections and
    exits on the result.
+
+5. **Nothing ran the gates.** Every check in this document existed as a standalone
+   script somebody had to remember to run, and 2,161 lines of the product (the daemon, the
+   MCP server, the extension source) had no automatic test at all. The library's 58 unit
+   tests did run — they are collected by the repository's own `npm test` — but they cover
+   `src/` only. On 2026-08-01 the gates were wired into `npm run test:regression`
+   (unit tests + lint + bundle freshness + bench-qa + parity + every verb + the demo,
+   about 3.5 minutes, no API key), plus `test:global` for the installed copy and
+   `test:gates` for everything. `packages/agent` was also outside every lint scope until
+   that day. There is still no CI: these are commands, not guarantees.

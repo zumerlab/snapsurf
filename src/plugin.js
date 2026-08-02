@@ -1,5 +1,3 @@
-/* global document, Image, Blob, URL, clearTimeout, setTimeout */
-
 /**
  * The semantic visitor, as a snapDOM lifecycle plugin.
  * PRIVATE, PROPRIETARY, NEVER PUBLISHED. See package.json / LICENSE.

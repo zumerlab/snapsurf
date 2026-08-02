@@ -16,6 +16,12 @@
   "files": [],
   "publishConfig": { "access": "restricted" },
   "scripts": {
+    "test": "cd ../.. && npx vitest run packages/agent/test packages/agent/experiment/signal.test.js --browser.headless",
+    "test:lint": "cd ../.. && npx eslint packages/agent/src packages/agent/test --ext .js",
+    "test:bundles": "node companion/build.mjs && cd ../.. && git diff --exit-code -- packages/agent/companion/content.bundle.js",
+    "test:regression": "npm run test && npm run test:lint && npm run test:bundles && node experiment/bench-qa.mjs && node experiment/parity.mjs && node experiment/abis-verbs.mjs && node demo-qa/run-demo.mjs",
+    "test:global": "node experiment/abis-verbs.mjs --daemon $HOME/.claude/snapdom-agent/browse.mjs",
+    "test:gates": "npm run test:regression && npm run test:global && node companion/gate.mjs",
     "prepack": "node -e \"throw new Error('@zumer/snapdom-agent is PRIVATE and must never be packed or published. See LICENSE.')\"",
     "prepublishOnly": "node -e \"throw new Error('@zumer/snapdom-agent is PRIVATE and must never be published. See LICENSE.')\""
   }

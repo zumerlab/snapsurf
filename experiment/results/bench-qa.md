@@ -18,7 +18,7 @@ The tool arm runs THROUGH the MCP server (browser_open + browser_verify), so it 
 |---|:---:|:---:|:---:|:---:|---:|---:|---:|
 | button-enabled | change | ✓ | ✗ (0%) | ✓ | 197 B | 33 KB | 1 KB |
 | canvas-region | noise | ✓ | ✗ (4.875%) | ✓ | 123 B | 29 KB | 0 KB |
-| css-animation-running | noise | ✓ | ✗ (0.323%) | ✓ | 131 B | 24 KB | 0 KB |
+| css-animation-running | noise | ✓ | ✗ (0.356%) | ✓ | 131 B | 24 KB | 0 KB |
 | css-in-js-regeneration | noise | ✓ | ✓ | ✓ | 132 B | 44 KB | 1 KB |
 | font-swap-late | change | ✓ | ✓ | ✗ | 619 B | 98 KB | 1 KB |
 | inline-script-noise | noise | ✓ | ✓ | ✓ | 130 B | 23 KB | 0 KB |

@@ -1,5 +1,3 @@
-/* global document */
-
 /**
  * Phase 4 acceptance: the query API (§6) over the snapshot, resolve() as the only
  * bridge to the live DOM, and the surface guarantees the master prompt fixes —
