@@ -274,9 +274,17 @@ async function newSession(id) {
   }
   const sid = id || `s_${(++sessionSeq).toString(36)}`
   const pg = await context.newPage()
+  // In-flight request count, so settling can ask "is anything still loading?" directly
+  // instead of inferring it from a fixed window of silence.
+  let inflight = 0
+  const track = (d) => { inflight = Math.max(0, inflight + d) }
+  pg.on('request', () => track(1))
+  pg.on('requestfinished', () => track(-1))
+  pg.on('requestfailed', () => track(-1))
   const S = {
     id: sid,
     page: pg,
+    inflight: () => inflight,
     epoch: 0,
     meta: null,
     checkpoints: new Map(),
@@ -695,12 +703,60 @@ const settle = async (S, cap = 1500, floor = 300) => {
   const t0 = Date.now()
   await page.waitForLoadState('domcontentloaded', { timeout: cap }).catch(() => {})
   const t1 = Date.now()
-  await page.waitForLoadState('networkidle', { timeout: Math.max(50, cap - (t1 - t0)) }).catch(() => {})
+
+  // `networkidle` waits for 500 ms of network silence BY DEFINITION, so a page whose DOM
+  // was ready in 1 ms still cost 501 ms — measured as 90% of a 559 ms open, and paid on
+  // every navigation of every sweep.
+  //
+  // What actually matters is narrower: has the DOM stopped changing, and is nothing still
+  // in flight. Asking that directly is both faster on a static page and stricter on a slow
+  // one — a fetch that lands late keeps resetting the quiet window, where a fixed 500 ms
+  // window would have expired regardless. The old `floor` becomes the ceiling.
+  const budget = Math.max(50, floor - (t1 - t0))
+  const deadline = Date.now() + budget
+  const quietWindow = Math.min(120, budget)
+  // A minimum observation window, and it is not decoration: a page that appends content
+  // from a bare setTimeout at 250 ms makes NO network request, so "quiet DOM + nothing in
+  // flight" is satisfied at 120 ms and the content is missed. Measured on a fixture — the
+  // first version of this optimisation dropped a link that the old 500 ms wait caught.
+  // Observing for at least this long lets a late mutation reset the quiet timer instead.
+  // It costs ~130 ms against the naive version and still leaves settle 2x faster.
+  const minObserve = Math.min(250, budget)
+  let rounds = 0
+  for (;;) {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) break
+    rounds++
+    // One wait, not one per condition: resolve when the DOM has been quiet for `q` AND at
+    // least `m` has elapsed. Looping a full quiet window per condition overshot — a static
+    // page paid 372 ms to satisfy a 250 ms minimum.
+    await inPage(S, ({ q, c, m }) => new Promise((res) => {
+      const started = Date.now()
+      let quietUntil = started + q
+      let mo = null
+      const finish = () => {
+        clearInterval(tick)
+        try { mo && mo.disconnect() } catch { /* already gone */ }
+        res(Date.now() - started)
+      }
+      try {
+        mo = new MutationObserver(() => { quietUntil = Date.now() + q })
+        mo.observe(document, { subtree: true, childList: true, attributes: true, characterData: true })
+      } catch { /* no observer: the deadline below still bounds the wait */ }
+      const tick = setInterval(() => {
+        const now = Date.now()
+        if (now >= started + c) return finish()
+        if (now >= quietUntil && now >= started + m) return finish()
+      }, 25)
+    }), { q: Math.min(quietWindow, remaining), c: remaining, m: Math.max(0, Math.min(minObserve - (Date.now() - t1), remaining)) }).catch(() => null)
+    // quiet DOM is not enough on its own: a response can be in flight that has not
+    // mutated anything yet, and a late paint may not have started. All three, or wait.
+    if (S.inflight() === 0 && Date.now() - t1 >= minObserve) break
+  }
   const t2 = Date.now()
-  const left = floor - (t2 - t0)
-  if (left > 0) await page.waitForTimeout(left)
-  return { dom: t1 - t0, idle: t2 - t1, floor: Math.max(0, left) }
+  return { dom: t1 - t0, quiet: t2 - t1, rounds, budget }
 }
+
 
 // ── Checkpoints: named observation baselines ─────────────────────────────────────────
 // Recovery here means "diff the present against a known past", NOT undo: a semantic

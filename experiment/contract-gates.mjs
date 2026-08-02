@@ -53,13 +53,20 @@ const PAGES = {
     body: '<!doctype html><html><head><title>Acme — Contact</title></head><body><h1>Contact</h1><p>Call 914-555-0100</p><p>Plenty of ordinary content here.</p></body></html>' },
   // NEGATIVE CONTROL: a genuinely thin page must come back thin and UNFLAGGED
   '/thin': { status: 200, headers: {}, body: '<!doctype html><html><head><title>WEB Hosting</title></head><body><h1>WEB Hosting</h1></body></html>' },
+  // SETTLE: content appended from a bare setTimeout — no network request at all, so
+  // "nothing in flight" is true the whole time. An optimisation that trusted only the
+  // in-flight count dropped this link, and no other gate noticed.
+  '/late-dom': { status: 200, headers: {}, body: '<!doctype html><html><body><h1>w</h1><script>setTimeout(function(){var a=document.createElement("a");a.href="/x";a.textContent="LATE-DOM-LINK";document.body.appendChild(a)},250)</script></body></html>' },
+  // SETTLE: content that arrives from a slow fetch
+  '/late-fetch': { status: 200, headers: {}, body: '<!doctype html><html><body><h1>w</h1><script>fetch("/slow").then(function(r){return r.text()}).then(function(t){var a=document.createElement("a");a.href="/y";a.textContent=t;document.body.appendChild(a)})</script></body></html>' },
+  '/slow': { status: 200, headers: {}, body: 'LATE-FETCH-LINK', delay: 300 },
 }
 const PORT = 8404
 const srv = createServer((req, res) => {
   const p = PAGES[req.url.split('?')[0]]
   if (!p) { res.writeHead(404); res.end('no'); return }
-  res.writeHead(p.status, { 'content-type': 'text/html', ...p.headers })
-  res.end(p.body)
+  const send = () => { res.writeHead(p.status, { 'content-type': 'text/html', ...p.headers }); res.end(p.body) }
+  if (p.delay) setTimeout(send, p.delay); else send()
 })
 await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
 const U = (p) => `http://127.0.0.1:${PORT}${p}`
@@ -162,6 +169,17 @@ check('NEG', 'a page merely hosted behind a vendor is NOT flagged blocked', !aut
 const thin = await cmd('open', [U('/thin')])
 check('NEG', 'a genuinely thin page comes back thin and UNFLAGGED', !thin.meta?.blocked,
   `mapTotal=${thin.meta?.mapTotal}`)
+
+// ── SETTLE · content that arrives after the page "loaded" must still be observed ─────
+// Settling is a speed/correctness trade: waiting less is faster and can silently drop
+// content, which for this tool means reporting a page as thin when it was not. Both
+// shapes below regressed once while every other gate stayed green.
+for (const [path, needle] of [['/late-dom', 'LATE-DOM-LINK'], ['/late-fetch', 'LATE-FETCH-LINK']]) {
+  const r = await cmd('open', [U(path)])
+  const seenIt = JSON.stringify(r.meta?.digest || {}).includes(needle)
+  check('SETTLE', `content appearing late via ${path.slice(6)} is observed`, seenIt,
+    seenIt ? `settled in ${r.meta?.settle?.quiet}ms` : 'MISSED — settle returned too early')
+}
 
 // ── Teardown ─────────────────────────────────────────────────────────────────────────
 await new Promise((r) => { const s = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
