@@ -26,10 +26,42 @@ There is a fourth thing often listed here that should not be: two silent failure
 during ordinary browsing. Those are anecdotes. They are why we looked here in the first
 place, and they are not evidence.
 
-Target user: **people building QA and web-automation agents** — the niche that already
-pays for this, and where the change report replaces brittle visual assertions. The
-extension case stays as a demonstration of what this can do that others cannot, not as a
-consumer product.
+Target user — revised 2026-08-02 after an outside feature-coverage benchmark, which is
+the first assessment by someone with no stake in the answer.
+
+**Not "people who want a browser for agents".** That lane is crowded and the competitor is
+free: on bespoke extraction from a known site, Playwright with a 40-line `evaluate()` beat
+this tool on both cost and calls, measured. Selling there means losing to something that
+costs nothing.
+
+The buyer is **whoever carries a compliance obligation over data that passes through a
+model** — legal tech, health, KYC and financial onboarding, anyone under GDPR. For them,
+redacting at the observation boundary with an attestation is not a feature, it is what
+lets them sign. It is also the one capability with **no architectural substitute**:
+post-processing is too late, because the datum has already entered the model's context and
+the transcript by the time it is masked.
+
+Second, smaller but faster to close: **registries and data providers** sweeping thousands
+of domains, whose real cost is the false negative. The argument there is the negative
+control, not the positive one — a thin page comes back thin and *unflagged*, while a
+blocked one is typed. A detector that fired on every Cloudflare-hosted site would be
+worthless; not crying wolf is what makes the flag worth anything.
+
+Third, and the one worth pursuing: **do not sell the product, license the honesty layer.**
+`blocked` / `truncated` / the faithful negative / the attestation are one coherent
+contract — never let confusion look like an answer — and almost nobody implements it. It
+fits whoever already has the browser and lacks the auditability, and E5 already showed the
+reader running inside another harness in 45 KB through its own `eval`.
+
+**Do not sell authenticated sessions.** The tool drives its own cookie jar; a site the
+user is signed into elsewhere is read anonymously. Since 2026-08-02 that is reported
+unprompted (`authState`, `cookiesForOrigin`) instead of failing silently, but the
+capability still is not there, and it is the failure a customer would meet in production
+rather than in a demo.
+
+Attach to any compliance pitch, always: redaction protects against the *consumer*, not
+against code running in the page, and screenshots are pixels and are not redacted. A buyer
+who finds that limit after signing is worse than one who was told before.
 
 Nothing gets published without an explicit decision from the owner.
 

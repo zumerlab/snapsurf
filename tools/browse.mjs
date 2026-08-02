@@ -704,6 +704,27 @@ const settle = async (S, cap = 1500, floor = 300) => {
 // not a bug: the plugin records an element, and the element dies with the document).
 
 
+
+// Transport failures used to arrive as a thrown Chromium string while application-level
+// blocks arrived as typed fields, so half the failure space needed a regex table over
+// net error names that the consumer had to maintain. Same classification, same shape.
+function classifyNetError(err) {
+  const msg = String((err && err.message) || err)
+  const code = (msg.match(/net::(ERR_[A-Z_]+)/) || [])[1] || null
+  if (!code) return null
+  if (code === 'ERR_NAME_NOT_RESOLVED') return { layer: 'dns', code, hostUp: false }
+  if (code.startsWith('ERR_CERT') || code === 'ERR_SSL_PROTOCOL_ERROR' || code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
+    // the name resolved and the socket opened; the certificate is what failed
+    return { layer: 'tls', code, hostUp: true }
+  }
+  if (code === 'ERR_CONNECTION_REFUSED' || code === 'ERR_CONNECTION_TIMED_OUT' || code === 'ERR_CONNECTION_RESET' ||
+      code === 'ERR_ADDRESS_UNREACHABLE' || code === 'ERR_CONNECTION_CLOSED') {
+    return { layer: 'transport', code, hostUp: false }
+  }
+  if (code === 'ERR_ABORTED' || code === 'ERR_EMPTY_RESPONSE') return { layer: 'http', code, hostUp: true }
+  return { layer: 'unknown', code, hostUp: null }
+}
+
 // ── Bot mitigation: name it, do not let it look like an empty page ───────────────────
 // Field report §5: four of 25 sites served their landing page and then blocked every
 // subsequent navigation behind an interstitial. The old failure was opaque — navigation
@@ -726,22 +747,43 @@ async function detectChallenge(S, resp) {
   const status = resp ? resp.status() : 0
   const headers = resp ? resp.headers() : {}
   // Cloudflare states it outright since 2023; trust it before guessing from markup.
-  if (headers['cf-mitigated']) {
-    return { blocked: true, vendor: 'cloudflare', reason: 'challenge', status, signal: 'cf-mitigated header' }
-  }
+  // The header is the strongest evidence, but it must not hide a second vendor in the
+  // markup — that is exactly how the wrong vendor got reported. Note it and keep looking.
+  const headerVendor = headers['cf-mitigated'] ? 'cloudflare' : null
   const probe = await inPage(S, () => ({
     title: (document.title || '').slice(0, 120),
     body: (document.body ? document.body.innerHTML : '').slice(0, 4000),
     text: (document.body ? document.body.innerText || '' : '').replace(/\s+/g, ' ').trim().length,
   })).catch(() => null)
-  if (!probe) return null
+  if (!probe) {
+    return headerVendor
+      ? { blocked: true, vendor: headerVendor, reason: 'challenge', status, signal: 'cf-mitigated header' }
+      : null
+  }
+  // Vendors chain: a site can sit behind Cloudflare and serve a DataDome CAPTCHA through
+  // it. Reporting only the first match named the wrong one (g2.com came back
+  // "cloudflare" while the page rendered a DataDome challenge), and for anyone routing
+  // retries per vendor a confidently wrong name is worse than `unknown`. Collect them
+  // all; `vendor` stays the strongest single signal for existing consumers.
+  const hits = []
   for (const m of CHALLENGE_MARKERS) {
     const byTitle = m.title.test(probe.title)
     const byBody = m.body.test(probe.body)
     // A body marker alone is weak (a site may merely USE the vendor); pair it with a
     // challenge-shaped status or title so a protected-but-served page is not mislabelled.
     if ((byTitle && byBody) || (byBody && (status === 403 || status === 429 || status === 503)) || (byTitle && status >= 400)) {
-      return { blocked: true, vendor: m.vendor, reason: 'challenge', status, signal: byTitle ? 'interstitial title' : 'challenge resource' }
+      hits.push({ vendor: m.vendor, signal: byTitle ? 'interstitial title' : 'challenge resource', strong: byTitle && byBody })
+    }
+  }
+  if (headerVendor && !hits.some((h) => h.vendor === headerVendor)) {
+    hits.unshift({ vendor: headerVendor, signal: 'cf-mitigated header', strong: true })
+  }
+  if (hits.length) {
+    // a vendor named by the PAGE outranks one named by a header it merely passed through
+    const primary = hits.find((h) => h.strong && h.signal === 'interstitial title') || hits.find((h) => h.strong) || hits[0]
+    return {
+      blocked: true, vendor: primary.vendor, reason: 'challenge', status, signal: primary.signal,
+      ...(hits.length > 1 ? { vendors: hits.map((h) => h.vendor) } : {}),
     }
   }
   // Blocked without a recognised vendor still beats silence.
@@ -782,7 +824,15 @@ const HANDLERS = {
       return `⛔ denied by --allow policy: ${new URL(full).hostname} not in [${ALLOW.join(', ')}]`
     }
     const tNav = Date.now()
-    let resp = await S.page.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
+    let resp
+    try {
+      resp = await S.page.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
+    } catch (e) {
+      const failure = classifyNetError(e)
+      if (!failure) throw e
+      S.meta = { failure }
+      return `⛔ ${failure.layer.toUpperCase()} failure: ${failure.code} — the request never reached an HTTP response. structuredContent.failure carries {layer, code, hostUp}; this is NOT a bot block and NOT an empty page.`
+    }
     const navMs = Date.now() - tNav
     const s = await settle(S, 3500, 500)
     let challenge = await detectChallenge(S, resp)
@@ -1408,6 +1458,14 @@ async function handle(res, body, S) {
       // is stripped at the edge. Publishing those counts to the caller turns the report
       // into a presence-and-frequency oracle for the page.
       const { __audit: _drop, ...consumerMeta } = S.meta || {}
+      // The attestation rides on EVERY response, not only the ones that re-walk. A
+      // transcript reviewed later contains many finds and few opens; without this, the
+      // finds carried no proof the policy was live, and an empty find() could mean
+      // absent / redacted / out of window with one identical payload. Counts stay out —
+      // they would say whether and how often the hidden term occurs.
+      if (REDACT && REDACT.length && !consumerMeta.privacy) {
+        consumerMeta.privacy = { policyRevision: POLICY_REV, rulesActive: REDACT.length, applied: true }
+      }
       res.end(JSON.stringify({ v: 1, ok: ok && !(S.meta && S.meta.denied), text: outText, error, sessionId: S.id, epoch: S.epoch, url: safeUrl(urlAfter), meta: consumerMeta }))
     } else if (ok) {
       res.end(outText + '\n')

@@ -34,10 +34,11 @@ What is measured, with the file that holds each number:
 - On tasks written by other people it completed 28% of the scoring steps — the same range
   everyone else is in. Our own task suite gave 99%, which means our tasks were easy
   (`experiment/formal/results/d-third-party.md`).
-- Extracting contact details from 57 real company sites, it tied on phone and address and
-  won by 30 points on email — because an email is a `mailto:` in an attribute, and turning
-  a page into text destroys it (§5.1b). That is the sharpest statement of where this is
-  worth reaching for.
+- Extracting contact details from real company sites, it reads a channel that text
+  conversion destroys — an email is often a `mailto:` in an attribute. One batch measured
+  a 30-point advantage on email; a later controlled sample did not reproduce it and found
+  a site where the typed href names the wrong mailbox (§5.1b). It is a second channel,
+  not a better one.
 
 The third result is the important one to read first. This tool does not make an agent
 better at finishing tasks. It makes the agent's failures visible.
@@ -213,16 +214,25 @@ details, located the advantage more precisely than any of our own benchmarks had
 | Postal address | tie |
 | **Email address** | **+30 points** |
 
-The reason is structural, and it generalises beyond email. A phone number and an address
-are *text*: they survive being turned into text, so a converter loses nothing. An email
-address on a contact page is usually **not** text — it is a `mailto:` in an `href`, and
-converting the page to text destroys the typing that made it findable. The same holds for
-anything that lives in an attribute rather than in the prose: `tel:` links, canonical
-URLs, `datetime` on a timestamp, `value` on a control, the target of a button.
+The mechanism is structural. A phone number and an address are *text*: they survive being
+turned into text, so a converter loses nothing. An email address on a contact page is
+often **not** text — it is a `mailto:` in an `href`, and converting the page to text
+destroys the typing that made it findable. The same holds for anything living in an
+attribute rather than the prose: `tel:` links, canonical URLs, `datetime`, `value`, the
+target of a button.
 
-So the honest scope is narrower and more useful than "reads pages better": **it wins where
-the datum is carried by an attribute, and ties where the datum is text.** That predicts
-when a caller should reach for it, which a detection-quality number does not.
+**A later controlled sample did not reproduce the advantage, and one site inverts it.**
+On six sites with ground truth frozen from raw HTML before either method ran, the two tied
+3/3, and on the Free Software Foundation's contact page the `mailto:` href gives
+`campaigns@fsf.org` while the visible text says to write to `info@fsf.org` — the typed
+channel points at the *wrong* mailbox. On another, seven `mailto:` addresses in the raw
+HTML are not anchors at all: they live in a CMS JSON payload, so the rendered DOM has no
+`a[href^=mailto:]` and both methods correctly returned nothing.
+
+So the defensible claim is weaker than the first batch suggested: the attribute channel is
+a **second** channel, not a superior one. It carries data that text conversion destroys,
+and it can also carry a different — sometimes wrong — value than the page tells a human to
+use. Read both; do not treat the href as the source of truth.
 
 Two caveats from the same run. The advantage only materialises if the consumer reads the
 typed fields rather than the rendered prose — the run that produced these numbers had to
