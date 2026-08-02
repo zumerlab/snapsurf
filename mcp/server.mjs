@@ -38,11 +38,11 @@ async function browsePath() {
 
 // Daemon envelope v1: {ok, text, error, epoch, url, meta} — a machine contract
 // instead of parsed prose (codex-mcp ask).
-async function cmd(name, args = [], { internal = false } = {}) {
+async function cmd(name, args = [], { internal = false, sessionId } = {}) {
   const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ cmd: name, args, envelope: true, internal }),
+    body: JSON.stringify({ cmd: name, args, envelope: true, internal, sessionId }),
   })
   const env = await res.json()
   if (!env.ok && env.error) throw new Error(env.error)
@@ -117,19 +117,19 @@ const TOOLS = [
   {
     name: 'browser_open',
     description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
-    inputSchema: { type: 'object', properties: { url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
-    run: async ({ url, redact }) =>
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
+    run: async ({ url, redact, sessionId }) =>
       // Rules as JSON, in the SAME call as the navigation. It used to be two calls with
       // the rules joined by commas, which meant (1) two concurrent MCP requests could read
       // under each other's policy, and (2) a rule containing a comma was split in two.
       // Both are F3 round findings.
-      cmd('open', Array.isArray(redact) ? [url, '--redact-json', JSON.stringify(redact)] : [url]),
+      cmd('open', Array.isArray(redact) ? [url, '--redact-json', JSON.stringify(redact)] : [url], { sessionId }),
   },
   {
     name: 'browser_find',
     description: 'Search text across the WHOLE page (not just the visible part) and get RANKED matches: clickable id, role, full text, bbox and a navigable href. The right tool to locate something specific on long pages — do not ask for the full outline.',
-    inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
-    run: async ({ text }) => cmd('find', text.split(/\s+/)),
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, text: { type: 'string' } }, required: ['text'] },
+    run: async ({ text, sessionId }) => cmd('find', text.split(/\s+/), { sessionId }),
   },
   {
     name: 'browser_act',
@@ -143,40 +143,40 @@ const TOOLS = [
       },
       required: ['action'],
       oneOf: [
-        { properties: { action: { const: 'click' } }, required: ['action', 'target'] },
-        { properties: { action: { const: 'type' } }, required: ['action', 'text'] },
-        { properties: { action: { const: 'enter' } }, required: ['action'] },
+        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, action: { const: 'click' } }, required: ['action', 'target'] },
+        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, action: { const: 'type' } }, required: ['action', 'text'] },
+        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, action: { const: 'enter' } }, required: ['action'] },
       ],
     },
-    run: async ({ action, target, text }) => {
+    run: async ({ action, target, text, sessionId }) => {
       if (action === 'click') {
         if (!target) throw new Error('click requires target (id or "x,y")')
-        return cmd('click', [target])
+        return cmd('click', [target], { sessionId })
       }
       if (action === 'type') {
         if (!text) throw new Error('type requires text')
-        return cmd('type', text.split(/\s+/))
+        return cmd('type', text.split(/\s+/), { sessionId })
       }
-      return cmd('enter')
+      return cmd('enter', [], { sessionId })
     },
   },
   {
     name: 'browser_verify',
     description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Call it after EVERY action instead of comparing screenshots.',
     inputSchema: { type: 'object', properties: {} },
-    run: async () => cmd('look'),
+    run: async ({ sessionId } = {}) => cmd('look', [], { sessionId }),
   },
   {
     name: 'browser_checkpoint',
     description: 'Save the currently observed state as a NAMED baseline (before a risky action). NOT undo: a comparison point for browser_diff.',
-    inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
-    run: async ({ name }) => cmd('cp', ['save', name]),
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, name: { type: 'string' } }, required: ['name'] },
+    run: async ({ name, sessionId }) => cmd('cp', ['save', name], { sessionId }),
   },
   {
     name: 'browser_diff',
     description: 'Diff the current state against a checkpoint saved with browser_checkpoint: everything that changed since that known point. Note: the next browser_verify baseline becomes the current state.',
-    inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
-    run: async ({ name }) => cmd('cp', ['diff', name]),
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, name: { type: 'string' } }, required: ['name'] },
+    run: async ({ name, sessionId }) => cmd('cp', ['diff', name], { sessionId }),
   },
   {
     name: 'browser_assert',
@@ -188,17 +188,17 @@ const TOOLS = [
         changed: { type: 'boolean', description: 'expected value of the diff since the last observation' },
         mustInclude: {
           type: 'array',
-          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, nameExact: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
+          items: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, nameExact: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
           description: 'changes that must appear in the diff (selector = exact; to = expected state after, e.g. {expanded:true})',
         },
         mustNotInclude: {
           type: 'array',
-          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
+          items: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
           description: 'changes that must NOT appear (assert absence of side-effects)',
         },
         only: {
           type: 'array',
-          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
+          items: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
           description: 'causal scoping: EVERY change must match one of these matchers',
         },
         ignore: { type: 'array', items: { type: 'string' }, description: 'CSS selectors whose subtree changes are excluded (e.g. the agent toolbar)' },
@@ -206,19 +206,19 @@ const TOOLS = [
         becameVisible: { type: 'string', description: 'an actionable matching this text must have become visible' },
         becameCovered: { type: 'string', description: 'an actionable matching this text must have become covered' },
         settleMs: { type: 'number', description: 'wait before the first walk' },
-        retry: { type: 'object', properties: { budgetMs: { type: 'number' }, intervalMs: { type: 'number' } }, description: 're-walk against the SAME baseline until pass or budget' },
+        retry: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, budgetMs: { type: 'number' }, intervalMs: { type: 'number' } }, description: 're-walk against the SAME baseline until pass or budget' },
         exists: { type: 'string', description: 'text that must be findable on the page' },
         notCovered: { type: 'string', description: 'text whose best match must not be occluded' },
         keepBaseline: { type: 'boolean', description: 'do not consume the diff baseline (peek mode — safe to retry)' },
       },
     },
-    run: async (args) => cmd('assert', [JSON.stringify(args)]),
+    run: async (args) => cmd('assert', [JSON.stringify(args)], { sessionId: args.sessionId }),
   },
   {
     name: 'browser_text',
     description: 'Full visible text of ONE node (by id) — to extract numbers, titles or exact values without interpreting pixels.',
-    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
-    run: async ({ id }) => cmd('text', [id]),
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, id: { type: 'string' } }, required: ['id'] },
+    run: async ({ id, sessionId }) => cmd('text', [id], { sessionId }),
   },
   {
     name: 'browser_page',
@@ -232,27 +232,45 @@ const TOOLS = [
       },
       required: ['view'],
       oneOf: [
-        { properties: { view: { const: 'outline' } }, required: ['view'] },
-        { properties: { view: { const: 'map' } }, required: ['view'] },
-        { properties: { view: { const: 'zoom' } }, required: ['view', 'id'] },
+        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, view: { const: 'outline' } }, required: ['view'] },
+        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, view: { const: 'map' } }, required: ['view'] },
+        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, view: { const: 'zoom' } }, required: ['view', 'id'] },
       ],
     },
-    run: async ({ view, offset, id }) => {
-      if (view === 'outline') return cmd('outline')
+    run: async ({ view, offset, id, sessionId }) => {
+      if (view === 'outline') return cmd('outline', [], { sessionId })
       if (view === 'zoom') {
         if (!id) throw new Error('zoom requires id')
-        return cmd('look', [id])
+        return cmd('look', [id], { sessionId })
       }
-      return cmd('map', [String(offset || 0)])
+      return cmd('map', [String(offset || 0)], { sessionId })
     },
+  },
+  {
+    name: 'browser_session_open',
+    description: 'Open an independent browsing session and get its `sessionId`. Each session is its own page with its own observation counter and its own ids, so several sweeps run AT THE SAME TIME without invalidating each other — without this, one caller navigating voids the ids another caller is holding. Pass the returned sessionId on every call belonging to that sweep. Sessions share cookies (one browser context): right for a sweep of unrelated public sites, wrong for two different logged-in identities. Close it with browser_session_close when done.',
+    inputSchema: { type: 'object', properties: {} },
+    run: async () => cmd('session', ['open']),
+  },
+  {
+    name: 'browser_session_close',
+    description: 'Close a session opened with browser_session_open and free its page. Sessions also close themselves after 10 minutes idle, so a crashed run does not leak pages.',
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'] },
+    run: async ({ sessionId }) => cmd('session', ['close', sessionId]),
+  },
+  {
+    name: 'browser_session_list',
+    description: 'List the live sessions with their current URL, observation number and idle time.',
+    inputSchema: { type: 'object', properties: {} },
+    run: async () => cmd('session', ['list']),
   },
   {
     name: 'browser_screenshot',
     description: 'Pixels as ESCALATION, not default: snapdom render of the viewport, or of one element (scrolled to center) when you pass an id. Only when the doubt is genuinely visual (layout, color, overlap) — for what changed there is browser_verify.',
-    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'optional: element to center' } } },
-    run: async ({ id }) => {
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, id: { type: 'string', description: 'optional: element to center' } } },
+    run: async ({ id, sessionId }) => {
       const file = `/tmp/snapdom-mcp-${Date.now()}.png`
-      const env = await cmd('snap', id ? [id, file] : [file])
+      const env = await cmd('snap', id ? [id, file] : [file], { sessionId })
       const data = (await readFile(file)).toString('base64')
       return { ...env, image: { data, mimeType: 'image/png' } }
     },
@@ -298,7 +316,7 @@ rl.on('line', async (line) => {
       // deep to find them under .assert (codex v5). Nested copy stays for compat.
       return reply(id, {
         content,
-        structuredContent: { v: 1, ok: env.ok, epoch: env.epoch, url: env.url, ...env.meta, ...(env.meta && env.meta.assert ? env.meta.assert : {}) },
+        structuredContent: { v: 1, ok: env.ok, sessionId: env.sessionId, epoch: env.epoch, url: env.url, ...env.meta, ...(env.meta && env.meta.assert ? env.meta.assert : {}) },
         isError: !env.ok,
       })
     } catch (e) {
