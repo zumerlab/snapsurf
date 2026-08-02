@@ -819,13 +819,27 @@ const HANDLERS = {
         challenge = again ? { ...again, waited: true } : null
       }
     }
+    // Whose view is this? snapdom drives its OWN cookie jar, so being signed in to a site
+    // in the user's Chrome does not sign snapdom in. Today that failure is silent: the
+    // anonymous view of a dashboard or a member-priced catalogue looks exactly like a
+    // valid page with less on it, and nothing announces the difference. It is the failure
+    // a consumer meets in production rather than in a demo, so it gets reported the same
+    // way `blocked` is — as a field, unprompted, on every open.
+    //
+    // Cookies present do NOT prove a session, so this never claims `authenticated`:
+    // zero cookies is proof of anonymity; anything else is honestly `unknown`.
+    let auth
+    try {
+      const jar = await context.cookies(S.page.url())
+      auth = { cookiesForOrigin: jar.length, authState: jar.length === 0 ? 'anonymous' : 'unknown' }
+    } catch { auth = { authState: 'unknown' } }
     const tWalk = Date.now()
     const o = await inPage(S, observe, { compact })
     S.epoch++
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
-    S.meta = { mapTotal: o.mapTotal, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    S.meta = { mapTotal: o.mapTotal, ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
