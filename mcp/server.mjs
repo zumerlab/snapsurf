@@ -116,7 +116,7 @@ async function ensureDaemon() {
 const TOOLS = [
   {
     name: 'browser_open',
-    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
+    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. Returns `digest` in structuredContent (marks/heads/top) as well as prose — read the field, do not parse the text. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
     run: async ({ url, redact, sessionId }) =>
       // Rules as JSON, in the SAME call as the navigation. It used to be two calls with
@@ -127,7 +127,7 @@ const TOOLS = [
   },
   {
     name: 'browser_find',
-    description: 'Search text across the WHOLE page (not just the visible part) and get RANKED matches: clickable id, role, full text, bbox and a navigable href. The right tool to locate something specific on long pages — do not ask for the full outline.',
+    description: 'Search text across the WHOLE page (not just the visible part) and get RANKED matches in structuredContent: `id`, `role`, `name`, `text` (same string, honest label), `href` (mailto:/tel: pass through intact) and `truncated` when a value was cut. The right tool to locate something specific on long pages — do not ask for the full outline.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, text: { type: 'string' } }, required: ['text'] },
     run: async ({ text, sessionId }) => cmd('find', text.split(/\s+/), { sessionId }),
   },
@@ -162,7 +162,7 @@ const TOOLS = [
   },
   {
     name: 'browser_verify',
-    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Call it after EVERY action instead of comparing screenshots.',
+    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Call it after EVERY action instead of comparing screenshots. structuredContent carries `changed`, `changes` (list of {kind, role, name, id}) and `changesTotal` — read those rather than parsing the prose.',
     inputSchema: { type: 'object', properties: {} },
     run: async ({ sessionId } = {}) => cmd('look', [], { sessionId }),
   },
@@ -216,13 +216,13 @@ const TOOLS = [
   },
   {
     name: 'browser_text',
-    description: 'Full visible text of ONE node (by id) — to extract numbers, titles or exact values without interpreting pixels.',
+    description: 'Full visible text of ONE node (by id) — to extract numbers, titles or exact values without interpreting pixels. Returns `text` in structuredContent, with `truncated: true` when the value was cut — a cut value must be escalated, not recorded.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, id: { type: 'string' } }, required: ['id'] },
     run: async ({ id, sessionId }) => cmd('text', [id], { sessionId }),
   },
   {
     name: 'browser_page',
-    description: 'Expanded views when the digest is not enough: outline (full structure trimmed to 12KB), map with offset (pages actionables beyond the top), or zoom with id (observes ONLY that subtree — the detail of a region/card; renews ids, global baseline untouched). Explicit escalation — digest first.',
+    description: 'Expanded views when the digest is not enough: outline (full structure trimmed to 12KB), map with offset (pages actionables beyond the top), or zoom with id (observes ONLY that subtree — the detail of a region/card; renews ids, global baseline untouched). Explicit escalation — digest first. Returns `outline` in structuredContent for view:"outline", with `truncated` when trimmed.',
     inputSchema: {
       type: 'object',
       properties: {
