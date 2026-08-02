@@ -1,0 +1,135 @@
+<!doctype html><meta charset="utf-8"><title>Observation-boundary redaction — evidence</title>
+<style>
+ :root{--ink:#111;--mut:#666;--line:#ddd;--bad:#b00020;--good:#0a6b3d;--bg:#fafafa}
+ body{font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--ink);max-width:52rem;margin:3rem auto;padding:0 1.5rem}
+ h1{font-size:1.6rem;margin:0 0 .2rem} h2{font-size:1.05rem;margin:2.2rem 0 .6rem;padding-top:.9rem;border-top:1px solid var(--line)}
+ .sub{color:var(--mut);margin:0 0 2rem}
+ pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-size:12.5px;line-height:1.45}
+ .bad{color:var(--bad);font-weight:600}.good{color:var(--good);font-weight:600}
+ table{border-collapse:collapse;width:100%;margin:.5rem 0}td,th{border-bottom:1px solid var(--line);padding:.45rem .6rem;text-align:left;vertical-align:top}
+ th{font-weight:600;color:var(--mut);font-size:.85rem;text-transform:uppercase;letter-spacing:.03em}
+ .note{background:#fff8e6;border:1px solid #f0dca0;border-radius:6px;padding:.7rem .9rem;margin:1rem 0}
+ footer{margin-top:3rem;color:var(--mut);font-size:.85rem;border-top:1px solid var(--line);padding-top:1rem}
+</style>
+<h1>Observation-boundary redaction</h1>
+<p class="sub">Evidence pack · generated 2026-08-02 · synthetic record, no real personal data</p>
+
+<h2>The question this answers</h2>
+<p>When an automated agent reads a page containing personal data, <strong>what reaches the language model</strong>, and can it be proven afterwards? Filtering the model's output does not answer it: by then the data has already entered the model's context and the transcript. This tool applies the policy <em>before</em> the observation leaves the page.</p>
+
+<h2>The page being read</h2>
+<pre>&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;title&gt;Patient record CASE-88213&lt;/title&gt;&lt;/head&gt;&lt;body&gt;
+&lt;h1&gt;Patient record&lt;/h1&gt;
+&lt;dl&gt;
+  &lt;dt&gt;Name&lt;/dt&gt;&lt;dd&gt;Marta Quiroga&lt;/dd&gt;
+  &lt;dt&gt;Contact&lt;/dt&gt;&lt;dd&gt;&lt;a href="mailto:m.quiroga@example-clinic.test"&gt;m.quiroga@example-clinic.test&lt;/a&gt;&lt;/dd&gt;
+  &lt;dt&gt;Phone&lt;/dt&gt;&lt;dd&gt;&lt;a href="tel:+541155550142"&gt;+54 11 5555 0142&lt;/a&gt;&lt;/dd&gt;
+  &lt;dt&gt;Reference&lt;/dt&gt;&lt;dd&gt;CASE-88213&lt;/dd&gt;
+&lt;/dl&gt;
+&lt;a href="/records/CASE-88213/notes"&gt;Clinical notes&lt;/a&gt;
+&lt;p&gt;Appointment confirmed for next Tuesday. No outstanding balance.&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;</pre>
+
+<h2>1 · Read with no policy — what would reach the model</h2>
+<p>Terms found in the payload: <span class="bad">3 of 4</span> <code>m.quiroga@example-clinic.test</code>, <code>+54 11 5555 0142</code>, <code>CASE-88213</code></p>
+<pre>[
+ {
+  "id": "n_1r8",
+  "r": "link",
+  "n": "m.quiroga@example-clinic.test",
+  "b": [
+   48,
+   134,
+   201,
+   18
+  ],
+  "href": "mailto:m.quiroga@example-clinic.test"
+ },
+ {
+  "id": "n_1rb",
+  "r": "link",
+  "n": "+54 11 5555 0142",
+  "b": [
+   48,
+   170,
+   116,
+   18
+  ],
+  "href": "tel:+541155550142"
+ },
+ {
+  "id": "n_1re",
+  "r": "link",
+  "n": "Clinical notes",
+  "b": [
+   8,
+   240,
+   88,
+   18
+  ],
+  "href": "/records/CASE-88213/notes"
+ }
+]</pre>
+
+<h2>2 · The same page, same call, with a policy</h2>
+<p>Terms found in the payload: <span class="good">0 of 4</span> — none</p>
+<pre>[
+ {
+  "id": "n_1r8",
+  "r": "link",
+  "n": "[redacted]",
+  "b": [
+   48,
+   134,
+   201,
+   18
+  ],
+  "href": "[redacted]"
+ },
+ {
+  "id": "n_1re",
+  "r": "link",
+  "n": "Clinical notes",
+  "b": [
+   8,
+   240,
+   88,
+   18
+  ],
+  "href": "[redacted]"
+ }
+]</pre>
+<table>
+ <tr><th>Property</th><th>Result</th></tr>
+ <tr><td>Page URL as reported</td><td><code>http://127.0.0.1:8407/records/[redacted]</code></td></tr>
+ <tr><td>Values inside <code>href</code> attributes</td><td><span class="good">covered by the policy</span></td></tr>
+ <tr><td>Attestation returned with the observation</td><td><code>{"policyRevision":1,"rulesActive":4,"applied":true}</code></td></tr>
+ <tr><td>Form input values</td><td>never serialised — masked and hashed by design, policy or not</td></tr>
+</table>
+
+<h2>3 · Can the hidden value be probed for?</h2>
+<p>A caller asks whether the redacted name is present. Answering — even "no" — would confirm or deny it, one bit at a time. The request is refused instead:</p>
+<pre>FAIL (0/1 checks)
+  ✗ exists · expected "Marta Quiroga" · actual "blocked by privacy rule"</pre>
+
+<h2>4 · What the operator's audit log recorded</h2>
+<pre>{"ts":"2026-08-02T23:08:59.267Z","session":"20260802-230857","seq":3,"cmd":"open","args":["http://127.0.0.1:8407/records/[redacted]"],"sessionId":"s_default","epoch":2,"urlBefore":"http://127.0.0.1:8407/records/[redacted]","urlAfter":"http://127.0.0.1:8407/records/[redacted]","durationMs":520,"ok":true,"mapTotal":3,"cookiesForOrigin":0,"authState":"anonymous","digest":{"marks":[],"heads":[{"id":"n_1r2","t":"Patient record"}],"top":[{"id":"n_1r8","r":"link","n":"[redacted]","b":[48,134,201,18],"href":"[redacted]"},{"id":"n_1re","r":"link","n":"Clinical notes","b":[8,240,88,18],"href":"[redacted]"}]},"nav":5,"settle":{"dom":0,"idle":501,"floor":0},"walk":9,"walkDetail":{"slices":0,"maxSliceMs" …</pre>
+<p>The log records that a policy was active and how many rules it had — never the rule text, because the terms are the very strings the operator asked to hide.</p>
+
+<h2>Limits — stated before purchase, not after</h2>
+<div class="note">
+<ul>
+<li><strong>This protects against the consumer</strong> (the model, the transcript, the logs). It is not a defence against code running inside the page, which by definition already has the DOM.</li>
+<li><strong>Screenshots are pixels and are not redacted.</strong> If a region is sensitive, do not request its image.</li>
+<li><strong>Matching is literal substring, case-insensitive.</strong> It does not infer that "M. Quiroga" is the same person as "Marta Quiroga"; rules are supplied by the operator.</li>
+<li><strong>Saved reference points contain a non-salted hash of input values.</strong> A holder could test a <em>guessed</em> value against one. Treat them as sensitive artifacts.</li>
+<li><strong>Authenticated pages:</strong> this tool uses its own cookie jar and reads the signed-out view. It reports <code>authState</code> rather than pretending otherwise.</li>
+</ul>
+</div>
+
+<footer>
+Reproduce: <code>node packages/agent/demo-qa/compliance-demo.mjs</code>.
+The behaviour shown is covered by automated gates — <code>npm run test:contract</code>
+(15 checks, including that redaction covers <code>href</code> and that a probe is refused)
+and 8 unit tests in <code>test/privacy-probe.test.js</code>.
+</footer>
