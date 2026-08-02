@@ -347,7 +347,11 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap } = {})
       try {
         const el = ui.__snapshot.elements.get(e.id)
         const raw = el && el.getAttribute && el.getAttribute('href')
-        if (raw && !raw.startsWith('#')) { const u = new URL(raw, location.href); href = (u.pathname + u.search).slice(0, 48) }
+        if (raw && !raw.startsWith('#')) {
+          const u = new URL(raw, location.href)
+          // see the find path: mailto:/tel: have origin "null" and everything in the href
+          href = (u.origin === 'null' ? String(raw) : u.pathname + u.search).slice(0, 48)
+        }
       } catch { /* noop */ }
       top.push({ id: e.id, r: e.r, n: e.n.slice(0, 90), b: e.b, href, s: sectionOf(ui.__snapshot.elements.get(e.id)), c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })
       if (top.length >= 15) break
@@ -397,7 +401,14 @@ const inFind = (query) => {
     // snapshot name/text arrive pre-truncated (~80c) — take the live DOM text when
     // longer, so long headlines survive whole (companion round 6 lesson)
     if (el) {
-      const fromDom = window.__agentRedact((el.textContent || '').replace(/\s+/g, ' ').trim())
+      // innerText, not textContent: textContent concatenates sibling elements with no
+      // separator, so "Call our office" + "914-683-1119" arrived as
+      // "Call our office914-683-1119" and no parser could tell label from value
+      // (field report §3.3). innerText inserts the breaks the rendering implies.
+      // It costs a layout read, which is why it runs AFTER the query filter above —
+      // only the handful of nodes that actually matched pay for it.
+      const raw = el.innerText || el.textContent || ''
+      const fromDom = window.__agentRedact(raw.replace(/\s+/g, ' ').trim())
       if (fromDom.length > name.length) name = fromDom
     }
     const href = el && el.getAttribute ? el.getAttribute('href') : null
@@ -420,12 +431,24 @@ const inFind = (query) => {
     if (href && !href.startsWith('#')) {
       try {
         const u = new URL(href, location.href)
-        // cross-origin destinations keep their origin — "/" told codex nothing
-        // about the external Homepage link (npm → preactjs.com)
-        shortHref = ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search).slice(0, 140)
-      } catch { shortHref = href.slice(0, 140) }
+        // mailto:/tel:/sms: are NOT hierarchical: their `origin` is the STRING "null",
+        // so the old concatenation emitted "nullinfo@example.com" and a consumer
+        // resolving that against the page origin got a broken URL (field report §3.1).
+        // Non-hierarchical schemes carry everything in the href already — pass it through.
+        shortHref = u.origin === 'null'
+          ? String(href).slice(0, 140)
+          // cross-origin destinations keep their origin — "/" told codex nothing
+          // about the external Homepage link (npm → preactjs.com)
+          : ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search).slice(0, 140)
+      } catch { shortHref = String(href).slice(0, 140) }
     }
-    cands.set(id, { id, r, n: name.slice(0, 160), b, href: shortHref, s })
+    // `n` stays for compatibility; `text` is the same string under a name that says what
+    // it is. A field called `name` reads as an accessible-name label, so callers went
+    // looking for the body elsewhere and burned a round trip on it (field report §3.2).
+    // `truncated` marks a cut, which used to happen mid-token with no marker (§3.4).
+    const full = String(name)
+    const cut = full.length > 160
+    cands.set(id, { id, r, n: full.slice(0, 160), text: full.slice(0, 160), truncated: cut || undefined, b, href: shortHref, s })
   }
   for (const e of ui.agentMap.map) add(e.id, e.r, e.n, e.b)
   for (const id of ui.__snapshot.order) {
@@ -598,7 +621,10 @@ const HANDLERS = {
     const tWalk = Date.now()
     const o = await inPage(observe, {})
     epoch++
-    meta = { mapTotal: o.mapTotal, nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    // The digest travels as a FIELD as well as prose (field report §2): an integrator
+    // told to read structuredContent was getting matches from `find` and nothing from
+    // `open`, which reads as "the page did not serialise".
+    meta = { mapTotal: o.mapTotal, ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     return fmtFirst(o, page.url())
   },
   async look([id]) {
@@ -621,7 +647,9 @@ const HANDLERS = {
     const o = await inPage(observe, { previous: prev })
     epoch++
     // enough summary that the JSONL alone says WHAT was seen, not just that a look ran
-    meta = { mapTotal: o.mapTotal, changed: o.changed, walkDetail: o.walkDetail, ...(o.changes ? { changes: o.changes.length } : {}), ...(navigated ? { navigated: true, baselineUrl: baseUrl } : {}), ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    // `changes` is now the LIST (kind/role/name/id), with the count in `changesTotal` —
+    // same shape `assert` already publishes, so a consumer learns one contract, not two.
+    meta = { mapTotal: o.mapTotal, changed: o.changed, walkDetail: o.walkDetail, ...(o.digest ? { digest: o.digest } : {}), ...(o.changes ? { changesTotal: o.changes.length, changes: o.changes.slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: c.name, id: c.id })) } : {}), ...(navigated ? { navigated: true, baselineUrl: baseUrl } : {}), ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     return (navigated ? `⚠ navigated since baseline (${safeUrl(baseUrl)}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, page.url())
   },
   async find(args) {
@@ -629,7 +657,9 @@ const HANDLERS = {
     // full matches in the audit log — ids alone can't be reconstructed post-session.
     // Full field names: the documented contract is {id, role, name, href} and a literal
     // consumer must find exactly that (codex v4 caught the r/n abbreviation drift).
-    meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n && m.n.slice(0, 120), href: m.href || undefined })) }
+    // `text` alongside `name` (same string, honest label) and an explicit `truncated`
+    // flag, so a caller knows a value was cut instead of recording a corrupt one.
+    meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n && m.n.slice(0, 120), text: m.text && m.text.slice(0, 120), truncated: (m.truncated || (m.text || '').length > 120) || undefined, href: m.href || undefined })) }
     return matches.length
       ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 120)}"` : ''} [${m.b.join(',')}]${m.href ? ` → ${m.href}` : ''}`).join('\n'))
       : 'no matches'
@@ -651,7 +681,14 @@ const HANDLERS = {
     // path now that open/look default to the ~2KB digest.
     const ctx = await inPage(() => window.__lastUi ? window.__lastUi.context : null)
     if (!ctx) return 'no observation yet — run open/look first'
-    return `FULL OUTLINE (obs #${epoch}):\n${fence(trimOutline(ctx))}`
+    const trimmed = trimOutline(ctx)
+    // The payload travels as a FIELD too, not only inside the prose. `find` published its
+    // matches in structuredContent while open/outline/text published nothing, so a client
+    // reading structuredContent — which the tool descriptions tell integrators to do — saw
+    // content from one read tool and empty envelopes from the rest, and concluded the page
+    // could not be read at all (field report §2).
+    meta = { outline: trimmed, truncated: trimmed.length < ctx.length }
+    return `FULL OUTLINE (obs #${epoch}):\n${fence(trimmed)}`
   },
   async map([offset]) {
     // Page through the actionables map beyond the first 40 (T5: listing links lived
@@ -704,7 +741,8 @@ const HANDLERS = {
       const el = window.__lastUi && window.__lastUi.__snapshot.elements.get(nid)
       return el ? window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 600)) : null
     }, id)
-    meta = { resolved: { id } }
+    // same reason as outline: the text is a field, not only prose
+    meta = { resolved: { id }, text: t ?? undefined, truncated: (t || '').length >= 600 || undefined }
     return t === null ? `unknown id: ${id}` : (t ? fence(t) : '(no text)')
   },
   // Runtime privacy rules (session-scoped, same semantics as serve --redact). The
