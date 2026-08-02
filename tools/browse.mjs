@@ -682,6 +682,54 @@ const settle = async (S, cap = 1500, floor = 300) => {
 // get recorded; a navigation kills the page context and aborts it (semantic limit,
 // not a bug: the plugin records an element, and the element dies with the document).
 
+
+// ── Bot mitigation: name it, do not let it look like an empty page ───────────────────
+// Field report §5: four of 25 sites served their landing page and then blocked every
+// subsequent navigation behind an interstitial. The old failure was opaque — navigation
+// "succeeded", the digest came back thin, and the caller could not tell BLOCKED from
+// "this page really has nothing". Those need different responses: one is retryable by
+// another fetcher, the other is a finished answer.
+//
+// Signals, cheapest first. Headers and status come from the navigation response; the
+// title/body markers need the document, which by then is already parsed.
+const CHALLENGE_MARKERS = [
+  { vendor: 'cloudflare', title: /^(just a moment|attention required|checking your browser|please wait)/i,
+    body: /cdn-cgi\/challenge-platform|cf_chl_|cf-browser-verification|turnstile/i },
+  { vendor: 'akamai', title: /access denied/i, body: /reference\s*#\d+\.\w+|akamai/i },
+  { vendor: 'datadome', title: /(blocked|verification)/i, body: /datadome|dd_?cookie/i },
+  { vendor: 'perimeterx', title: /access to this page has been denied/i, body: /px-captcha|perimeterx|_pxhd/i },
+  { vendor: 'imperva', title: /(request unsuccessful|incapsula)/i, body: /incapsula|_incap_|imperva/i },
+]
+
+async function detectChallenge(S, resp) {
+  const status = resp ? resp.status() : 0
+  const headers = resp ? resp.headers() : {}
+  // Cloudflare states it outright since 2023; trust it before guessing from markup.
+  if (headers['cf-mitigated']) {
+    return { blocked: true, vendor: 'cloudflare', reason: 'challenge', status, signal: 'cf-mitigated header' }
+  }
+  const probe = await inPage(S, () => ({
+    title: (document.title || '').slice(0, 120),
+    body: (document.body ? document.body.innerHTML : '').slice(0, 4000),
+    text: (document.body ? document.body.innerText || '' : '').replace(/\s+/g, ' ').trim().length,
+  })).catch(() => null)
+  if (!probe) return null
+  for (const m of CHALLENGE_MARKERS) {
+    const byTitle = m.title.test(probe.title)
+    const byBody = m.body.test(probe.body)
+    // A body marker alone is weak (a site may merely USE the vendor); pair it with a
+    // challenge-shaped status or title so a protected-but-served page is not mislabelled.
+    if ((byTitle && byBody) || (byBody && (status === 403 || status === 429 || status === 503)) || (byTitle && status >= 400)) {
+      return { blocked: true, vendor: m.vendor, reason: 'challenge', status, signal: byTitle ? 'interstitial title' : 'challenge resource' }
+    }
+  }
+  // Blocked without a recognised vendor still beats silence.
+  if ((status === 403 || status === 429) && probe.text < 400) {
+    return { blocked: true, vendor: 'unknown', reason: 'http_' + status, status, signal: 'status with near-empty body' }
+  }
+  return null
+}
+
 // ── Command handlers ─────────────────────────────────────────────────────────────────
 const HANDLERS = {
   async open(args, S) {
@@ -702,6 +750,10 @@ const HANDLERS = {
     }
     const compact = args.includes('--compact')
     args = args.filter((a) => a !== '--compact')
+    // Many interstitials clear on their own within a few seconds; wait only when asked.
+    const wcIdx = args.indexOf('--wait-challenge')
+    const waitChallengeMs = wcIdx > -1 ? Math.min(30000, parseInt(args[wcIdx + 1], 10) || 0) : 0
+    if (wcIdx > -1) args = args.filter((_, i) => i !== wcIdx && i !== wcIdx + 1)
     const url = args[0]
     const full = /^(https?|file|data):/.test(url) ? url : 'https://' + url
     if (ALLOW && !hostAllowed(full)) {
@@ -709,17 +761,32 @@ const HANDLERS = {
       return `⛔ denied by --allow policy: ${new URL(full).hostname} not in [${ALLOW.join(', ')}]`
     }
     const tNav = Date.now()
-    await S.page.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
+    let resp = await S.page.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
     const navMs = Date.now() - tNav
     const s = await settle(S, 3500, 500)
+    let challenge = await detectChallenge(S, resp)
+    if (challenge && waitChallengeMs) {
+      const until = Date.now() + waitChallengeMs
+      while (challenge && Date.now() < until) {
+        await S.page.waitForTimeout(1000)
+        challenge = await detectChallenge(S, resp)
+        // the interstitial usually reloads itself; re-read the settled document
+        if (challenge) { try { resp = null } catch { /* keep */ } }
+      }
+    }
     const tWalk = Date.now()
     const o = await inPage(S, observe, { compact })
     S.epoch++
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
-    S.meta = { mapTotal: o.mapTotal, ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
-    return fmtFirst(o, S.page.url(), S.epoch, compact)
+    S.meta = { mapTotal: o.mapTotal, ...(challenge ? { blocked: true, challenge } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: POLICY_REV, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    // Say it in the prose too: a model reading the text must not mistake a challenge for
+    // a page that simply has little on it.
+    const banner = challenge
+      ? `⛔ BLOCKED by bot mitigation (${challenge.vendor}, ${challenge.signal}, HTTP ${challenge.status}). This is NOT an empty page — the content was withheld. Fall back to another fetcher, or retry with waitForChallenge.\n`
+      : ''
+    return banner + fmtFirst(o, S.page.url(), S.epoch, compact)
   },
   async look([id], S) {
     if (id) {

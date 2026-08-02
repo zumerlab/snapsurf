@@ -34,6 +34,10 @@ What is measured, with the file that holds each number:
 - On tasks written by other people it completed 28% of the scoring steps — the same range
   everyone else is in. Our own task suite gave 99%, which means our tasks were easy
   (`experiment/formal/results/d-third-party.md`).
+- Extracting contact details from 57 real company sites, it tied on phone and address and
+  won by 30 points on email — because an email is a `mailto:` in an attribute, and turning
+  a page into text destroys it (§5.1b). That is the sharpest statement of where this is
+  worth reaching for.
 
 The third result is the important one to read first. This tool does not make an agent
 better at finishing tasks. It makes the agent's failures visible.
@@ -197,6 +201,35 @@ therefore looks different. After normalizing those references away it scores 17/
 (`experiment/results/e1-agent-browser.md`). The remaining distance is concentrated in
 text noise and in changes with no textual representation — a real gap, but a much smaller
 one than the comparison against pixels suggests.
+
+### 5.1b Where the advantage actually is: data that lives in an attribute
+
+A production run of 57 company sites across two batches, extracting business contact
+details, located the advantage more precisely than any of our own benchmarks had.
+
+| Field being extracted | This tool vs a fetch-and-convert toolchain |
+|---|---|
+| Phone number | tie |
+| Postal address | tie |
+| **Email address** | **+30 points** |
+
+The reason is structural, and it generalises beyond email. A phone number and an address
+are *text*: they survive being turned into text, so a converter loses nothing. An email
+address on a contact page is usually **not** text — it is a `mailto:` in an `href`, and
+converting the page to text destroys the typing that made it findable. The same holds for
+anything that lives in an attribute rather than in the prose: `tel:` links, canonical
+URLs, `datetime` on a timestamp, `value` on a control, the target of a button.
+
+So the honest scope is narrower and more useful than "reads pages better": **it wins where
+the datum is carried by an attribute, and ties where the datum is text.** That predicts
+when a caller should reach for it, which a detection-quality number does not.
+
+Two caveats from the same run. The advantage only materialises if the consumer reads the
+typed fields rather than the rendered prose — the run that produced these numbers had to
+be corrected first, because the fields existed but were not being published where a
+programmatic client looks (§8, last bullet). And an empty form field's accessible name is
+its placeholder, so `john@company.com` can appear in a digest looking exactly like a real
+address; those entries are now flagged rather than left to be mistaken for data.
 
 ### 5.2 How much information it costs
 
@@ -442,6 +475,10 @@ directly, on tasks written elsewhere, and found no such evidence.
 - Canvas and unreadable iframes need a picture or a specific integration.
 - Repeatability is only claimed within one environment. No claim is made across browsers
   or engines.
+- **A capability that is not read is not a capability.** The typed fields that produce the
+  §5.1b advantage existed for a long time before they were published where a programmatic
+  client looks, and the first production report of them concluded the tool could not read
+  a page at all. Measured advantages depend on the consumer being able to reach them.
 - **The tests did not cover every way the tool ships.** On 2026-08-01 the globally
   installed copy was found broken: three of its verbs threw an error inside the page,
   because the bundle was defined twice and the two copies drifted apart. Every test ran
