@@ -54,31 +54,71 @@ function composedChildren(el) {
 /** Nearest positioned OR scrolling ancestor — the geometry reference frame.
  *  Coordinates are taken relative to it PLUS its scroll offsets, so a scroll of the
  *  container moves nothing (scroll-only ⇒ empty diff) while a genuinely moved
- *  element still reports `moved`. */
-function geometryFrame(el, root) {
-  let p = el.parentElement
-  while (p && p !== root) {
-    const cs = getComputedStyle(p)
-    if (cs.position !== 'static') return p
-    if ((cs.overflowY !== 'visible' || cs.overflowX !== 'visible') &&
-        (p.scrollHeight > p.clientHeight + 1 || p.scrollWidth > p.clientWidth + 1)) return p
-    p = p.parentElement
-  }
-  return root
-}
+ *  element still reports `moved`.
+ *
+ *  Resolved per PARENT and memoised, because the answer is a property of the ancestor
+ *  chain, not of the node: every child of a given parent shares it. Unmemoised this was
+ *  a getComputedStyle per ancestor per node — O(nodes x depth) — and it showed:
+ *  relativeBBox cost 10ms at wrap depth 1 and 145ms at depth 30 on the same 640 cards.
+ *  The frame's own rect is memoised for the same reason: thousands of nodes usually
+ *  resolve to one frame, and each was re-measuring it.
+ *
+ *  Both caches are cleared at every yield of the chunked walk (see makeWalker), so a
+ *  value can never outlive the layout it was measured in. */
+function makeGeometry(root) {
+  const frameOfParent = new Map()
+  const frameMetrics = new Map()
 
-function relativeBBox(el, root, tolerance) {
-  const r = el.getBoundingClientRect()
-  const frame = geometryFrame(el, root)
-  const fr = frame.getBoundingClientRect()
-  const q = tolerance > 0 ? (v) => Math.round(v / tolerance) * tolerance : (v) => Math.round(v * 100) / 100
+  const isFrame = (p) => {
+    const cs = getComputedStyle(p)
+    if (cs.position !== 'static') return true
+    return (cs.overflowY !== 'visible' || cs.overflowX !== 'visible') &&
+      (p.scrollHeight > p.clientHeight + 1 || p.scrollWidth > p.clientWidth + 1)
+  }
+
+  // Iterative, not recursive: a pathologically deep document should not risk the stack.
+  const frameFor = (parent) => {
+    const chain = []
+    let p = parent
+    let answer = root
+    while (p && p !== root) {
+      const cached = frameOfParent.get(p)
+      if (cached) { answer = cached; break }
+      if (isFrame(p)) { answer = p; break }
+      chain.push(p)
+      p = p.parentElement
+    }
+    for (const link of chain) frameOfParent.set(link, answer)
+    if (p && p !== root && !frameOfParent.has(p)) frameOfParent.set(p, answer)
+    return answer
+  }
+
+  const metricsOf = (frame) => {
+    let m = frameMetrics.get(frame)
+    if (!m) {
+      const fr = frame.getBoundingClientRect()
+      m = { left: fr.left, top: fr.top, sx: frame.scrollLeft || 0, sy: frame.scrollTop || 0 }
+      frameMetrics.set(frame, m)
+    }
+    return m
+  }
+
   return {
-    frameIsRoot: frame === root,
-    x: q(r.left - fr.left + (frame.scrollLeft || 0)),
-    y: q(r.top - fr.top + (frame.scrollTop || 0)),
-    w: q(r.width),
-    h: q(r.height),
-    viewport: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+    reset() { frameOfParent.clear(); frameMetrics.clear() },
+    bbox(el, tolerance) {
+      const r = el.getBoundingClientRect()
+      const frame = frameFor(el.parentElement)
+      const m = metricsOf(frame)
+      const q = tolerance > 0 ? (v) => Math.round(v / tolerance) * tolerance : (v) => Math.round(v * 100) / 100
+      return {
+        frameIsRoot: frame === root,
+        x: q(r.left - m.left + m.sx),
+        y: q(r.top - m.top + m.sy),
+        w: q(r.width),
+        h: q(r.height),
+        viewport: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+      }
+    },
   }
 }
 
@@ -151,6 +191,7 @@ function occluderAt(el, rect) {
  *             byElement: Map<Element, string>, elements: Map<string, Element>, rootHash: string }}
  */
 function makeWalker(root, noise) {
+  const geo = makeGeometry(root)
   const animated = noise.ignoreAnimations ? collectAnimatedProps(root) : new Map()
   // one label[for] scan per walk — computeName used to run a full-document
   // querySelector for every element with an id
@@ -202,7 +243,7 @@ function makeWalker(root, noise) {
     const path = semanticPath + '/' + tag + (role !== 'generic' ? `[${role}]` : '')
 
     _t = pnow()
-    const bbox = relativeBBox(el, root, noise.geometryTolerance)
+    const bbox = geo.bbox(el, noise.geometryTolerance)
     pacc('relativeBBox', _t)
     let visible = cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0 &&
       bbox.viewport[2] > 0 && bbox.viewport[3] > 0
@@ -343,7 +384,7 @@ function makeWalker(root, noise) {
   }
   return { nodes, order, rootId, byElement, elements, rootHash: rootId ? nodes.get(rootId).subtreeHash : hash('empty') }
   }
-  return { walk: () => visit(root, null, '', {}, 0), finish }
+  return { walk: () => visit(root, null, '', {}, 0), finish, resetGeometryCache: geo.reset }
 }
 
 export function takeSnapshot(root, noise) {
@@ -429,7 +470,10 @@ export async function takeSnapshotChunked(root, noise, { budgetMs = 40 } = {}) {
   let r = gen.next()
   while (!r.done) {
     const p = pause()
-    if (p) await p
+    // Geometry memos are only valid for one uninterrupted stretch of layout. Parking the
+    // walk lets the page move, so they are dropped at every yield rather than risking a
+    // rect measured before a reflow being reused after it.
+    if (p) { await p; w.resetGeometryCache() }
     r = gen.next()
   }
   if (mo) { torn += mo.takeRecords().length; mo.disconnect() }
