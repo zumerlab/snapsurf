@@ -1,0 +1,1066 @@
+{
+ "summary": {
+  "model": "claude-opus-5",
+  "reps": 2,
+  "byArm": {
+   "img1": {
+    "n": 14,
+    "hitRate": 0.57,
+    "confidentlyWrong": 4,
+    "meanEvidenceBytes": 136046,
+    "meanInputTokens": 781,
+    "usd": 0.0686
+   },
+   "img025": {
+    "n": 14,
+    "hitRate": 0.07,
+    "confidentlyWrong": 8,
+    "meanEvidenceBytes": 18351,
+    "meanInputTokens": 437,
+    "usd": 0.0656
+   },
+   "map": {
+    "n": 14,
+    "hitRate": 0.86,
+    "confidentlyWrong": 2,
+    "meanEvidenceBytes": 3598,
+    "meanInputTokens": 2095,
+    "usd": 0.1581
+   },
+   "pair": {
+    "n": 14,
+    "hitRate": 0.86,
+    "confidentlyWrong": 2,
+    "meanEvidenceBytes": 21949,
+    "meanInputTokens": 2174,
+    "usd": 0.164
+   }
+  },
+  "totalUsd": 0.4563
+ },
+ "rows": [
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "img1",
+   "rep": 0,
+   "evidenceBytes": 17764,
+   "inputTokens": 532,
+   "outputTokens": 31,
+   "said": {
+    "x": 1065,
+    "y": 35,
+    "target": "search icon button",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "img025",
+   "rep": 0,
+   "evidenceBytes": 2988,
+   "inputTokens": 413,
+   "outputTokens": 30,
+   "said": {
+    "x": 1063,
+    "y": 36,
+    "target": "search icon button in header",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "map",
+   "rep": 0,
+   "evidenceBytes": 718,
+   "inputTokens": 719,
+   "outputTokens": 32,
+   "said": {
+    "x": 1066,
+    "y": 36,
+    "target": "Search or jump to… button",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "pair",
+   "rep": 0,
+   "evidenceBytes": 3706,
+   "inputTokens": 778,
+   "outputTokens": 32,
+   "said": {
+    "x": 1066,
+    "y": 36,
+    "target": "Search or jump to… button",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "img1",
+   "rep": 1,
+   "evidenceBytes": 17764,
+   "inputTokens": 532,
+   "outputTokens": 31,
+   "said": {
+    "x": 1065,
+    "y": 35,
+    "target": "search icon button",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "img025",
+   "rep": 1,
+   "evidenceBytes": 2988,
+   "inputTokens": 413,
+   "outputTokens": 32,
+   "said": {
+    "x": 1180,
+    "y": 36,
+    "target": "search icon button in top bar",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "map",
+   "rep": 1,
+   "evidenceBytes": 718,
+   "inputTokens": 719,
+   "outputTokens": 32,
+   "said": {
+    "x": 1066,
+    "y": 36,
+    "target": "Search or jump to… button",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "open the search box",
+   "arm": "pair",
+   "rep": 1,
+   "evidenceBytes": 3706,
+   "inputTokens": 778,
+   "outputTokens": 32,
+   "said": {
+    "x": 1066,
+    "y": 36,
+    "target": "Search or jump to… button",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "img1",
+   "rep": 0,
+   "evidenceBytes": 17764,
+   "inputTokens": 535,
+   "outputTokens": 60,
+   "said": {
+    "x": 1210,
+    "y": 35,
+    "target": "Pricing link in header",
+    "confident": false
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "img025",
+   "rep": 0,
+   "evidenceBytes": 2988,
+   "inputTokens": 416,
+   "outputTokens": 34,
+   "said": {
+    "x": 1148,
+    "y": 34,
+    "target": "Pricing link in header navigation",
+    "confident": false
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "map",
+   "rep": 0,
+   "evidenceBytes": 718,
+   "inputTokens": 722,
+   "outputTokens": 28,
+   "said": {
+    "x": 681,
+    "y": 36,
+    "target": "Pricing link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "pair",
+   "rep": 0,
+   "evidenceBytes": 3706,
+   "inputTokens": 781,
+   "outputTokens": 33,
+   "said": {
+    "x": 681,
+    "y": 36,
+    "target": "Pricing link in main navigation",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "img1",
+   "rep": 1,
+   "evidenceBytes": 17764,
+   "inputTokens": 535,
+   "outputTokens": 38,
+   "said": {
+    "x": 1210,
+    "y": 35,
+    "target": "Pricing link in navigation bar",
+    "confident": false
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "img025",
+   "rep": 1,
+   "evidenceBytes": 2988,
+   "inputTokens": 416,
+   "outputTokens": 36,
+   "said": {
+    "x": 1064,
+    "y": 34,
+    "target": "Pricing link in top navigation bar",
+    "confident": false
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "map",
+   "rep": 1,
+   "evidenceBytes": 718,
+   "inputTokens": 722,
+   "outputTokens": 34,
+   "said": {
+    "x": 681,
+    "y": 36,
+    "target": "Pricing link in the top navigation",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "github-header",
+   "goal": "go to the pricing page",
+   "arm": "pair",
+   "rep": 1,
+   "evidenceBytes": 3706,
+   "inputTokens": 781,
+   "outputTokens": 33,
+   "said": {
+    "x": 681,
+    "y": 36,
+    "target": "Pricing link in main navigation",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "img1",
+   "rep": 0,
+   "evidenceBytes": 18720,
+   "inputTokens": 541,
+   "outputTokens": 32,
+   "said": {
+    "x": 1059,
+    "y": 38,
+    "target": "Sign in link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "img025",
+   "rep": 0,
+   "evidenceBytes": 3152,
+   "inputTokens": 422,
+   "outputTokens": 34,
+   "said": {
+    "x": 1140,
+    "y": 38,
+    "target": "Sign in link in top navigation",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "map",
+   "rep": 0,
+   "evidenceBytes": 573,
+   "inputTokens": 660,
+   "outputTokens": 29,
+   "said": {
+    "x": 1059,
+    "y": 38,
+    "target": "Sign in link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "pair",
+   "rep": 0,
+   "evidenceBytes": 3725,
+   "inputTokens": 719,
+   "outputTokens": 29,
+   "said": {
+    "x": 1059,
+    "y": 38,
+    "target": "Sign in link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "img1",
+   "rep": 1,
+   "evidenceBytes": 18720,
+   "inputTokens": 541,
+   "outputTokens": 32,
+   "said": {
+    "x": 1059,
+    "y": 38,
+    "target": "Sign in link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "img025",
+   "rep": 1,
+   "evidenceBytes": 3152,
+   "inputTokens": 422,
+   "outputTokens": 34,
+   "said": {
+    "x": 1160,
+    "y": 38,
+    "target": "Sign in link in header",
+    "confident": false
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "map",
+   "rep": 1,
+   "evidenceBytes": 573,
+   "inputTokens": 660,
+   "outputTokens": 29,
+   "said": {
+    "x": 1059,
+    "y": 38,
+    "target": "Sign in link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "reach the sign-in page for existing customers",
+   "arm": "pair",
+   "rep": 1,
+   "evidenceBytes": 3725,
+   "inputTokens": 719,
+   "outputTokens": 29,
+   "said": {
+    "x": 1059,
+    "y": 38,
+    "target": "Sign in link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "img1",
+   "rep": 0,
+   "evidenceBytes": 18720,
+   "inputTokens": 537,
+   "outputTokens": 33,
+   "said": {
+    "x": 571,
+    "y": 38,
+    "target": "Pricing nav link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "img025",
+   "rep": 0,
+   "evidenceBytes": 3152,
+   "inputTokens": 418,
+   "outputTokens": 34,
+   "said": {
+    "x": 752,
+    "y": 34,
+    "target": "Pricing link in the top navigation",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "map",
+   "rep": 0,
+   "evidenceBytes": 573,
+   "inputTokens": 656,
+   "outputTokens": 28,
+   "said": {
+    "x": 572,
+    "y": 38,
+    "target": "Pricing link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "pair",
+   "rep": 0,
+   "evidenceBytes": 3725,
+   "inputTokens": 715,
+   "outputTokens": 28,
+   "said": {
+    "x": 572,
+    "y": 38,
+    "target": "Pricing link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "img1",
+   "rep": 1,
+   "evidenceBytes": 18720,
+   "inputTokens": 537,
+   "outputTokens": 30,
+   "said": {
+    "x": 571,
+    "y": 38,
+    "target": "Pricing nav link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "img025",
+   "rep": 1,
+   "evidenceBytes": 3152,
+   "inputTokens": 418,
+   "outputTokens": 30,
+   "said": {
+    "x": 736,
+    "y": 30,
+    "target": "Pricing nav link",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "map",
+   "rep": 1,
+   "evidenceBytes": 573,
+   "inputTokens": 656,
+   "outputTokens": 32,
+   "said": {
+    "x": 572,
+    "y": 38,
+    "target": "Pricing link in navigation",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "stripe-nav",
+   "goal": "see how much Stripe charges",
+   "arm": "pair",
+   "rep": 1,
+   "evidenceBytes": 3725,
+   "inputTokens": 715,
+   "outputTokens": 28,
+   "said": {
+    "x": 572,
+    "y": 38,
+    "target": "Pricing link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "img1",
+   "rep": 0,
+   "evidenceBytes": 415844,
+   "inputTokens": 1348,
+   "outputTokens": 36,
+   "said": {
+    "x": 859,
+    "y": 934,
+    "target": "Buenos Aires link in Capital row",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "img025",
+   "rep": 0,
+   "evidenceBytes": 53968,
+   "inputTokens": 482,
+   "outputTokens": 208,
+   "said": {
+    "x": 920,
+    "y": 711,
+    "target": "\"Buenos Aires\" capital link in infobox",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "map",
+   "rep": 0,
+   "evidenceBytes": 10844,
+   "inputTokens": 5536,
+   "outputTokens": 35,
+   "said": {
+    "x": 831,
+    "y": 929,
+    "target": "Buenos Aires link (capital)",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "pair",
+   "rep": 0,
+   "evidenceBytes": 64812,
+   "inputTokens": 5659,
+   "outputTokens": 40,
+   "said": {
+    "x": 831,
+    "y": 937,
+    "target": "Buenos Aires link in Capital row of infobox",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "img1",
+   "rep": 1,
+   "evidenceBytes": 415844,
+   "inputTokens": 1348,
+   "outputTokens": 36,
+   "said": {
+    "x": 858,
+    "y": 934,
+    "target": "Buenos Aires link in Capital row",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "img025",
+   "rep": 1,
+   "evidenceBytes": 53968,
+   "inputTokens": 482,
+   "outputTokens": 181,
+   "said": {
+    "x": 944,
+    "y": 811,
+    "target": "\"Buenos Aires\" link in infobox Capital row",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "map",
+   "rep": 1,
+   "evidenceBytes": 10844,
+   "inputTokens": 5536,
+   "outputTokens": 33,
+   "said": {
+    "x": 873,
+    "y": 937,
+    "target": "Buenos Aires capital link",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the capital city",
+   "arm": "pair",
+   "rep": 1,
+   "evidenceBytes": 64812,
+   "inputTokens": 5659,
+   "outputTokens": 37,
+   "said": {
+    "x": 831,
+    "y": 937,
+    "target": "Buenos Aires capital link in infobox",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "img1",
+   "rep": 0,
+   "evidenceBytes": 415844,
+   "inputTokens": 1347,
+   "outputTokens": 64,
+   "said": {
+    "x": 855,
+    "y": 978,
+    "target": "\"castellano\" language link in Idioma oficial row",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "img025",
+   "rep": 0,
+   "evidenceBytes": 53968,
+   "inputTokens": 481,
+   "outputTokens": 247,
+   "said": {
+    "x": 952,
+    "y": 883,
+    "target": "Idioma oficial link (Español)",
+    "confident": false
+   },
+   "hit": false,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "map",
+   "rep": 0,
+   "evidenceBytes": 10844,
+   "inputTokens": 5535,
+   "outputTokens": 37,
+   "said": {
+    "x": 863,
+    "y": 1000,
+    "target": "Idioma castellano link (official language article)",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "pair",
+   "rep": 0,
+   "evidenceBytes": 64812,
+   "inputTokens": 5658,
+   "outputTokens": 45,
+   "said": {
+    "x": 862,
+    "y": 1000,
+    "target": "Idioma castellano link in infobox (Idioma oficial)",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "img1",
+   "rep": 1,
+   "evidenceBytes": 415844,
+   "inputTokens": 1347,
+   "outputTokens": 59,
+   "said": {
+    "x": 855,
+    "y": 977,
+    "target": "\"castellano\" language link in infobox",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "img025",
+   "rep": 1,
+   "evidenceBytes": 53968,
+   "inputTokens": 481,
+   "outputTokens": 309,
+   "said": {
+    "x": 912,
+    "y": 941,
+    "target": "Enlace al idioma oficial (Español) en la ficha",
+    "confident": false
+   },
+   "hit": false,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "map",
+   "rep": 1,
+   "evidenceBytes": 10844,
+   "inputTokens": 5535,
+   "outputTokens": 45,
+   "said": {
+    "x": 831,
+    "y": 1000,
+    "target": "\"Idioma castellano\" link in Idioma oficial row",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "wikipedia-infobox",
+   "goal": "open the article about the official language",
+   "arm": "pair",
+   "rep": 1,
+   "evidenceBytes": 64812,
+   "inputTokens": 5658,
+   "outputTokens": 42,
+   "said": {
+    "x": 862,
+    "y": 1000,
+    "target": "Idioma castellano link (Idioma oficial row)",
+    "confident": true
+   },
+   "hit": true,
+   "onScreen": false,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "open the sports section",
+   "skipped": "no ground-truth element in this region"
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "img1",
+   "rep": 0,
+   "evidenceBytes": 47664,
+   "inputTokens": 627,
+   "outputTokens": 39,
+   "said": {
+    "x": 1203,
+    "y": 342,
+    "target": "INICIAR SESIÓN button",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "img025",
+   "rep": 0,
+   "evidenceBytes": 8240,
+   "inputTokens": 428,
+   "outputTokens": 154,
+   "said": {
+    "x": 1163,
+    "y": 310,
+    "target": "INICIAR SESIÓN button (top right)",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "map",
+   "rep": 0,
+   "evidenceBytes": 918,
+   "inputTokens": 836,
+   "outputTokens": 33,
+   "said": {
+    "x": 1204,
+    "y": 342,
+    "target": "Iniciar sesión button",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "pair",
+   "rep": 0,
+   "evidenceBytes": 9158,
+   "inputTokens": 907,
+   "outputTokens": 33,
+   "said": {
+    "x": 1204,
+    "y": 342,
+    "target": "Iniciar sesión button",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "img1",
+   "rep": 1,
+   "evidenceBytes": 47664,
+   "inputTokens": 627,
+   "outputTokens": 36,
+   "said": {
+    "x": 1203,
+    "y": 342,
+    "target": "INICIAR SESIÓN button",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "img025",
+   "rep": 1,
+   "evidenceBytes": 8240,
+   "inputTokens": 428,
+   "outputTokens": 36,
+   "said": {
+    "x": 1244,
+    "y": 312,
+    "target": "INICIAR SESIÓN button",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "map",
+   "rep": 1,
+   "evidenceBytes": 918,
+   "inputTokens": 836,
+   "outputTokens": 33,
+   "said": {
+    "x": 1204,
+    "y": 342,
+    "target": "Iniciar sesión button",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "lanacion-nav",
+   "goal": "log in to the reader account",
+   "arm": "pair",
+   "rep": 1,
+   "evidenceBytes": 9158,
+   "inputTokens": 907,
+   "outputTokens": 33,
+   "said": {
+    "x": 1204,
+    "y": 342,
+    "target": "Iniciar sesión button",
+    "confident": true
+   },
+   "hit": false,
+   "onScreen": true,
+   "aimedAtCovered": false
+  },
+  {
+   "region": "mercadolibre-nav",
+   "goal": "type a product name to search for it",
+   "skipped": "no ground-truth element in this region"
+  },
+  {
+   "region": "mercadolibre-nav",
+   "goal": "sign in to your account",
+   "skipped": "no ground-truth element in this region"
+  }
+ ]
+}

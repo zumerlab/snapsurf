@@ -1,0 +1,38 @@
+{
+  "sdkKB": 45,
+  "injected": "\"function\"",
+  "theirDiff": "--- before\n+++ after\n@@ -1,4 +1,4 @@\n-- heading \"Formulario\" [level=2, ref=e1]\n-- StaticText \"--:--:--\"\n-- button \"Validar\" [ref=e2]\n-- button \"Enviar\" [disabled, ref=e3]\n\\ No newline at end of file\n+- heading \"Formulario\" [level=2, ref=e4]\n+- StaticText \"16:00:24\"\n+- button \"Validar\" [ref=e5]\n+- button \"Enviar\" [ref=e6]\n\\ No newline at end of file\n\n4 additions, 4 removals, 0 unchanged",
+  "ourDiff": {
+    "changed": true,
+    "changes": [
+      {
+        "kind": "possible-replacement",
+        "role": "generic",
+        "name": "16:00:24"
+      },
+      {
+        "kind": "moved",
+        "role": "button",
+        "name": "Validar"
+      },
+      {
+        "kind": "state",
+        "role": "button",
+        "name": "Enviar"
+      },
+      {
+        "kind": "style",
+        "role": "button",
+        "name": "Enviar"
+      },
+      {
+        "kind": "moved",
+        "role": "button",
+        "name": "Enviar"
+      }
+    ]
+  },
+  "theyShowClock": true,
+  "weShowClock": true,
+  "weCaughtState": true
+}

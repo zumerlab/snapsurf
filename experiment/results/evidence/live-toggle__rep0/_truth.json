@@ -1,0 +1,7 @@
+{
+ "task": "live-toggle",
+ "stratum": "semantic-small",
+ "truth": {
+  "userVisibleChange": true
+ }
+}

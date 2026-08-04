@@ -1,0 +1,1320 @@
+[
+  {
+    "id": "about.gitlab.com",
+    "url": "https://about.gitlab.com/",
+    "first": {
+      "ms": 898,
+      "nodes": 958,
+      "contextBytes": 43378,
+      "agentMapEntries": 141,
+      "agentMapBytes": 11878,
+      "checkpointBytes": 170923,
+      "unobservable": 0
+    },
+    "screenshotBytes": 98931,
+    "rest": {
+      "fps": 81,
+      "byKind": {
+        "resized": 16,
+        "possible-replacement": 4,
+        "moved": 57,
+        "state": 2,
+        "style": 2
+      },
+      "changesBytes": 12464,
+      "sample": [
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "¡Ahora sí! IA para todo el ciclo de desa"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "¡Ahora sí! IA para todo el ciclo de desa"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Cerrar Si deseas buscar repositorios y p"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Entrega más rápido. Con confianza.Tu pla"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 13814,
+      "oracle_next_turn": 3116,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "developer.mozilla.org_es",
+    "url": "https://developer.mozilla.org/es/",
+    "first": {
+      "ms": 258,
+      "nodes": 476,
+      "contextBytes": 17990,
+      "agentMapEntries": 94,
+      "agentMapBytes": 7857,
+      "checkpointBytes": 89794,
+      "unobservable": 0
+    },
+    "screenshotBytes": 79564,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 6462,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "docs.python.org_3",
+    "url": "https://docs.python.org/3/",
+    "first": {
+      "ms": 87,
+      "nodes": 315,
+      "contextBytes": 14003,
+      "agentMapEntries": 74,
+      "agentMapBytes": 6170,
+      "checkpointBytes": 59633,
+      "unobservable": 0
+    },
+    "screenshotBytes": 120971,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 5043,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "duckduckgo.com_html",
+    "url": "https://duckduckgo.com/html/",
+    "first": {
+      "ms": 13,
+      "nodes": 3,
+      "contextBytes": 195,
+      "agentMapEntries": 1,
+      "agentMapBytes": 115,
+      "checkpointBytes": 675,
+      "unobservable": 0
+    },
+    "screenshotBytes": 14453,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 78,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "elpais.com",
+    "url": "https://elpais.com/",
+    "first": {
+      "ms": 13,
+      "nodes": 2,
+      "contextBytes": 44,
+      "agentMapEntries": 1,
+      "agentMapBytes": 176,
+      "checkpointBytes": 426,
+      "unobservable": 1
+    },
+    "screenshotBytes": 39809,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 55,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "es.wikipedia.org_wiki_rgentina",
+    "url": "https://es.wikipedia.org/wiki/Argentina",
+    "first": {
+      "ms": 15366,
+      "nodes": 19217,
+      "contextBytes": 1006375,
+      "agentMapEntries": 6610,
+      "agentMapBytes": 570289,
+      "checkpointBytes": 3758573,
+      "unobservable": 0
+    },
+    "screenshotBytes": 154660,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 394166,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "github.com",
+    "url": "https://github.com/",
+    "first": {
+      "ms": 1228,
+      "nodes": 1503,
+      "contextBytes": 62022,
+      "agentMapEntries": 114,
+      "agentMapBytes": 9582,
+      "checkpointBytes": 260342,
+      "unobservable": 6
+    },
+    "screenshotBytes": 64447,
+    "rest": {
+      "fps": 73,
+      "byKind": {
+        "resized": 30,
+        "moved": 43
+      },
+      "changesBytes": 10416,
+      "sample": [
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Skip to content Navigation Menu Toggle n"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Skip to content Navigation Menu Toggle n"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Mona the Octocat, Copilot, and Ducky flo"
+        },
+        {
+          "kind": "resized",
+          "role": "main",
+          "name": "Mona the Octocat, Copilot, and Ducky flo"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 17901,
+      "oracle_next_turn": 2604,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "linear.app",
+    "url": "https://linear.app/",
+    "first": {
+      "ms": 3782,
+      "nodes": 3313,
+      "contextBytes": 123818,
+      "agentMapEntries": 162,
+      "agentMapBytes": 12782,
+      "checkpointBytes": 506820,
+      "unobservable": 0
+    },
+    "screenshotBytes": 63790,
+    "rest": {
+      "fps": 51,
+      "byKind": {
+        "moved": 5,
+        "resized": 2,
+        "possible-replacement": 2,
+        "added": 41,
+        "removed": 1
+      },
+      "changesBytes": 4911,
+      "sample": [
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "joriconnected Linear to ENG-2703"
+        },
+        {
+          "kind": "moved",
+          "role": "img"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "jori"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "connected Linear to ENG-2703"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 34150,
+      "oracle_next_turn": 1228,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "openai.com",
+    "url": "https://openai.com/",
+    "first": {
+      "ms": 1119,
+      "nodes": 723,
+      "contextBytes": 26760,
+      "agentMapEntries": 102,
+      "agentMapBytes": 11170,
+      "checkpointBytes": 188195,
+      "unobservable": 0
+    },
+    "screenshotBytes": 64884,
+    "rest": {
+      "fps": 60,
+      "byKind": {
+        "style": 3,
+        "moved": 57
+      },
+      "changesBytes": 71318,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "generic",
+          "name": "Envía un mensaje a ChatGPTQuiz me on voc"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "Envía un mensaje a ChatGPTQuiz me on voc"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "Envía un mensaje a ChatGPTQuiz me on voc"
+        },
+        {
+          "kind": "style",
+          "role": "generic",
+          "name": "Envía un mensaje a ChatGPTQuiz me on voc"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 9483,
+      "oracle_next_turn": 17830,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "pypi.org",
+    "url": "https://pypi.org/",
+    "first": {
+      "ms": 612,
+      "nodes": 199,
+      "contextBytes": 8363,
+      "agentMapEntries": 61,
+      "agentMapBytes": 4721,
+      "checkpointBytes": 37820,
+      "unobservable": 0
+    },
+    "screenshotBytes": 84691,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 3271,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "react.dev",
+    "url": "https://react.dev/",
+    "first": {
+      "ms": 663,
+      "nodes": 1715,
+      "contextBytes": 66461,
+      "agentMapEntries": 133,
+      "agentMapBytes": 10824,
+      "checkpointBytes": 273784,
+      "unobservable": 0
+    },
+    "screenshotBytes": 40817,
+    "rest": {
+      "fps": 219,
+      "byKind": {
+        "resized": 76,
+        "moved": 143
+      },
+      "changesBytes": 23337,
+      "sample": [
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Reactv19.2Search⌘CtrlKLearnReferenceComm"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Reactv19.2Search⌘CtrlKLearnReferenceComm"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "ReactThe library for web and native user"
+        },
+        {
+          "kind": "resized",
+          "role": "main",
+          "name": "ReactThe library for web and native user"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 19321,
+      "oracle_next_turn": 5834,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "slack.com",
+    "url": "https://slack.com/",
+    "first": {
+      "ms": 1306,
+      "nodes": 1271,
+      "contextBytes": 56738,
+      "agentMapEntries": 155,
+      "agentMapBytes": 14161,
+      "checkpointBytes": 235264,
+      "unobservable": 0
+    },
+    "screenshotBytes": 90782,
+    "rest": {
+      "fps": 575,
+      "byKind": {
+        "resized": 52,
+        "moved": 523
+      },
+      "changesBytes": 72367,
+      "sample": [
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Ir al contenido principalFuncionesCOLABO"
+        },
+        {
+          "kind": "resized",
+          "role": "main",
+          "name": "Tus colegas y agentes de IA trabajando j"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "KnowledgeProporciona contexto al instant"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "PeoplePermite que tu equipo se conecte d"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 17725,
+      "oracle_next_turn": 18092,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "stackoverflow.com_questions",
+    "url": "https://stackoverflow.com/questions",
+    "first": {
+      "ms": 41,
+      "nodes": 21,
+      "contextBytes": 727,
+      "agentMapEntries": 2,
+      "agentMapBytes": 248,
+      "checkpointBytes": 4063,
+      "unobservable": 0
+    },
+    "screenshotBytes": 37694,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 244,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "stripe.com",
+    "url": "https://stripe.com/",
+    "first": {
+      "ms": 825,
+      "nodes": 2103,
+      "contextBytes": 84831,
+      "agentMapEntries": 196,
+      "agentMapBytes": 16257,
+      "checkpointBytes": 339647,
+      "unobservable": 3
+    },
+    "screenshotBytes": 96813,
+    "rest": {
+      "fps": 290,
+      "byKind": {
+        "possible-replacement": 4,
+        "style": 2,
+        "moved": 279,
+        "resized": 5
+      },
+      "changesBytes": 27849,
+      "sample": [
+        {
+          "kind": "possible-replacement",
+          "role": "generic",
+          "name": "4"
+        },
+        {
+          "kind": "possible-replacement",
+          "role": "generic",
+          "name": "0"
+        },
+        {
+          "kind": "possible-replacement",
+          "role": "generic",
+          "name": "4"
+        },
+        {
+          "kind": "possible-replacement",
+          "role": "generic",
+          "name": "0"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 25272,
+      "oracle_next_turn": 6962,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "vercel.com",
+    "url": "https://vercel.com/",
+    "first": {
+      "ms": 807,
+      "nodes": 830,
+      "contextBytes": 34745,
+      "agentMapEntries": 97,
+      "agentMapBytes": 7261,
+      "checkpointBytes": 144073,
+      "unobservable": 1
+    },
+    "screenshotBytes": 42323,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 10502,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "wordpress.org",
+    "url": "https://wordpress.org/",
+    "first": {
+      "ms": 352,
+      "nodes": 370,
+      "contextBytes": 14584,
+      "agentMapEntries": 63,
+      "agentMapBytes": 4886,
+      "checkpointBytes": 65783,
+      "unobservable": 0
+    },
+    "screenshotBytes": 89191,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 4868,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "aliexpress.com",
+    "url": "https://www.aliexpress.com/",
+    "first": {
+      "ms": 4063,
+      "nodes": 3753,
+      "contextBytes": 144515,
+      "agentMapEntries": 393,
+      "agentMapBytes": 50051,
+      "checkpointBytes": 647005,
+      "unobservable": 0
+    },
+    "screenshotBytes": 120435,
+    "rest": {
+      "fps": 5,
+      "byKind": {
+        "possible-replacement": 3,
+        "style": 2
+      },
+      "changesBytes": 2040,
+      "sample": [
+        {
+          "kind": "possible-replacement",
+          "role": "link",
+          "name": "Welcome deal"
+        },
+        {
+          "kind": "possible-replacement",
+          "role": "link",
+          "name": "Big Sale"
+        },
+        {
+          "kind": "style",
+          "role": "button"
+        },
+        {
+          "kind": "style",
+          "role": "button"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 48642,
+      "oracle_next_turn": 510,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "anthropic.com",
+    "url": "https://www.anthropic.com/",
+    "first": {
+      "ms": 396,
+      "nodes": 868,
+      "contextBytes": 34467,
+      "agentMapEntries": 112,
+      "agentMapBytes": 8486,
+      "checkpointBytes": 144388,
+      "unobservable": 0
+    },
+    "screenshotBytes": 73038,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 10738,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "apple.com",
+    "url": "https://www.apple.com/",
+    "first": {
+      "ms": 823,
+      "nodes": 1424,
+      "contextBytes": 61292,
+      "agentMapEntries": 156,
+      "agentMapBytes": 14194,
+      "checkpointBytes": 256039,
+      "unobservable": 0
+    },
+    "screenshotBytes": 43232,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 18872,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "argentina.gob.ar",
+    "url": "https://www.argentina.gob.ar/",
+    "first": {
+      "ms": 339,
+      "nodes": 180,
+      "contextBytes": 6423,
+      "agentMapEntries": 40,
+      "agentMapBytes": 3732,
+      "checkpointBytes": 36006,
+      "unobservable": 0
+    },
+    "screenshotBytes": 77362,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 2539,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "bbc.com",
+    "url": "https://www.bbc.com/",
+    "first": {
+      "ms": 2057,
+      "nodes": 2570,
+      "contextBytes": 140407,
+      "agentMapEntries": 228,
+      "agentMapBytes": 23819,
+      "checkpointBytes": 494685,
+      "unobservable": 1
+    },
+    "screenshotBytes": 132599,
+    "rest": {
+      "fps": 44,
+      "byKind": {
+        "style": 22,
+        "removed": 22
+      },
+      "changesBytes": 7022,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "img",
+          "name": "A group of reindeer crossing the Nationa"
+        },
+        {
+          "kind": "style",
+          "role": "img",
+          "name": "Inside Carrarau2019s marble caves"
+        },
+        {
+          "kind": "style",
+          "role": "img",
+          "name": "Jacob Elordi sits in the grass next to a"
+        },
+        {
+          "kind": "style",
+          "role": "img",
+          "name": "Brandan Hunt, Jason Sudeikis and Tanya R"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 41057,
+      "oracle_next_turn": 1756,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "clarin.com",
+    "url": "https://www.clarin.com/",
+    "first": {
+      "ms": 3727,
+      "nodes": 3364,
+      "contextBytes": 119776,
+      "agentMapEntries": 329,
+      "agentMapBytes": 33277,
+      "checkpointBytes": 592709,
+      "unobservable": 7
+    },
+    "screenshotBytes": 111664,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 38263,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "cloudflare.com",
+    "url": "https://www.cloudflare.com/",
+    "first": {
+      "ms": 2224,
+      "nodes": 2776,
+      "contextBytes": 98893,
+      "agentMapEntries": 93,
+      "agentMapBytes": 7904,
+      "checkpointBytes": 443375,
+      "unobservable": 2
+    },
+    "screenshotBytes": 116119,
+    "rest": {
+      "fps": 219,
+      "byKind": {
+        "style": 19,
+        "moved": 169,
+        "resized": 27,
+        "possible-replacement": 2,
+        "removed": 2
+      },
+      "changesBytes": 29834,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "generic",
+          "name": "\"Egress costs just doubled this week — c"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "\"Egress costs just doubled this week — c"
+        },
+        {
+          "kind": "style",
+          "role": "generic",
+          "name": "STATUS: UNRESOLVED"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "STATUS: UNRESOLVED"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 26699,
+      "oracle_next_turn": 7459,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "digitalocean.com",
+    "url": "https://www.digitalocean.com/",
+    "first": {
+      "ms": 716,
+      "nodes": 1552,
+      "contextBytes": 54997,
+      "agentMapEntries": 160,
+      "agentMapBytes": 18084,
+      "checkpointBytes": 266542,
+      "unobservable": 0
+    },
+    "screenshotBytes": 130065,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 18270,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "ebay.com",
+    "url": "https://www.ebay.com/",
+    "first": {
+      "ms": 2414,
+      "nodes": 1613,
+      "contextBytes": 60767,
+      "agentMapEntries": 342,
+      "agentMapBytes": 29914,
+      "checkpointBytes": 276672,
+      "unobservable": 0
+    },
+    "screenshotBytes": 100602,
+    "rest": {
+      "fps": 6,
+      "byKind": {
+        "style": 5,
+        "moved": 1
+      },
+      "changesBytes": 1058,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "list",
+          "name": "Up to 50% off at The Brand OutletShop to"
+        },
+        {
+          "kind": "moved",
+          "role": "list",
+          "name": "Up to 50% off at The Brand OutletShop to"
+        },
+        {
+          "kind": "style",
+          "role": "listitem"
+        },
+        {
+          "kind": "style",
+          "role": "listitem"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 22670,
+      "oracle_next_turn": 265,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "etsy.com",
+    "url": "https://www.etsy.com/",
+    "first": {
+      "ms": 12,
+      "nodes": 2,
+      "contextBytes": 44,
+      "agentMapEntries": 1,
+      "agentMapBytes": 176,
+      "checkpointBytes": 426,
+      "unobservable": 1
+    },
+    "screenshotBytes": 40562,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 55,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "figma.com",
+    "url": "https://www.figma.com/",
+    "first": {
+      "ms": 1346,
+      "nodes": 895,
+      "contextBytes": 31850,
+      "agentMapEntries": 117,
+      "agentMapBytes": 9416,
+      "checkpointBytes": 149912,
+      "unobservable": 10
+    },
+    "screenshotBytes": 67069,
+    "rest": {
+      "fps": 104,
+      "byKind": {
+        "style": 4,
+        "moved": 100
+      },
+      "changesBytes": 12756,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "list",
+          "name": "Marquesina con logotipo"
+        },
+        {
+          "kind": "moved",
+          "role": "list",
+          "name": "Marquesina con logotipo"
+        },
+        {
+          "kind": "moved",
+          "role": "listitem"
+        },
+        {
+          "kind": "moved",
+          "role": "img",
+          "name": "logotipo de Airbnb"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 10317,
+      "oracle_next_turn": 3189,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "infobae.com",
+    "url": "https://www.infobae.com/",
+    "first": {
+      "ms": 3972,
+      "nodes": 1425,
+      "contextBytes": 57869,
+      "agentMapEntries": 187,
+      "agentMapBytes": 22543,
+      "checkpointBytes": 254040,
+      "unobservable": 8
+    },
+    "screenshotBytes": 165519,
+    "rest": {
+      "fps": 1,
+      "byKind": {
+        "style": 1
+      },
+      "changesBytes": 212,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "generic"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 20103,
+      "oracle_next_turn": 53,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "lanacion.com.ar",
+    "url": "https://www.lanacion.com.ar/",
+    "first": {
+      "ms": 3001,
+      "nodes": 2982,
+      "contextBytes": 103311,
+      "agentMapEntries": 266,
+      "agentMapBytes": 33221,
+      "checkpointBytes": 561242,
+      "unobservable": 2
+    },
+    "screenshotBytes": 143947,
+    "rest": {
+      "fps": 74,
+      "byKind": {
+        "resized": 29,
+        "moved": 45
+      },
+      "changesBytes": 9424,
+      "sample": [
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "CERRARCERRARCapital Federal19.5ºCLUB LNE"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "CERRARCERRARCapital Federal19.5ºCLUB LNE"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Capital Federal19.5ºCLUB LNEN VIVOFOODIT"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "El mundo necesita más música"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 34133,
+      "oracle_next_turn": 2356,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "mercadolibre.com.ar",
+    "url": "https://www.mercadolibre.com.ar/",
+    "first": {
+      "ms": 1048,
+      "nodes": 1183,
+      "contextBytes": 42540,
+      "agentMapEntries": 210,
+      "agentMapBytes": 18251,
+      "checkpointBytes": 211144,
+      "unobservable": 0
+    },
+    "screenshotBytes": 133172,
+    "rest": {
+      "fps": 12,
+      "byKind": {
+        "moved": 6,
+        "resized": 6
+      },
+      "changesBytes": 1303,
+      "sample": [
+        {
+          "kind": "moved",
+          "role": "link"
+        },
+        {
+          "kind": "resized",
+          "role": "link"
+        },
+        {
+          "kind": "moved",
+          "role": "img",
+          "name": "FASHION"
+        },
+        {
+          "kind": "resized",
+          "role": "img",
+          "name": "FASHION"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 15198,
+      "oracle_next_turn": 326,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "microsoft.com_es_ar",
+    "url": "https://www.microsoft.com/es-ar/",
+    "first": {
+      "ms": 1558,
+      "nodes": 763,
+      "contextBytes": 17456,
+      "agentMapEntries": 80,
+      "agentMapBytes": 7158,
+      "checkpointBytes": 129833,
+      "unobservable": 0
+    },
+    "screenshotBytes": 85200,
+    "rest": {
+      "fps": 40,
+      "byKind": {
+        "style": 4,
+        "state": 2,
+        "moved": 33,
+        "possible-replacement": 1
+      },
+      "changesBytes": 4554,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "generic"
+        },
+        {
+          "kind": "style",
+          "role": "generic"
+        },
+        {
+          "kind": "state",
+          "role": "button",
+          "name": "Anterior"
+        },
+        {
+          "kind": "style",
+          "role": "button",
+          "name": "Anterior"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 6154,
+      "oracle_next_turn": 1139,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "mozilla.org_es",
+    "url": "https://www.mozilla.org/es-AR/",
+    "first": {
+      "ms": 427,
+      "nodes": 589,
+      "contextBytes": 26583,
+      "agentMapEntries": 72,
+      "agentMapBytes": 7084,
+      "checkpointBytes": 111509,
+      "unobservable": 0
+    },
+    "screenshotBytes": 61214,
+    "rest": {
+      "fps": 6,
+      "byKind": {
+        "resized": 6
+      },
+      "changesBytes": 973,
+      "sample": [
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Ayúdanos a mejorar tu experiencia de Moz"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Pausar la animación Reproducir la animac"
+        },
+        {
+          "kind": "resized",
+          "role": "contentinfo",
+          "name": "Descubre los productos e iniciativas de "
+        },
+        {
+          "kind": "resized",
+          "role": "img"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 8417,
+      "oracle_next_turn": 243,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "notion.com",
+    "url": "https://www.notion.com/",
+    "first": {
+      "ms": 1681,
+      "nodes": 791,
+      "contextBytes": 26761,
+      "agentMapEntries": 68,
+      "agentMapBytes": 5202,
+      "checkpointBytes": 127174,
+      "unobservable": 0
+    },
+    "screenshotBytes": 93105,
+    "rest": {
+      "fps": 6,
+      "byKind": {
+        "style": 1,
+        "moved": 2,
+        "resized": 2,
+        "possible-replacement": 1
+      },
+      "changesBytes": 933,
+      "sample": [
+        {
+          "kind": "style",
+          "role": "generic",
+          "name": "Build"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "Build"
+        },
+        {
+          "kind": "resized",
+          "role": "generic",
+          "name": "Build"
+        },
+        {
+          "kind": "moved",
+          "role": "generic",
+          "name": "Build"
+        }
+      ]
+    },
+    "tokens": {
+      "oracle_first_turn": 7991,
+      "oracle_next_turn": 233,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "npmjs.com",
+    "url": "https://www.npmjs.com/",
+    "first": {
+      "ms": 121,
+      "nodes": 127,
+      "contextBytes": 4570,
+      "agentMapEntries": 30,
+      "agentMapBytes": 2278,
+      "checkpointBytes": 22410,
+      "unobservable": 0
+    },
+    "screenshotBytes": 81464,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 1712,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "theguardian.com_international",
+    "url": "https://www.theguardian.com/international",
+    "first": {
+      "ms": 4380,
+      "nodes": 4329,
+      "contextBytes": 160176,
+      "agentMapEntries": 276,
+      "agentMapBytes": 31323,
+      "checkpointBytes": 770444,
+      "unobservable": 1
+    },
+    "screenshotBytes": 155190,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 47875,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  },
+  {
+    "id": "zalando.es",
+    "url": "https://www.zalando.es/",
+    "first": {
+      "ms": 51,
+      "nodes": 99,
+      "contextBytes": 3936,
+      "agentMapEntries": 9,
+      "agentMapBytes": 1063,
+      "checkpointBytes": 18594,
+      "unobservable": 0
+    },
+    "screenshotBytes": 94633,
+    "rest": {
+      "fps": 0,
+      "byKind": {},
+      "changesBytes": 75,
+      "sample": []
+    },
+    "tokens": {
+      "oracle_first_turn": 1250,
+      "oracle_next_turn": 19,
+      "screenshot_turn": 1365
+    }
+  }
+]

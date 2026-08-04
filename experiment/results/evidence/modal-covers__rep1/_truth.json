@@ -1,0 +1,17 @@
+{
+ "task": "modal-covers",
+ "stratum": "occlusion",
+ "truth": {
+  "userVisibleChange": true,
+  "mustReportCovered": [
+   [
+    "save",
+    "guardar"
+   ],
+   [
+    "delete",
+    "borrar"
+   ]
+  ]
+ }
+}

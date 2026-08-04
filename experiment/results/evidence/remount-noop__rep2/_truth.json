@@ -1,0 +1,7 @@
+{
+ "task": "remount-noop",
+ "stratum": "replaced node",
+ "truth": {
+  "userVisibleChange": false
+ }
+}

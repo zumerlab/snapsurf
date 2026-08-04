@@ -1,0 +1,37 @@
+{
+ "changed": true,
+ "changes": [
+  {
+   "id": "n_1r4",
+   "match": "exact",
+   "matchedBy": [
+    "data-testid",
+    "semanticPath+ordinal",
+    "ancestorFingerprint",
+    "geometry"
+   ],
+   "kind": "content",
+   "role": "generic",
+   "name": "alertas: on"
+  },
+  {
+   "id": "n_1r4",
+   "match": "exact",
+   "matchedBy": [
+    "data-testid",
+    "semanticPath+ordinal",
+    "ancestorFingerprint",
+    "geometry"
+   ],
+   "kind": "resized",
+   "role": "generic",
+   "name": "alertas: on"
+  }
+ ],
+ "actionabilityDelta": {
+  "becameCovered": [],
+  "becameVisible": []
+ },
+ "unobservable": [],
+ "context": ""
+}

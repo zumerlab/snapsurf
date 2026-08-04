@@ -1,0 +1,186 @@
+[
+  {
+    "href": "https://github.com/",
+    "world": "function",
+    "inspectMs": 1216,
+    "nodes": 1503,
+    "mapEntries": 114,
+    "contextBytes": 62013,
+    "unobservable": 6,
+    "checkpointBytes": 259717,
+    "restFps": 86,
+    "restKinds": [
+      "resized",
+      "moved",
+      "style"
+    ],
+    "restSample": [
+      {
+        "kind": "resized",
+        "role": "generic",
+        "name": "Skip to content Navigation Menu Toggle naviga"
+      },
+      {
+        "kind": "resized",
+        "role": "generic",
+        "name": "Skip to content Navigation Menu Toggle naviga"
+      },
+      {
+        "kind": "resized",
+        "role": "generic",
+        "name": "Mona the Octocat, Copilot, and Ducky float ju"
+      },
+      {
+        "kind": "resized",
+        "role": "main",
+        "name": "Mona the Octocat, Copilot, and Ducky float ju"
+      },
+      {
+        "kind": "resized",
+        "role": "generic",
+        "name": "Mona the Octocat, Copilot, and Ducky float ju"
+      },
+      {
+        "kind": "resized",
+        "role": "generic",
+        "name": "Mona the Octocat, Copilot, and Ducky float ju"
+      },
+      {
+        "kind": "resized",
+        "role": "generic",
+        "name": "Mona the Octocat, Copilot, and Ducky float ju"
+      },
+      {
+        "kind": "resized",
+        "role": "generic",
+        "name": "Mona the Octocat, Copilot, and Ducky float ju"
+      },
+      {
+        "kind": "moved",
+        "role": "generic",
+        "name": "A subtle purple glow fades in as Mona the Oct"
+      },
+      {
+        "kind": "moved",
+        "role": "generic",
+        "name": "A subtle purple glow fades in as Mona the Oct"
+      },
+      {
+        "kind": "moved",
+        "role": "generic"
+      },
+      {
+        "kind": "moved",
+        "role": "generic",
+        "name": "A subtle purple glow fades in as Mona the Oct"
+      }
+    ],
+    "animCount": 2,
+    "caps": {
+      "inlineStyles": true,
+      "dataUrls": true,
+      "blobUrls": true,
+      "crossOriginFonts": null
+    },
+    "ok": true
+  },
+  {
+    "href": "https://stripe.com/es-us",
+    "world": "function",
+    "inspectMs": 679,
+    "nodes": 2066,
+    "mapEntries": 194,
+    "contextBytes": 85664,
+    "unobservable": 4,
+    "checkpointBytes": 336441,
+    "restFps": 280,
+    "restKinds": [
+      "possible-replacement",
+      "style",
+      "moved",
+      "resized"
+    ],
+    "restSample": [
+      {
+        "kind": "possible-replacement",
+        "role": "generic",
+        "name": "4"
+      },
+      {
+        "kind": "possible-replacement",
+        "role": "generic",
+        "name": "6"
+      },
+      {
+        "kind": "style",
+        "role": "list"
+      },
+      {
+        "kind": "moved",
+        "role": "list"
+      },
+      {
+        "kind": "moved",
+        "role": "listitem"
+      },
+      {
+        "kind": "moved",
+        "role": "link"
+      },
+      {
+        "kind": "moved",
+        "role": "generic"
+      },
+      {
+        "kind": "moved",
+        "role": "img",
+        "name": "OpenAI"
+      },
+      {
+        "kind": "moved",
+        "role": "generic"
+      },
+      {
+        "kind": "moved",
+        "role": "generic"
+      },
+      {
+        "kind": "moved",
+        "role": "listitem"
+      },
+      {
+        "kind": "moved",
+        "role": "link"
+      }
+    ],
+    "animCount": 3,
+    "caps": {
+      "inlineStyles": true,
+      "dataUrls": true,
+      "blobUrls": true,
+      "crossOriginFonts": null
+    },
+    "ok": true
+  },
+  {
+    "href": "https://es.wikipedia.org/wiki/Buenos_Aires",
+    "world": "function",
+    "inspectMs": 7346,
+    "nodes": 11351,
+    "mapEntries": 3538,
+    "contextBytes": 569770,
+    "unobservable": 0,
+    "checkpointBytes": 2129101,
+    "restFps": 0,
+    "restKinds": [],
+    "restSample": [],
+    "animCount": 0,
+    "caps": {
+      "inlineStyles": true,
+      "dataUrls": true,
+      "blobUrls": true,
+      "crossOriginFonts": null
+    },
+    "ok": true
+  }
+]

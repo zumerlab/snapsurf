@@ -1,0 +1,20 @@
+{
+ "changed": true,
+ "changes": [
+  {
+   "kind": "possible-replacement",
+   "match": "ambiguous",
+   "beforeId": "n_1r7",
+   "afterId": "n_2r7",
+   "role": "listitem",
+   "name": "Pedido 2 · enviado",
+   "beforeName": "Pedido 2 · pendiente"
+  }
+ ],
+ "actionabilityDelta": {
+  "becameCovered": [],
+  "becameVisible": []
+ },
+ "unobservable": [],
+ "context": ""
+}

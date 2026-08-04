@@ -1,0 +1,13 @@
+{
+ "mutations": [
+  {
+   "type": "added",
+   "target": "ul#list\"Pedido 1 · pendientePedido 2 · pendiente\""
+  },
+  {
+   "type": "removed",
+   "target": "ul#list\"Pedido 1 · pendiente Pedido 2 · pendient\""
+  }
+ ],
+ "a11yDiff": []
+}

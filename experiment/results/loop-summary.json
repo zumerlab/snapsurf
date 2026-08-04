@@ -1,0 +1,42 @@
+{
+ "model": "claude-opus-5",
+ "reps": 10,
+ "maxSteps": 4,
+ "goal": "Save the document.",
+ "byArm": {
+  "A": {
+   "n": 10,
+   "taskSuccess": 1,
+   "meanActionsToSuccess": 2.3,
+   "optimalRuns": 7,
+   "meanTotalActions": 4,
+   "invalidClicks": 0,
+   "refusals": 0,
+   "meanInputTokens": 7134,
+   "usd": 0.403
+  },
+  "B": {
+   "n": 10,
+   "taskSuccess": 1,
+   "meanActionsToSuccess": 2,
+   "optimalRuns": 10,
+   "meanTotalActions": 3,
+   "invalidClicks": 0,
+   "refusals": 0,
+   "meanInputTokens": 2771,
+   "usd": 0.1715
+  },
+  "C": {
+   "n": 10,
+   "taskSuccess": 0.9,
+   "meanActionsToSuccess": 3.67,
+   "optimalRuns": 0,
+   "meanTotalActions": 4,
+   "invalidClicks": 8,
+   "refusals": 0,
+   "meanInputTokens": 2800,
+   "usd": 0.2429
+  }
+ },
+ "totalUsd": 0.8174
+}

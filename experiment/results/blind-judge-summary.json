@@ -1,0 +1,108 @@
+{
+ "summary": {
+  "A": {
+   "n": 18,
+   "changeAccuracy": 1,
+   "falsePositives": 0,
+   "falseNegatives": 0,
+   "occlusionAccuracy": 1,
+   "occlusionNamed": 1,
+   "canvasHonesty": 1
+  },
+  "B": {
+   "n": 18,
+   "changeAccuracy": 0.83,
+   "falsePositives": 0,
+   "falseNegatives": 3,
+   "occlusionAccuracy": 1,
+   "occlusionNamed": 1,
+   "canvasHonesty": 1
+  },
+  "C": {
+   "n": 18,
+   "changeAccuracy": 0.83,
+   "falsePositives": 0,
+   "falseNegatives": 3,
+   "occlusionAccuracy": 0,
+   "occlusionNamed": 0,
+   "canvasHonesty": 0.33
+  }
+ },
+ "byStratum": {
+  "occlusion": {
+   "C": {
+    "correct": 0,
+    "n": 3
+   },
+   "A": {
+    "correct": 3,
+    "n": 3
+   },
+   "B": {
+    "correct": 3,
+    "n": 3
+   }
+  },
+  "replaced node": {
+   "A": {
+    "correct": 6,
+    "n": 6
+   },
+   "B": {
+    "correct": 6,
+    "n": 6
+   },
+   "C": {
+    "correct": 6,
+    "n": 6
+   }
+  },
+  "canvas": {
+   "A": {
+    "correct": 3,
+    "n": 3
+   },
+   "C": {
+    "correct": 1,
+    "n": 3
+   },
+   "B": {
+    "correct": 3,
+    "n": 3
+   }
+  },
+  "pure noise": {
+   "A": {
+    "correct": 3,
+    "n": 3
+   },
+   "B": {
+    "correct": 3,
+    "n": 3
+   },
+   "C": {
+    "correct": 3,
+    "n": 3
+   }
+  },
+  "semantic-small": {
+   "A": {
+    "correct": 3,
+    "n": 3
+   },
+   "B": {
+    "correct": 3,
+    "n": 3
+   },
+   "C": {
+    "correct": 3,
+    "n": 3
+   }
+  }
+ },
+ "meanEvidenceBytes": {
+  "A": 24778,
+  "B": 397,
+  "C": 395
+ }
+}

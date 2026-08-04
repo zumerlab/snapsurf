@@ -1,0 +1,2 @@
+{"ts":"2026-07-31T02:06:21.041Z","session":"20260731-020612","seq":1,"cmd":"open","args":["https://es.wikipedia.org/wiki/Argentina"],"epoch":1,"urlBefore":"nullblank","urlAfter":"https://es.wikipedia.org/wiki/Argentina","durationMs":3512,"ok":true,"mapTotal":6609}
+{"ts":"2026-07-31T02:06:21.115Z","session":"20260731-020612","seq":2,"cmd":"stop","args":[],"epoch":1,"urlBefore":"https://es.wikipedia.org/wiki/Argentina","urlAfter":"https://es.wikipedia.org/wiki/Argentina","durationMs":0,"ok":true}

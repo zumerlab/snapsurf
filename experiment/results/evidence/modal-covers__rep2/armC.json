@@ -1,0 +1,47 @@
+{
+ "mutations": [
+  {
+   "type": "added",
+   "target": "div[dialog]\"¿Seguro?Sí\""
+  }
+ ],
+ "a11yDiff": [
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 1,
+    "tag": "div",
+    "role": "dialog",
+    "name": "Confirmar borrado"
+   }
+  },
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 2,
+    "tag": "div",
+    "role": "",
+    "name": ""
+   }
+  },
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 3,
+    "tag": "p",
+    "role": "",
+    "name": "¿Seguro?"
+   }
+  },
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 3,
+    "tag": "button",
+    "role": "button",
+    "name": "Sí",
+    "testid": "confirm"
+   }
+  }
+ ]
+}

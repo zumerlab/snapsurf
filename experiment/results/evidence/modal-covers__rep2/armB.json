@@ -1,0 +1,56 @@
+{
+ "changed": true,
+ "changes": [
+  {
+   "id": "n_2r5",
+   "kind": "added",
+   "match": "new",
+   "role": "dialog",
+   "name": "Confirmar borrado"
+  },
+  {
+   "id": "n_2r6",
+   "kind": "added",
+   "match": "new",
+   "role": "generic",
+   "name": "¿Seguro?Sí"
+  },
+  {
+   "id": "n_2r7",
+   "kind": "added",
+   "match": "new",
+   "role": "generic",
+   "name": "¿Seguro?"
+  },
+  {
+   "id": "n_2r8",
+   "kind": "added",
+   "match": "new",
+   "role": "button",
+   "name": "Sí"
+  }
+ ],
+ "actionabilityDelta": {
+  "becameCovered": [
+   {
+    "id": "n_1r2",
+    "role": "button",
+    "name": "Guardar"
+   },
+   {
+    "id": "n_1r3",
+    "role": "button",
+    "name": "Borrar"
+   }
+  ],
+  "becameVisible": [
+   {
+    "id": "n_2r8",
+    "role": "button",
+    "name": "Sí"
+   }
+  ]
+ },
+ "unobservable": [],
+ "context": ""
+}

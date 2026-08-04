@@ -1,0 +1,45 @@
+{
+ "mutations": [],
+ "a11yDiff": [
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 1,
+    "tag": "p",
+    "role": "",
+    "name": "Actualizado 00:01:00",
+    "testid": "clock"
+   }
+  },
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 1,
+    "tag": "span",
+    "role": "",
+    "name": "alertas: on",
+    "testid": "alerts"
+   }
+  },
+  {
+   "kind": "gone",
+   "node": {
+    "d": 1,
+    "tag": "p",
+    "role": "",
+    "name": "Actualizado 00:00:00",
+    "testid": "clock"
+   }
+  },
+  {
+   "kind": "gone",
+   "node": {
+    "d": 1,
+    "tag": "span",
+    "role": "",
+    "name": "alertas: off",
+    "testid": "alerts"
+   }
+  }
+ ]
+}

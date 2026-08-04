@@ -1,0 +1,7 @@
+{
+ "task": "remount-real-change",
+ "stratum": "replaced node",
+ "truth": {
+  "userVisibleChange": true
+ }
+}

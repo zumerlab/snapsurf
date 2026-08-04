@@ -1,0 +1,7 @@
+{
+ "task": "live-clock-only",
+ "stratum": "pure noise",
+ "truth": {
+  "userVisibleChange": false
+ }
+}

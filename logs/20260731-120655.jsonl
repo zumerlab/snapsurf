@@ -1,0 +1,4 @@
+{"ts":"2026-07-31T12:06:55.620Z","session":"20260731-120655","seq":1,"cmd":"status","args":[],"epoch":0,"urlBefore":"nullblank","urlAfter":"nullblank","durationMs":2,"ok":true}
+{"ts":"2026-07-31T12:06:56.264Z","session":"20260731-120655","seq":2,"cmd":"open","args":["example.com"],"epoch":1,"urlBefore":"nullblank","urlAfter":"https://example.com/","durationMs":638,"ok":true,"mapTotal":1,"nav":106,"settle":{"dom":0,"idle":501,"floor":0},"walk":30}
+{"ts":"2026-07-31T12:06:58.460Z","session":"20260731-120655","seq":3,"cmd":"status","args":[],"epoch":1,"urlBefore":"https://example.com/","urlAfter":"https://example.com/","durationMs":0,"ok":true}
+{"ts":"2026-07-31T12:06:58.464Z","session":"20260731-120655","seq":4,"cmd":"open","args":["example.com"],"epoch":1,"urlBefore":"https://example.com/","urlAfter":"https://example.com/","durationMs":0,"ok":false,"error":"Error: page.goto: Target page, context or browser has been closed"}

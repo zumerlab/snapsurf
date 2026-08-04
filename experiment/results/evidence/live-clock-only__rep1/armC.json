@@ -1,0 +1,25 @@
+{
+ "mutations": [],
+ "a11yDiff": [
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 1,
+    "tag": "p",
+    "role": "",
+    "name": "Actualizado 00:05:00",
+    "testid": "clock"
+   }
+  },
+  {
+   "kind": "gone",
+   "node": {
+    "d": 1,
+    "tag": "p",
+    "role": "",
+    "name": "Actualizado 00:01:00",
+    "testid": "clock"
+   }
+  }
+ ]
+}

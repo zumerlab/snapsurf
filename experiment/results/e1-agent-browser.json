@@ -1,0 +1,151 @@
+{
+  "rows": [
+    {
+      "name": "button-enabled",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 415
+    },
+    {
+      "name": "canvas-region",
+      "truth": false,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 426
+    },
+    {
+      "name": "css-animation-running",
+      "truth": false,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 276
+    },
+    {
+      "name": "css-in-js-regeneration",
+      "truth": false,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 414
+    },
+    {
+      "name": "font-swap-late",
+      "truth": true,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 1164
+    },
+    {
+      "name": "inline-script-noise",
+      "truth": false,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 312
+    },
+    {
+      "name": "list-reordered",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 838
+    },
+    {
+      "name": "list-row-inserted",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 634
+    },
+    {
+      "name": "live-timestamp",
+      "truth": false,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 578
+    },
+    {
+      "name": "modal-overlay",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 456
+    },
+    {
+      "name": "nested-modal-stack",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 703
+    },
+    {
+      "name": "node-replaced",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 748
+    },
+    {
+      "name": "portal-render",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 608
+    },
+    {
+      "name": "react-remount",
+      "truth": false,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 445
+    },
+    {
+      "name": "residual-hover",
+      "truth": false,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 383
+    },
+    {
+      "name": "scroll-only",
+      "truth": false,
+      "asIs": true,
+      "stripped": false,
+      "evidence": 460
+    },
+    {
+      "name": "shadow-dom-mutation",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 347
+    },
+    {
+      "name": "text-update",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 346
+    },
+    {
+      "name": "virtualized-scroll",
+      "truth": true,
+      "asIs": true,
+      "stripped": true,
+      "evidence": 705
+    }
+  ],
+  "asIs": {
+    "ok": 11,
+    "fp": 8,
+    "miss": 0,
+    "noise": 8,
+    "real": 11
+  },
+  "stripped": {
+    "ok": 17,
+    "fp": 1,
+    "miss": 1,
+    "noise": 8,
+    "real": 11
+  }
+}

@@ -1,0 +1,922 @@
+{
+ "summary": {
+  "model": "claude-opus-5",
+  "reps": 10,
+  "maxSteps": 4,
+  "goal": "Save the document.",
+  "byArm": {
+   "A": {
+    "n": 10,
+    "taskSuccess": 1,
+    "meanActionsToSuccess": 2.3,
+    "optimalRuns": 7,
+    "meanTotalActions": 4,
+    "invalidClicks": 0,
+    "refusals": 0,
+    "meanInputTokens": 7134,
+    "usd": 0.403
+   },
+   "B": {
+    "n": 10,
+    "taskSuccess": 1,
+    "meanActionsToSuccess": 2,
+    "optimalRuns": 10,
+    "meanTotalActions": 3,
+    "invalidClicks": 0,
+    "refusals": 0,
+    "meanInputTokens": 2771,
+    "usd": 0.1715
+   },
+   "C": {
+    "n": 10,
+    "taskSuccess": 0.9,
+    "meanActionsToSuccess": 3.67,
+    "optimalRuns": 0,
+    "meanTotalActions": 4,
+    "invalidClicks": 8,
+    "refusals": 0,
+    "meanInputTokens": 2800,
+    "usd": 0.2429
+   }
+  },
+  "totalUsd": 0.8174
+ },
+ "rows": [
+  {
+   "arm": "A",
+   "rep": 0,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "clicked \"No, gracias\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7134,
+   "tokensOut": 194
+  },
+  {
+   "arm": "B",
+   "rep": 0,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 136
+  },
+  {
+   "arm": "C",
+   "rep": 0,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 3,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"promo-close\"",
+    "clicked \"cookies-accept\"",
+    "clicked \"save\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2896,
+   "tokensOut": 451
+  },
+  {
+   "arm": "A",
+   "rep": 1,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "clicked \"No, gracias\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7134,
+   "tokensOut": 192
+  },
+  {
+   "arm": "B",
+   "rep": 1,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 127
+  },
+  {
+   "arm": "C",
+   "rep": 1,
+   "saved": false,
+   "steps": 4,
+   "actionsToSuccess": null,
+   "invalidClicks": 2,
+   "refused": false,
+   "history": [
+    "clicked \"promo-close\"",
+    "clicked \"promo-close\" (off-screen)",
+    "clicked \"cookies-accept\"",
+    "clicked \"cookies-accept\" (off-screen)"
+   ],
+   "clicks": [
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2760,
+   "tokensOut": 344
+  },
+  {
+   "arm": "A",
+   "rep": 2,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 3,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"No, gracias\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7135,
+   "tokensOut": 174
+  },
+  {
+   "arm": "B",
+   "rep": 2,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 138
+  },
+  {
+   "arm": "C",
+   "rep": 2,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 4,
+   "invalidClicks": 1,
+   "refused": false,
+   "history": [
+    "clicked \"promo-close\"",
+    "clicked \"cookies-accept\"",
+    "clicked \"cookies-accept\" (off-screen)",
+    "clicked \"save\""
+   ],
+   "clicks": [
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2759,
+   "tokensOut": 298
+  },
+  {
+   "arm": "A",
+   "rep": 3,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 3,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"No, gracias\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7135,
+   "tokensOut": 178
+  },
+  {
+   "arm": "B",
+   "rep": 3,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 125
+  },
+  {
+   "arm": "C",
+   "rep": 3,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 4,
+   "invalidClicks": 1,
+   "refused": false,
+   "history": [
+    "clicked \"promo-close\"",
+    "clicked \"cookies-accept\"",
+    "clicked \"cookies-accept\" (off-screen)",
+    "clicked \"save\""
+   ],
+   "clicks": [
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2759,
+   "tokensOut": 498
+  },
+  {
+   "arm": "A",
+   "rep": 4,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "clicked \"No, gracias\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7134,
+   "tokensOut": 187
+  },
+  {
+   "arm": "B",
+   "rep": 4,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 133
+  },
+  {
+   "arm": "C",
+   "rep": 4,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 4,
+   "invalidClicks": 1,
+   "refused": false,
+   "history": [
+    "clicked \"promo-close\"",
+    "clicked \"cookies-accept\"",
+    "clicked \"cookies-accept\" (off-screen)",
+    "clicked \"save\""
+   ],
+   "clicks": [
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2759,
+   "tokensOut": 378
+  },
+  {
+   "arm": "A",
+   "rep": 5,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 3,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"No, gracias\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7135,
+   "tokensOut": 183
+  },
+  {
+   "arm": "B",
+   "rep": 5,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 130
+  },
+  {
+   "arm": "C",
+   "rep": 5,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 3,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"promo-close\"",
+    "clicked \"save\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2895,
+   "tokensOut": 300
+  },
+  {
+   "arm": "A",
+   "rep": 6,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "clicked \"No, gracias\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7134,
+   "tokensOut": 185
+  },
+  {
+   "arm": "B",
+   "rep": 6,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 135
+  },
+  {
+   "arm": "C",
+   "rep": 6,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 3,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"No, gracias\"",
+    "clicked \"Aceptar\"",
+    "clicked \"save\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2897,
+   "tokensOut": 566
+  },
+  {
+   "arm": "A",
+   "rep": 7,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "clicked \"No, gracias\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7134,
+   "tokensOut": 186
+  },
+  {
+   "arm": "B",
+   "rep": 7,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 136
+  },
+  {
+   "arm": "C",
+   "rep": 7,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 4,
+   "invalidClicks": 1,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"No, gracias\"",
+    "clicked \"promo-close\" (off-screen)",
+    "clicked \"save\""
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2758,
+   "tokensOut": 388
+  },
+  {
+   "arm": "A",
+   "rep": 8,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "clicked \"No, gracias\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7134,
+   "tokensOut": 185
+  },
+  {
+   "arm": "B",
+   "rep": 8,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 124
+  },
+  {
+   "arm": "C",
+   "rep": 8,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 4,
+   "invalidClicks": 1,
+   "refused": false,
+   "history": [
+    "clicked \"promo-close\"",
+    "clicked \"cookies-accept\"",
+    "clicked \"cookies-accept\" (off-screen)",
+    "clicked \"save\""
+   ],
+   "clicks": [
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2759,
+   "tokensOut": 530
+  },
+  {
+   "arm": "A",
+   "rep": 9,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "clicked \"No, gracias\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 7134,
+   "tokensOut": 189
+  },
+  {
+   "arm": "B",
+   "rep": 9,
+   "saved": true,
+   "steps": 3,
+   "actionsToSuccess": 2,
+   "invalidClicks": 0,
+   "refused": false,
+   "history": [
+    "clicked \"Aceptar\"",
+    "clicked \"Guardar\"",
+    "declared done"
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2771,
+   "tokensOut": 135
+  },
+  {
+   "arm": "C",
+   "rep": 9,
+   "saved": true,
+   "steps": 4,
+   "actionsToSuccess": 4,
+   "invalidClicks": 1,
+   "refused": false,
+   "history": [
+    "clicked \"cookies-accept\"",
+    "clicked \"promo-close\"",
+    "clicked \"promo-close\" (off-screen)",
+    "clicked \"save\""
+   ],
+   "clicks": [
+    {
+     "testid": "cookies-accept",
+     "tag": "button"
+    },
+    {
+     "testid": "promo-close",
+     "tag": "button"
+    },
+    {
+     "testid": "save",
+     "tag": "button"
+    }
+   ],
+   "tokensIn": 2759,
+   "tokensOut": 363
+  }
+ ]
+}

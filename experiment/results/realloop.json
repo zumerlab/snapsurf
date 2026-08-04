@@ -1,0 +1,489 @@
+{
+  "model": "claude-sonnet-5",
+  "reps": 2,
+  "maxSteps": 5,
+  "byArm": {
+    "A": {
+      "success": "9/10",
+      "avgSteps": 3.2,
+      "tokensIn": 68774,
+      "tokensOut": 1296,
+      "usd": 0.1505
+    },
+    "B": {
+      "success": "8/10",
+      "avgSteps": 3.2,
+      "tokensIn": 163785,
+      "tokensOut": 1333,
+      "usd": 0.3409
+    },
+    "C": {
+      "success": "10/10",
+      "avgSteps": 3.1,
+      "tokensIn": 200216,
+      "tokensOut": 1132,
+      "usd": 0.4118
+    }
+  },
+  "results": [
+    {
+      "task": "wikipedia-borges",
+      "arm": "A",
+      "rep": 0,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 6434,
+      "tokensOut": 135,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"x\":507,\"y\":33,\"reason\":\"Click search box\"}",
+        "{\"action\":\"type\",\"text\":\"Jorge Luis Borges\",\"reason\":\"Buscar el artículo de Jorge Luis Borges\"}",
+        "{\"action\":\"click\",\"id\":\"Jorge Luis Borges\",\"x\":312,\"y\":78,\"reason\":\"Seleccionar la sugerencia del artículo correcto\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-borges",
+      "arm": "A",
+      "rep": 1,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 6436,
+      "tokensOut": 122,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"x\":507,\"y\":33,\"reason\":\"Click en el buscador\"}",
+        "{\"action\":\"type\",\"text\":\"Jorge Luis Borges\",\"reason\":\"Escribir el nombre del artículo buscado\"}",
+        "{\"action\":\"click\",\"x\":403,\"y\":79,\"reason\":\"Seleccionar el resultado de Jorge Luis Borges\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-borges",
+      "arm": "B",
+      "rep": 0,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 27915,
+      "tokensOut": 193,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1p\",\"reason\":\"Hacer clic en el buscador\"}",
+        "{\"action\":\"type\",\"text\":\"Jorge Luis Borges\",\"reason\":\"Escribir el término de búsqueda\"}",
+        "{\"action\":\"click\",\"id\":\"n_3r2o\",\"reason\":\"Seleccionar el resultado de búsqueda Jorge Luis Borges\"}",
+        "{\"action\":\"click\",\"id\":\"n_1r7u\",\"reason\":\"Clic en el resultado principal de Jorge Luis Borges\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-borges",
+      "arm": "B",
+      "rep": 1,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 27937,
+      "tokensOut": 206,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1p\",\"reason\":\"Hacer click en el buscador de Wikipedia\"}",
+        "{\"action\":\"type\",\"text\":\"Jorge Luis Borges\",\"reason\":\"Escribir el término de búsqueda en el buscador\"}",
+        "{\"action\":\"click\",\"id\":\"n_3r2o\",\"reason\":\"Seleccionar el resultado de Jorge Luis Borges\"}",
+        "{\"action\":\"click\",\"id\":\"n_1r7y\",\"reason\":\"Hacer click en el resultado del artículo Jorge Luis Borges\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-borges",
+      "arm": "C",
+      "rep": 0,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 33519,
+      "tokensOut": 188,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1p\",\"reason\":\"Enfocar el buscador\"}",
+        "{\"action\":\"type\",\"text\":\"Jorge Luis Borges\",\"reason\":\"Escribir búsqueda\"}",
+        "{\"action\":\"click\",\"id\":\"n_3r2o\",\"reason\":\"Seleccionar el resultado de Jorge Luis Borges\"}",
+        "{\"action\":\"click\",\"id\":\"n_1r7u\",\"reason\":\"Clic en el resultado del artículo Jorge Luis Borges\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-borges",
+      "arm": "C",
+      "rep": 1,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 20296,
+      "tokensOut": 123,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1p\",\"reason\":\"Click search box\"}",
+        "{\"action\":\"type\",\"text\":\"Jorge Luis Borges\",\"reason\":\"Escribir el nombre del autor en la caja de búsqueda\"}",
+        "{\"action\":\"click\",\"id\":\"n_2r22\",\"reason\":\"Seleccionar el resultado Jorge Luis Borges\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-nav",
+      "arm": "A",
+      "rep": 0,
+      "success": true,
+      "steps": 2,
+      "tokensIn": 4319,
+      "tokensOut": 115,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"Ciudad Autónoma de Buenos Aires\",\"reason\":\"Seguir enlace hacia el artículo de la ciudad de Buenos Aires\"}",
+        "{\"harness\":\"click sin id resoluble ni coordenadas — no se ejecutó\"}",
+        "{\"action\":\"click\",\"x\":361,\"y\":412,\"reason\":\"Click en el enlace Ciudad Autónoma de Buenos Aires\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-nav",
+      "arm": "A",
+      "rep": 1,
+      "success": false,
+      "steps": 3,
+      "tokensIn": 6561,
+      "tokensOut": 169,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"Ciudad Autónoma de Buenos Aires\",\"reason\":\"Seguir enlace a Buenos Aires\"}",
+        "{\"harness\":\"click sin id resoluble ni coordenadas — no se ejecutó\"}",
+        "{\"action\":\"click\",\"x\":360,\"y\":401,\"reason\":\"Click en el enlace 'Ciudad Autónoma de Buenos Aires'\"}",
+        "{\"action\":\"done\",\"reason\":\"Se hizo clic en el enlace de Ciudad Autónoma de Buenos Aires, lo que debería navegar al artículo correspondiente.\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-nav",
+      "arm": "B",
+      "rep": 0,
+      "success": true,
+      "steps": 1,
+      "tokensIn": 11581,
+      "tokensOut": 54,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1re9\",\"reason\":\"Hacer clic en el enlace 'Buenos Aires' del artículo de Argentina.\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-nav",
+      "arm": "B",
+      "rep": 1,
+      "success": true,
+      "steps": 1,
+      "tokensIn": 11581,
+      "tokensOut": 64,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1re9\",\"reason\":\"Hacer clic en el enlace 'Buenos Aires' del artículo de Argentina para navegar a la ciudad.\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-nav",
+      "arm": "C",
+      "rep": 0,
+      "success": true,
+      "steps": 1,
+      "tokensIn": 13023,
+      "tokensOut": 63,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1re9\",\"reason\":\"Hacer click en el enlace 'Buenos Aires' de la infobox para navegar al artículo de la ciudad.\"}"
+      ]
+    },
+    {
+      "task": "wikipedia-nav",
+      "arm": "C",
+      "rep": 1,
+      "success": true,
+      "steps": 1,
+      "tokensIn": 13023,
+      "tokensOut": 57,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1re9\",\"reason\":\"Hacer click en el enlace 'Buenos Aires' en la tabla de datos de Argentina\"}"
+      ]
+    },
+    {
+      "task": "ebay-guitar",
+      "arm": "A",
+      "rep": 0,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 8646,
+      "tokensOut": 135,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"searchbox\",\"reason\":\"Click on search field to enter query\"}",
+        "{\"harness\":\"click sin id resoluble ni coordenadas — no se ejecutó\"}",
+        "{\"action\":\"click\",\"x\":548,\"y\":71,\"reason\":\"Click search box\"}",
+        "{\"action\":\"type\",\"text\":\"acoustic guitar\",\"reason\":\"Enter search query\"}",
+        "{\"action\":\"click\",\"id\":\"searchbtn\",\"x\":1085,\"y\":71,\"reason\":\"Click search button to submit query\"}"
+      ]
+    },
+    {
+      "task": "ebay-guitar",
+      "arm": "A",
+      "rep": 1,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 6375,
+      "tokensOut": 89,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"search-input\",\"x\":540,\"y\":71,\"reason\":\"Focus search box\"}",
+        "{\"action\":\"type\",\"text\":\"acoustic guitar\",\"reason\":\"Type search query\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search\"}"
+      ]
+    },
+    {
+      "task": "ebay-guitar",
+      "arm": "B",
+      "rep": 0,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 17471,
+      "tokensOut": 92,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r3g\",\"reason\":\"Focus search box\"}",
+        "{\"action\":\"type\",\"text\":\"acoustic guitar\",\"reason\":\"Escribir búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar búsqueda\"}"
+      ]
+    },
+    {
+      "task": "ebay-guitar",
+      "arm": "B",
+      "rep": 1,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 17476,
+      "tokensOut": 96,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r3g\",\"reason\":\"Click search box to type query\"}",
+        "{\"action\":\"type\",\"text\":\"acoustic guitar\",\"reason\":\"Escribir la búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar la búsqueda\"}"
+      ]
+    },
+    {
+      "task": "ebay-guitar",
+      "arm": "C",
+      "rep": 0,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 26579,
+      "tokensOut": 142,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r3g\",\"reason\":\"Click the search box to focus it before typing.\"}",
+        "{\"action\":\"type\",\"text\":\"acoustic guitar\",\"reason\":\"Type search query into focused search box.\"}",
+        "{\"action\":\"click\",\"id\":\"n_1r3h\",\"reason\":\"Click the search button to submit the search.(fallback)\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit the search query to go to results page.\"}"
+      ]
+    },
+    {
+      "task": "ebay-guitar",
+      "arm": "C",
+      "rep": 1,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 25885,
+      "tokensOut": 139,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r3g\",\"reason\":\"Focus search box\"}",
+        "{\"action\":\"type\",\"text\":\"acoustic guitar\",\"reason\":\"Type search query into focused search box\"}",
+        "{\"action\":\"click\",\"id\":\"n_1r3g_search_button\",\"reason\":\"Click search button to submit query\"}",
+        "{\"harness\":\"click sin id resoluble ni coordenadas — no se ejecutó\"}",
+        "{\"action\":\"click\",\"x\":1085,\"y\":71,\"reason\":\"Click the Search button to submit the query\"}"
+      ]
+    },
+    {
+      "task": "pydocs-tutorial",
+      "arm": "A",
+      "rep": 0,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 6415,
+      "tokensOut": 120,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"searchbox\",\"x\":1023,\"y\":29,\"reason\":\"Focus search box\"}",
+        "{\"action\":\"type\",\"id\":\"searchbox\",\"text\":\"tutorial\",\"reason\":\"Escribir término de búsqueda\"}",
+        "{\"action\":\"click\",\"id\":\"\",\"x\":1116,\"y\":29,\"reason\":\"Click Go button to submit search\"}"
+      ]
+    },
+    {
+      "task": "pydocs-tutorial",
+      "arm": "A",
+      "rep": 1,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 6419,
+      "tokensOut": 111,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"quicksearch\",\"x\":1023,\"y\":29,\"reason\":\"Focus search box\"}",
+        "{\"action\":\"type\",\"id\":\"quicksearch\",\"text\":\"tutorial\",\"reason\":\"Ingresar término de búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar búsqueda\"}"
+      ]
+    },
+    {
+      "task": "pydocs-tutorial",
+      "arm": "B",
+      "rep": 0,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 12064,
+      "tokensOut": 105,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1l\",\"reason\":\"Click search box before typing\"}",
+        "{\"action\":\"type\",\"text\":\"tutorial\",\"reason\":\"Escribir la búsqueda en el cuadro de búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar la búsqueda\"}"
+      ]
+    },
+    {
+      "task": "pydocs-tutorial",
+      "arm": "B",
+      "rep": 1,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 12072,
+      "tokensOut": 104,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1l\",\"reason\":\"Enfocar el cuadro de búsqueda\"}",
+        "{\"action\":\"type\",\"text\":\"tutorial\",\"reason\":\"Escribir el término de búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar la búsqueda\"}"
+      ]
+    },
+    {
+      "task": "pydocs-tutorial",
+      "arm": "C",
+      "rep": 0,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 16376,
+      "tokensOut": 87,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1l\",\"reason\":\"Focus the search box\"}",
+        "{\"action\":\"type\",\"text\":\"tutorial\",\"reason\":\"Type search query into the focused search box\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search query\"}"
+      ]
+    },
+    {
+      "task": "pydocs-tutorial",
+      "arm": "C",
+      "rep": 1,
+      "success": true,
+      "steps": 3,
+      "tokensIn": 16375,
+      "tokensOut": 85,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1l\",\"reason\":\"Focus search box first\"}",
+        "{\"action\":\"type\",\"text\":\"tutorial\",\"reason\":\"Type search term into focused search box\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search\"}"
+      ]
+    },
+    {
+      "task": "npm-snapdom",
+      "arm": "A",
+      "rep": 0,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 8604,
+      "tokensOut": 170,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"\",\"x\":400,\"y\":174,\"reason\":\"Click search bar\"}",
+        "{\"action\":\"type\",\"text\":\"snapdom\",\"reason\":\"Escribir el nombre del paquete en la barra de búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar la búsqueda para llegar a la página de resultados\"}",
+        "{\"action\":\"click\",\"id\":\"\",\"x\":958,\"y\":174,\"reason\":\"Confirmar la búsqueda haciendo clic en el botón Search\"}"
+      ]
+    },
+    {
+      "task": "npm-snapdom",
+      "arm": "A",
+      "rep": 1,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 8565,
+      "tokensOut": 130,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"\",\"x\":517,\"y\":174,\"reason\":\"Click search box to focus it\"}",
+        "{\"action\":\"type\",\"text\":\"snapdom\",\"reason\":\"Type search query\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search to reach results page\"}",
+        "{\"action\":\"click\",\"id\":\"958\",\"x\":958,\"y\":174,\"reason\":\"Click search button to submit the search\"}"
+      ]
+    },
+    {
+      "task": "npm-snapdom",
+      "arm": "B",
+      "rep": 0,
+      "success": false,
+      "steps": 5,
+      "tokensIn": 12818,
+      "tokensOut": 202,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1k\",\"reason\":\"Focus search box\"}",
+        "{\"action\":\"type\",\"text\":\"snapdom\",\"reason\":\"Escribir búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar búsqueda para llegar a la página de resultados\"}",
+        "{\"action\":\"find\",\"query\":\"search results page for snapdom\",\"reason\":\"Verificar si ya llegamos a la página de resultados\"}",
+        "{\"action\":\"find\",\"query\":\"snapdom package search results\",\"reason\":\"Confirmar si la página cargó resultados de búsqueda\"}"
+      ]
+    },
+    {
+      "task": "npm-snapdom",
+      "arm": "B",
+      "rep": 1,
+      "success": false,
+      "steps": 5,
+      "tokensIn": 12870,
+      "tokensOut": 217,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1k\",\"reason\":\"Click search box to focus it\"}",
+        "{\"action\":\"type\",\"id\":\"n_1r1k\",\"text\":\"snapdom\",\"reason\":\"Escribir término de búsqueda\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Enviar búsqueda para llegar a la página de resultados\"}",
+        "{\"action\":\"find\",\"query\":\"search results page snapdom\",\"reason\":\"Verificar si ya se llegó a la página de resultados de búsqueda\"}",
+        "{\"action\":\"find\",\"query\":\"snapdom search results\",\"reason\":\"Confirmar si la página actual muestra resultados de búsqueda para snapdom\"}"
+      ]
+    },
+    {
+      "task": "npm-snapdom",
+      "arm": "C",
+      "rep": 0,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 17574,
+      "tokensOut": 125,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1k\",\"reason\":\"Click search box to focus it before typing\"}",
+        "{\"action\":\"type\",\"text\":\"snapdom\",\"reason\":\"Type search query in focused search box\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search to reach full results page\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search to reach the full results page\"}"
+      ]
+    },
+    {
+      "task": "npm-snapdom",
+      "arm": "C",
+      "rep": 1,
+      "success": true,
+      "steps": 4,
+      "tokensIn": 17566,
+      "tokensOut": 123,
+      "error": null,
+      "history": [
+        "{\"action\":\"click\",\"id\":\"n_1r1k\",\"reason\":\"Click search field to focus it\"}",
+        "{\"action\":\"type\",\"text\":\"snapdom\",\"reason\":\"Type search query into focused search field\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search to go to the full results page\"}",
+        "{\"action\":\"press_enter\",\"reason\":\"Submit search to navigate to results page\"}"
+      ]
+    }
+  ]
+}

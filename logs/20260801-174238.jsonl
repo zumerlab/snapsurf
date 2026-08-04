@@ -1,0 +1,2 @@
+{"ts":"2026-08-01T17:42:42.258Z","session":"20260801-174238","seq":1,"cmd":"status","args":[],"epoch":0,"urlBefore":"nullblank","urlAfter":"nullblank","durationMs":1,"ok":true}
+{"ts":"2026-08-01T17:42:42.334Z","session":"20260801-174238","seq":2,"cmd":"stop","args":[],"epoch":0,"urlBefore":"nullblank","urlAfter":"nullblank","durationMs":0,"ok":true}

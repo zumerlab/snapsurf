@@ -1,0 +1,151 @@
+[
+ {
+  "id": "lanacion",
+  "what": "a story card in the feed",
+  "tag": "article",
+  "box": [
+   532,
+   591
+  ],
+  "nodes": 10,
+  "outlineBytes": 483,
+  "checkpointBytes": 2277,
+  "agentMapEntries": 1,
+  "agentMapBytes": 267,
+  "images": {
+   "1": {
+    "bytes": 521042,
+    "ms": 66,
+    "w": 532,
+    "h": 591
+   },
+   "0.5": {
+    "bytes": 165682,
+    "ms": 27,
+    "w": 266,
+    "h": 295
+   },
+   "0.25": {
+    "bytes": 51822,
+    "ms": 14,
+    "w": 133,
+    "h": 147
+   }
+  },
+  "outlinePreview": "a[link] [12,470 532x591] ⊘covered by generic\n  picture [12,707 532x354]\n    source [278,884 0x0]\n    img[img] [12,707 532x354]\n  section [12,470 532x225]\n    h1[heading] [12,470 532x150] \"El Gobierno hará inspecciones en las escuelas para verificar que se cumpla la \"cobertura mínima\"\"",
+  "walk_p50": 0.8
+ },
+ {
+  "id": "mercadolibre",
+  "what": "a product card",
+  "error": "selector matched nothing"
+ },
+ {
+  "id": "github",
+  "what": "the header / nav",
+  "tag": "header",
+  "box": [
+   1280,
+   72
+  ],
+  "nodes": 416,
+  "outlineBytes": 19729,
+  "checkpointBytes": 74571,
+  "agentMapEntries": 10,
+  "agentMapBytes": 864,
+  "images": {
+   "1": {
+    "bytes": 17786,
+    "ms": 256,
+    "w": 1280,
+    "h": 72
+   },
+   "0.5": {
+    "bytes": 7070,
+    "ms": 168,
+    "w": 640,
+    "h": 36
+   },
+   "0.25": {
+    "bytes": 3010,
+    "ms": 82,
+    "w": 320,
+    "h": 18
+   }
+  },
+  "outlinePreview": "header[banner] [0,0 1280x72]\n  h2[heading] [0,16 1x1] \"Navigation Menu\"\n  div [0,16 1280x40]\n    div [32,19 48x35]\n      div [32,36 0x0]\n      a[link] [32,19 32x35]",
+  "walk_p50": 13.3
+ },
+ {
+  "id": "wikipedia",
+  "what": "the infobox",
+  "tag": "table",
+  "box": [
+   344,
+   2039
+  ],
+  "nodes": 531,
+  "outlineBytes": 18245,
+  "checkpointBytes": 93142,
+  "agentMapEntries": 151,
+  "agentMapBytes": 12898,
+  "images": {
+   "1": {
+    "bytes": 418218,
+    "ms": 420,
+    "w": 344,
+    "h": 2039
+   },
+   "0.5": {
+    "bytes": 147030,
+    "ms": 348,
+    "w": 172,
+    "h": 1019
+   },
+   "0.25": {
+    "bytes": 54050,
+    "ms": 344,
+    "w": 86,
+    "h": 509
+   }
+  },
+  "outlinePreview": "table[table] [672,251 344x2039]\n  tbody [672,251 343x2038]\n    tr[row] [672,251 343x44]\n      th[columnheader] [672,251 343x44] \"República Argentina\"\n        a[link] [934,258 9x20]\n          span [934,258 9x20] \"a\"",
+  "walk_p50": 15.6
+ },
+ {
+  "id": "stripe",
+  "what": "the nav",
+  "tag": "header",
+  "box": [
+   1280,
+   76
+  ],
+  "nodes": 56,
+  "outlineBytes": 1932,
+  "checkpointBytes": 9356,
+  "agentMapEntries": 9,
+  "agentMapBytes": 761,
+  "images": {
+   "1": {
+    "bytes": 20854,
+    "ms": 57,
+    "w": 1280,
+    "h": 76
+   },
+   "0.5": {
+    "bytes": 8174,
+    "ms": 16,
+    "w": 640,
+    "h": 38
+   },
+   "0.25": {
+    "bytes": 3462,
+    "ms": 23,
+    "w": 320,
+    "h": 19
+   }
+  },
+  "outlinePreview": "header[banner] [0,0 1280x76]\n  div [0,0 1280x76]\n    nav[navigation] [18,6 1244x64]\n      a[link] [34,26 60x25]\n        path [34,26 60x25]\n      ul[list] [122,18 594x40]",
+  "walk_p50": 3.3
+ }
+]

@@ -1,0 +1,7 @@
+{"ts":"2026-07-31T23:38:51.400Z","session":"20260731-233845","seq":1,"cmd":"netblock","origin":"https://github.githubassets.com","resourceType":"stylesheet","reason":"allowlist","ok":false}
+{"ts":"2026-07-31T23:38:51.429Z","session":"20260731-233845","seq":3,"cmd":"netblock","origin":"https://camo.githubusercontent.com","resourceType":"image","reason":"allowlist","ok":false}
+{"ts":"2026-07-31T23:38:51.429Z","session":"20260731-233845","seq":2,"cmd":"netblock","origin":"https://raw.githubusercontent.com","resourceType":"image","reason":"allowlist","ok":false}
+{"ts":"2026-07-31T23:38:51.432Z","session":"20260731-233845","seq":4,"cmd":"netblock","origin":"https://avatars.githubusercontent.com","resourceType":"image","reason":"allowlist","ok":false}
+{"ts":"2026-07-31T23:38:52.092Z","session":"20260731-233845","seq":5,"cmd":"open","args":["https://github.com/zumerlab/snapdom"],"epoch":1,"urlBefore":"nullblank","urlAfter":"https://github.com/zumerlab/snapdom","durationMs":1370,"ok":true,"mapTotal":305,"nav":720,"settle":{"dom":1,"idle":495,"floor":4},"walk":147,"walkDetail":{"slices":3,"maxSliceMs":40}}
+{"ts":"2026-07-31T23:38:52.166Z","session":"20260731-233845","seq":6,"cmd":"status","args":[],"epoch":1,"urlBefore":"https://github.com/zumerlab/snapdom","urlAfter":"https://github.com/zumerlab/snapdom","durationMs":1,"ok":true}
+{"ts":"2026-07-31T23:38:52.253Z","session":"20260731-233845","seq":7,"cmd":"stop","args":[],"epoch":1,"urlBefore":"https://github.com/zumerlab/snapdom","urlAfter":"https://github.com/zumerlab/snapdom","durationMs":1,"ok":true}

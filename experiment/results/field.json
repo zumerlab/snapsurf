@@ -1,0 +1,302 @@
+[
+ {
+  "id": "lanacion",
+  "url": "https://www.lanacion.com.ar/",
+  "why": "news — ad iframes, lazy images, infinite feed",
+  "nodes": 2975,
+  "domBytes": 787215,
+  "contextBytes": 103170,
+  "agentMapEntries": 266,
+  "agentMapBytes": 33168,
+  "checkpointBytes": 559859,
+  "checkpointLeanBytes": 430638,
+  "unobservable": 2,
+  "unobservableKinds": [
+   "iframe"
+  ],
+  "covered": 1,
+  "walk_p50": 60.8,
+  "walk_p95": 97.3,
+  "checkpoint_vs_dom": 0.71,
+  "fullInspect": {
+   "ok": true,
+   "ms": 1877,
+   "context": 103170,
+   "agentMap": 266,
+   "bodyBoxBefore": [
+    1280,
+    23701
+   ],
+   "bodyBoxAfter": [
+    1280,
+    23718
+   ],
+   "visibleChildren": 3
+  },
+  "idleNoise": {
+   "changed": false,
+   "count": 0,
+   "byKind": {},
+   "payloadBytes": 91,
+   "sample": []
+  },
+  "scroll": {
+   "count": 47,
+   "byKind": {
+    "style": 1,
+    "moved": 33,
+    "resized": 10,
+    "possible-replacement": 1,
+    "removed": 2
+   },
+   "payloadBytes": 5844
+  }
+ },
+ {
+  "id": "github",
+  "url": "https://github.com/",
+  "why": "app shell — web components, shadow DOM",
+  "nodes": 1503,
+  "domBytes": 573620,
+  "contextBytes": 62022,
+  "agentMapEntries": 114,
+  "agentMapBytes": 9582,
+  "checkpointBytes": 260342,
+  "checkpointLeanBytes": 217500,
+  "unobservable": 6,
+  "unobservableKinds": [
+   "canvas"
+  ],
+  "covered": 2,
+  "walk_p50": 39,
+  "walk_p95": 82.5,
+  "checkpoint_vs_dom": 0.45,
+  "fullInspect": {
+   "ok": true,
+   "ms": 1059,
+   "context": 62022,
+   "agentMap": 114,
+   "bodyBoxBefore": [
+    1280,
+    11128
+   ],
+   "bodyBoxAfter": [
+    1280,
+    11459
+   ],
+   "visibleChildren": 3
+  },
+  "idleNoise": {
+   "changed": false,
+   "count": 0,
+   "byKind": {},
+   "payloadBytes": 91,
+   "sample": []
+  },
+  "scroll": {
+   "count": 53,
+   "byKind": {
+    "moved": 29,
+    "style": 1,
+    "resized": 21,
+    "added": 1,
+    "removed": 1
+   },
+   "payloadBytes": 7643
+  }
+ },
+ {
+  "id": "mercadolibre",
+  "url": "https://www.mercadolibre.com.ar/",
+  "why": "e-commerce — carousels, sticky header",
+  "nodes": 1896,
+  "domBytes": 399574,
+  "contextBytes": 76557,
+  "agentMapEntries": 242,
+  "agentMapBytes": 21811,
+  "checkpointBytes": 334016,
+  "checkpointLeanBytes": 277352,
+  "unobservable": 0,
+  "unobservableKinds": [],
+  "covered": 2,
+  "walk_p50": 36.7,
+  "walk_p95": 69.9,
+  "checkpoint_vs_dom": 0.84,
+  "fullInspect": {
+   "ok": true,
+   "ms": 1201,
+   "context": 76557,
+   "agentMap": 242,
+   "bodyBoxBefore": [
+    1280,
+    4742
+   ],
+   "bodyBoxAfter": [
+    1280,
+    4742
+   ],
+   "visibleChildren": 13
+  },
+  "idleNoise": {
+   "changed": true,
+   "count": 31,
+   "byKind": {
+    "style": 3,
+    "moved": 28
+   },
+   "payloadBytes": 3747,
+   "sample": [
+    {
+     "kind": "style",
+     "role": "generic"
+    },
+    {
+     "kind": "moved",
+     "role": "generic"
+    },
+    {
+     "kind": "moved",
+     "role": "group",
+     "name": "7 de 7"
+    },
+    {
+     "kind": "moved",
+     "role": "link"
+    }
+   ]
+  },
+  "scroll": {
+   "count": 19,
+   "byKind": {
+    "moved": 16,
+    "added": 2,
+    "removed": 1
+   },
+   "payloadBytes": 3169
+  }
+ },
+ {
+  "id": "wikipedia",
+  "url": "https://es.wikipedia.org/wiki/Argentina",
+  "why": "huge static document — the size ceiling",
+  "nodes": 19216,
+  "domBytes": 2812431,
+  "contextBytes": 1006374,
+  "agentMapEntries": 6610,
+  "agentMapBytes": 570288,
+  "checkpointBytes": 3758348,
+  "checkpointLeanBytes": 3014559,
+  "unobservable": 0,
+  "unobservableKinds": [],
+  "covered": 0,
+  "walk_p50": 362.5,
+  "walk_p95": 445.3,
+  "checkpoint_vs_dom": 1.34,
+  "fullInspect": {
+   "ok": true,
+   "ms": 14178,
+   "context": 1006374,
+   "agentMap": 6610,
+   "bodyBoxBefore": [
+    1280,
+    800
+   ],
+   "bodyBoxAfter": [
+    1280,
+    800
+   ],
+   "visibleChildren": 7
+  },
+  "idleNoise": {
+   "changed": false,
+   "count": 0,
+   "byKind": {},
+   "payloadBytes": 91,
+   "sample": []
+  },
+  "scroll": {
+   "count": 3,
+   "byKind": {
+    "moved": 3
+   },
+   "payloadBytes": 534
+  }
+ },
+ {
+  "id": "stripe",
+  "url": "https://stripe.com/",
+  "why": "marketing — scroll-driven animation, canvas/gradients",
+  "nodes": 2082,
+  "domBytes": 682431,
+  "contextBytes": 84073,
+  "agentMapEntries": 194,
+  "agentMapBytes": 16096,
+  "checkpointBytes": 336124,
+  "checkpointLeanBytes": 294951,
+  "unobservable": 3,
+  "unobservableKinds": [
+   "canvas",
+   "iframe"
+  ],
+  "covered": 0,
+  "walk_p50": 32.6,
+  "walk_p95": 86.6,
+  "checkpoint_vs_dom": 0.49,
+  "fullInspect": {
+   "ok": true,
+   "ms": 614,
+   "context": 84073,
+   "agentMap": 194,
+   "bodyBoxBefore": [
+    1280,
+    14525
+   ],
+   "bodyBoxAfter": [
+    1280,
+    14525
+   ],
+   "visibleChildren": 4
+  },
+  "idleNoise": {
+   "changed": true,
+   "count": 276,
+   "byKind": {
+    "possible-replacement": 2,
+    "style": 1,
+    "moved": 273
+   },
+   "payloadBytes": 26359,
+   "sample": [
+    {
+     "kind": "possible-replacement",
+     "role": "generic",
+     "name": "9"
+    },
+    {
+     "kind": "possible-replacement",
+     "role": "generic",
+     "name": "9"
+    },
+    {
+     "kind": "style",
+     "role": "list"
+    },
+    {
+     "kind": "moved",
+     "role": "list"
+    }
+   ]
+  },
+  "scroll": {
+   "count": 935,
+   "byKind": {
+    "style": 75,
+    "moved": 398,
+    "possible-replacement": 1,
+    "resized": 31,
+    "added": 430
+   },
+   "payloadBytes": 88907
+  }
+ }
+]

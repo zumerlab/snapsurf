@@ -1,0 +1,33 @@
+{
+ "mutations": [
+  {
+   "type": "added",
+   "target": "ul#list\"Pedido 1 · pendientePedido 2 · enviadoPe\""
+  },
+  {
+   "type": "removed",
+   "target": "ul#list\"Pedido 1 · pendiente Pedido 2 · pendient\""
+  }
+ ],
+ "a11yDiff": [
+  {
+   "kind": "appeared",
+   "node": {
+    "d": 3,
+    "tag": "li",
+    "role": "",
+    "name": "Pedido 2 · enviado",
+    "cls": "g1"
+   }
+  },
+  {
+   "kind": "gone",
+   "node": {
+    "d": 3,
+    "tag": "li",
+    "role": "",
+    "name": "Pedido 2 · pendiente"
+   }
+  }
+ ]
+}

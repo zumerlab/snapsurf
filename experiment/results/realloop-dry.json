@@ -1,0 +1,68 @@
+{
+  "reps": 2,
+  "maxSteps": 5,
+  "report": [
+    {
+      "task": "wikipedia-borges",
+      "goldenSuccess": true,
+      "finalUrl": "https://es.wikipedia.org/wiki/Jorge_Luis_Borges",
+      "tokens": {
+        "A_first": 1365,
+        "B_first": 3746,
+        "C_first": 5111,
+        "B_next_est": 1569
+      }
+    },
+    {
+      "task": "wikipedia-nav",
+      "goldenSuccess": true,
+      "finalUrl": "https://es.wikipedia.org/wiki/Buenos_Aires",
+      "tokens": {
+        "A_first": 1365,
+        "B_first": 6057,
+        "C_first": 7422,
+        "B_next_est": 2914
+      }
+    },
+    {
+      "task": "ebay-guitar",
+      "goldenSuccess": true,
+      "finalUrl": "https://www.ebay.com/sch/i.html?_nkw=acoustic+guitar&_sacat=0&_from=R40&_trksid=m570.l1313",
+      "tokens": {
+        "A_first": 1365,
+        "B_first": 6036,
+        "C_first": 7401,
+        "B_next_est": 2894
+      }
+    },
+    {
+      "task": "pydocs-tutorial",
+      "goldenSuccess": true,
+      "finalUrl": "https://docs.python.org/3/search.html?q=tutorial",
+      "tokens": {
+        "A_first": 1365,
+        "B_first": 4985,
+        "C_first": 6350,
+        "B_next_est": 1898
+      }
+    },
+    {
+      "task": "npm-snapdom",
+      "goldenSuccess": true,
+      "finalUrl": "https://www.npmjs.com/search?q=snapdom",
+      "tokens": {
+        "A_first": 1365,
+        "B_first": 1727,
+        "C_first": 3092,
+        "B_next_est": 969
+      }
+    }
+  ],
+  "budgetUsd": {
+    "claude-opus-5": 2.778,
+    "claude-fable-5": 5.5561,
+    "claude-sonnet-5": 1.1112,
+    "claude-sonnet-4-6": 1.6668,
+    "claude-haiku-4-5": 0.5556
+  }
+}

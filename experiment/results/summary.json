@@ -1,0 +1,64 @@
+{
+ "dry": true,
+ "model": "claude-opus-5",
+ "totalUsd": 0,
+ "byArm": {
+  "A": {
+   "meanPayloadBytes": 24783,
+   "mechanicalAccuracy": null
+  },
+  "B": {
+   "meanPayloadBytes": 328,
+   "mechanicalAccuracy": 1,
+   "falsePositives": 0,
+   "falseNegatives": 0,
+   "canvasBlind": 1,
+   "canvasFlagged": 1
+  },
+  "C": {
+   "meanPayloadBytes": 313,
+   "mechanicalAccuracy": 0.33,
+   "falsePositives": 2,
+   "falseNegatives": 0,
+   "canvasBlind": 1,
+   "canvasFlagged": 0
+  }
+ },
+ "strata": {
+  "occlusion": {
+   "mechanical": {
+    "B": 1,
+    "C": 0
+   },
+   "n": 1
+  },
+  "replaced node": {
+   "mechanical": {
+    "B": 2,
+    "C": 1
+   },
+   "n": 2
+  },
+  "canvas": {
+   "mechanical": {
+    "B": 1,
+    "C": 0
+   },
+   "n": 1
+  },
+  "pure noise": {
+   "mechanical": {
+    "B": 1,
+    "C": 0
+   },
+   "n": 1
+  },
+  "semantic-small": {
+   "mechanical": {
+    "B": 1,
+    "C": 1
+   },
+   "n": 1
+  }
+ }
+}

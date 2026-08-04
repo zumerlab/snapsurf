@@ -1,0 +1,8 @@
+{
+ "task": "canvas-redraw",
+ "stratum": "canvas",
+ "truth": {
+  "userVisibleChange": true,
+  "onlyPixels": true
+ }
+}

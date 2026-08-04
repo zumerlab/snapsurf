@@ -1,0 +1,26 @@
+[
+  {
+    "contract": "C1 oclusión (¿aviso ANTES del click?)",
+    "ours": "becameCovered reportado: Comprar ahora",
+    "theirs": "sin señal de oclusión (el botón sigue listado como accionable: true) · su click FALLA reactivamente: __ERR__ Command failed: agent-browser click button ✗ Element 'button' is covered by <div> ",
+    "verdict": "VENTAJA NUESTRA confirmada: proactivo vs sin señal previa"
+  },
+  {
+    "contract": "C2 identidad · remount (nodo destruido y recreado idéntico)",
+    "ours": "n_xxx n_1r3 → n_1r3 · ESTABLE",
+    "theirs": "@ref e1 → e1 · ESTABLE",
+    "verdict": "empate: ambos estables"
+  },
+  {
+    "contract": "C2 identidad · lista reordenada",
+    "ours": "n_xxx n_1r8 → n_1r4 · cambió",
+    "theirs": "@ref e3 → e1 · cambió",
+    "verdict": "ninguno estable — nuestra afirmación NO se sostiene acá"
+  },
+  {
+    "contract": "C3 navegación SPA",
+    "ours": "navigated:true + baselineUrl (http://127.0.0.1:8394/spa.html)",
+    "theirs": "su diff muestra el cambio de contenido pero NO señala que la URL cambió",
+    "verdict": "VENTAJA NUESTRA: el cruce de página es explícito"
+  }
+]

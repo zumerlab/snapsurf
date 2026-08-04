@@ -1,0 +1,23 @@
+{
+ "changed": false,
+ "changes": [],
+ "actionabilityDelta": {
+  "becameCovered": [],
+  "becameVisible": []
+ },
+ "unobservable": [
+  {
+   "id": "n_1r3",
+   "role": "img",
+   "sourceType": "canvas",
+   "bbox": [
+    24,
+    92,
+    300,
+    120
+   ],
+   "rasterAvailable": true
+  }
+ ],
+ "context": ""
+}
