@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import { inspect } from '../src/index.js'
 import { observe } from '../src/plugin.js'
-import { snapdom } from '../../../src/api/snapdom.js'
+import { snapdom } from '@zumer/snapdom'
 
 function scene(cards) {
   const el = document.createElement('div')

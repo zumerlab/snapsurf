@@ -1,7 +1,7 @@
 /**
  * Phase-5, layer 3 — END-TO-END AGENT LOOP (act → observe → act). Requires a key.
  *
- *   node packages/agent/experiment/loop.mjs [--reps 5] [--model claude-opus-5] [--steps 4]
+ *   node experiment/loop.mjs [--reps 5] [--model claude-opus-5] [--steps 4]
  *
  * The single-observation harness (harness.mjs) measures COMPREHENSION per observation.
  * This measures what the spec actually asks for: does the arm's observation make an
@@ -30,7 +30,8 @@ import { dirname, join } from 'node:path'
 import { usd } from './cost.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
 const args = process.argv.slice(2)

@@ -1,7 +1,7 @@
 /**
  * Scores BLIND judge verdicts against the ground truth the judges never saw.
  *
- *   node packages/agent/experiment/score.mjs <verdicts.json>
+ *   node experiment/score.mjs <verdicts.json>
  *
  * verdicts.json: [{scenario, arm, userVisibleChange, nowUnclickable, understandable, summary}]
  *

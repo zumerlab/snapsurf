@@ -6,7 +6,7 @@
  * `window.__truth()`, which reads the real DOM state without going through any channel —
  * says what actually happened.
  *
- *   node packages/agent/experiment/c-false-green.mjs
+ *   node experiment/c-false-green.mjs
  *
  * Metric: WRONG SUCCESS = the channel suggests the action worked when it did not.
  * (And its mirror, WRONG FAILURE: it suggests nothing happened when something did.)
@@ -24,7 +24,8 @@ import { createServer } from 'node:http'
 const run = promisify(execFile)
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
-const REPO = join(AGENT, '..', '..')
+const { resolveHost } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const TMP = '/tmp/snapdom-fasec'
 await mkdir(TMP, { recursive: true })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

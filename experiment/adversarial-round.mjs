@@ -1,7 +1,7 @@
 /**
  * adversarial-round.mjs — try to break the honesty contract, deterministically.
  *
- *   node packages/agent/experiment/adversarial-round.mjs
+ *   node experiment/adversarial-round.mjs
  *
  * The pitch rests on two claims: a policy hides what it says it hides, and confusion
  * never comes back green. Both are testable without a model — you just have to attack

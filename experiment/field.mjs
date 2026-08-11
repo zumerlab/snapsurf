@@ -1,7 +1,7 @@
 /**
  * Field pass — the oracle against real pages, with no model and no API spend.
  *
- *   node packages/agent/experiment/field.mjs [--sites a,b] [--reps 5]
+ *   node experiment/field.mjs [--sites a,b] [--reps 5]
  *
  * Everything measured so far ran on fixtures written by the same hand that wrote the
  * reader. This asks the three questions those fixtures cannot:
@@ -21,7 +21,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
 const args = process.argv.slice(2)

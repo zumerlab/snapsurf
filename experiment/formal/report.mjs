@@ -1,5 +1,5 @@
 // Formal benchmark — aggregator.
-// Usage: node packages/agent/experiment/formal/report.mjs [resultsDir]
+// Usage: node experiment/formal/report.mjs [resultsDir]
 // Reads every *.judged.json in resultsDir (default: ./results), groups by arm,
 // prints the paper tables as markdown: summary per arm + task×arm matrix.
 

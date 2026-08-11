@@ -10,7 +10,7 @@
  *                  the same DOM. BOTH halves are checked: theirs and ours.
  *   C3 soft nav  — what each one reports after a client-side navigation.
  *
- *   node packages/agent/experiment/e2-contracts.mjs
+ *   node experiment/e2-contracts.mjs
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'

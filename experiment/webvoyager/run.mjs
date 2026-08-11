@@ -14,14 +14,14 @@
  * All four run the same loop, model, prompt skeleton and action set, so an arm delta is
  * a channel delta and nothing else.
  *
- *   node packages/agent/experiment/webvoyager/run.mjs --dry
+ *   node experiment/webvoyager/run.mjs --dry
  *        free: loads every task, measures each arm's first-turn payload, flags sites
  *        that block the harness, prints a per-arm cost estimate.
- *   node packages/agent/experiment/webvoyager/run.mjs --arms oracle,pixels [--limit 25]
+ *   node experiment/webvoyager/run.mjs --arms oracle,pixels [--limit 25]
  *        [--trials 3] [--steps 50] [--model claude-sonnet-4-6] [--tasks id,id] [--headless]
- *   node packages/agent/experiment/webvoyager/run.mjs --model gemini-2.5-flash --arms oracle,pixels
+ *   node experiment/webvoyager/run.mjs --model gemini-2.5-flash --arms oracle,pixels
  *        free on the AI Studio free tier — same loop, same metrics, $0 spend
- *   node packages/agent/experiment/webvoyager/run.mjs --mock --trials 1 --tasks GitHub--25
+ *   node experiment/webvoyager/run.mjs --mock --trials 1 --tasks GitHub--25
  *        free smoke test: scripted policy, no model call at all
  *
  * Provider follows the model id: `gemini-*` needs GEMINI_API_KEY, anything else needs
@@ -41,7 +41,8 @@ import { withRetry } from './retry.mjs'
 import { usd } from '../cost.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
 const args = process.argv.slice(2)
@@ -549,8 +550,8 @@ async function dry(browser, sdk) {
 const SDK = await (async () => {
   const esbuild = await import('esbuild')
   const entry = join(HERE, '.sdk-entry.mjs')
-  await writeFile(entry, `import { inspect } from '${join(REPO, 'packages/agent/src/index.js')}'
-import { agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+  await writeFile(entry, `import { inspect } from '${join(AGENT, 'src/index.js')}'
+import { agentOracle } from '${join(AGENT, 'src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
 window.__agentInspect = inspect
 window.__agentOracle = agentOracle

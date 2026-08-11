@@ -7,7 +7,7 @@
  * solo lo teníamos fichado a nivel documental en docs/LANDSCAPE.md.
  *
  *   npm install -g agent-browser   (tested with 0.33.1)
- *   node packages/agent/experiment/e1-agent-browser.mjs
+ *   node experiment/e1-agent-browser.mjs
  *
  * FAIRNESS (a TESTPLAN rule: a benchmark won by cheating does not even convince us).
  * Two variants are reported:
@@ -35,7 +35,8 @@ import { createServer } from 'node:http'
 const run = promisify(execFile)
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
-const REPO = join(AGENT, '..', '..')
+const { resolveHost } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const CORPUS = join(AGENT, 'corpus')
 const TMP = '/tmp/snapdom-e1'
 await mkdir(TMP, { recursive: true })

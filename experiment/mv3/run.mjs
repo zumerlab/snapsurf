@@ -3,7 +3,7 @@
  * fully enforced (no bypassCSP anywhere). Builds sdk.js, loads the extension with a
  * persistent Chromium context, and collects the driver's console report per site.
  *
- *   node packages/agent/experiment/mv3/run.mjs
+ *   node experiment/mv3/run.mjs
  */
 import { chromium } from 'playwright'
 import { writeFile, mkdir, rm } from 'node:fs/promises'
@@ -11,15 +11,16 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../../tools/host-repo.mjs')
+const REPO = resolveHost()
 const PROFILE = join(HERE, 'profile')
 const SITES = ['https://github.com/', 'https://stripe.com/', 'https://es.wikipedia.org/wiki/Buenos_Aires']
 
 {
   const esbuild = await import('esbuild')
   const entry = join(HERE, 'sdk-entry.mjs')
-  await writeFile(entry, `import { inspect } from '${join(REPO, 'packages/agent/src/index.js')}'
-import { probeCapabilities } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+  await writeFile(entry, `import { inspect } from '${join(AGENT, 'src/index.js')}'
+import { probeCapabilities } from '${join(AGENT, 'src/plugin.js')}'
 window.__agentInspect = inspect
 window.__agentCaps = probeCapabilities
 `)

@@ -1,7 +1,7 @@
 /**
  * compliance-demo.mjs — the artifact for a buyer who has to approve, not integrate.
  *
- *   node packages/agent/demo-qa/compliance-demo.mjs
+ *   node demo-qa/compliance-demo.mjs
  *   → writes compliance-evidence.html (self-contained, print to PDF, forwardable)
  *
  * The pitch for a regulated buyer is not a feature list, it is a question their data
@@ -137,7 +137,7 @@ const html = `<!doctype html><meta charset="utf-8"><title>Observation-boundary r
 </div>
 
 <footer>
-Reproduce: <code>node packages/agent/demo-qa/compliance-demo.mjs</code>.
+Reproduce: <code>node demo-qa/compliance-demo.mjs</code>.
 The behaviour shown is covered by automated gates — <code>npm run test:contract</code>
 (15 checks, including that redaction covers <code>href</code> and that a probe is refused)
 and 8 unit tests in <code>test/privacy-probe.test.js</code>.

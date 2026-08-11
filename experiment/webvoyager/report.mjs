@@ -1,7 +1,7 @@
 /**
  * Puts our arms next to the competitor's published runs in one table.
  *
- *   node packages/agent/experiment/webvoyager/report.mjs [--out RESULTS.md]
+ *   node experiment/webvoyager/report.mjs [--out RESULTS.md]
  *
  * Reads results/webvoyager-*.json (ours) and baselines/webvoyager-*.json (lumen's own
  * published runs of lumen / stagehand / browser-use). Rows for runs whose task set is

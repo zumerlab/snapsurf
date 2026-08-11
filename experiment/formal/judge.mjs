@@ -1,5 +1,5 @@
 // Formal benchmark — external judge CLI.
-// Usage: node packages/agent/experiment/formal/judge.mjs <results-file.json>
+// Usage: node experiment/formal/judge.mjs <results-file.json>
 // Reads a run file (schema in README.md), judges every entry against tasks.mjs,
 // writes <file>.judged.json next to it and prints a verdict table.
 // A FALSE GREEN is an entry the runner claimed successful that the judge fails.

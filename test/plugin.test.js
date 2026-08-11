@@ -9,7 +9,7 @@
  * one instant for pixels and semantics, and no memo serving a stale walk.
  */
 import { describe, it, expect, afterEach } from 'vitest'
-import { snapdom } from '../../../src/api/snapdom.js'
+import { snapdom } from '@zumer/snapdom'
 import { agentOracle } from '../src/plugin.js'
 
 function app() {

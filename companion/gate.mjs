@@ -6,7 +6,7 @@
  * automated harness that, given a bundle, spits out the report". Run after every
  * build; a red gate means DO NOT hand this bundle to a consumer round.
  *
- *   node packages/agent/companion/gate.mjs
+ *   node companion/gate.mjs
  *
  * Checks: contract version · ready message emitted WITH result payload · walk
  * wall-time and max main-thread block on a 13k-node page · torn/changesTotal
@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'))
 
 const PROFILE = '/tmp/companion-gate-profile'

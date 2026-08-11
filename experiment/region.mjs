@@ -1,7 +1,7 @@
 /**
  * The region experiment — image alone vs image + actionables, on real pages.
  *
- *   node packages/agent/experiment/region.mjs [--reps 2] [--model claude-opus-5]
+ *   node experiment/region.mjs [--reps 2] [--model claude-opus-5]
  *
  * The Phase-5 arms treated pixels and structure as rivals and asked "did anything
  * change?" over whole synthetic pages. Both choices were wrong. snapdom goes to the
@@ -33,7 +33,8 @@ import { dirname, join } from 'node:path'
 import { usd } from './cost.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
 const args = process.argv.slice(2)

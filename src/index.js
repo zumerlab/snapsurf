@@ -19,7 +19,7 @@
  * Core is untouched and never depends on this package.
  * @module agent
  */
-import { snapdom } from '../../../src/api/snapdom.js'
+import { snapdom } from '@zumer/snapdom'
 import { agentOracle, probeCapabilities, getLastSnapshot } from './plugin.js'
 import { MATCH_ELEMENTS } from './query.js'
 

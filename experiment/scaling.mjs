@@ -15,19 +15,20 @@
  * pages with controlled node count and depth, and then re-runs the large page with
  * an artificial 1Hz/900ms tick to see whether the panel's 35× reproduces.
  *
- *   node packages/agent/experiment/scaling.mjs
+ *   node experiment/scaling.mjs
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
 const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'))
 
 const built = await esbuild.build({
   stdin: {
-    contents: `import { observeChunked } from '${join(REPO, 'packages/agent/src/plugin.js').replace(/\\/g, '/')}'\nwindow.__oc = observeChunked`,
+    contents: `import { observeChunked } from '${join(AGENT, 'src/plugin.js').replace(/\\/g, '/')}'\nwindow.__oc = observeChunked`,
     resolveDir: REPO,
     loader: 'js',
   },

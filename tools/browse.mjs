@@ -6,35 +6,35 @@
  * observation economics the experiments measured: navigate by reading 19-token diffs
  * (`look`) and full-page `find`, and only pay for pixels (`shot`/`snap`) when unsure.
  *
- *   node packages/agent/tools/browse.mjs serve [--headed] [--readonly] [--allow d1,d2] [--redact t1,t2]
- *   node packages/agent/tools/browse.mjs open <url>           # navigate + ~2KB digest
- *   node packages/agent/tools/browse.mjs look [id]            # what changed · with id: zoom
- *   node packages/agent/tools/browse.mjs outline              # FULL outline (escalation)
- *   node packages/agent/tools/browse.mjs find <text…>         # search WHOLE page → ids (ranked, with hrefs)
- *   node packages/agent/tools/browse.mjs parent <id>          # climb to the CARD around a node
- *   node packages/agent/tools/browse.mjs map [offset]         # page the actionables map past 40
- *   node packages/agent/tools/browse.mjs click <id|x,y>       # click (auto-scrolls to id)
- *   node packages/agent/tools/browse.mjs type <text…>         # type into focused element
- *   node packages/agent/tools/browse.mjs enter                # press Enter
- *   node packages/agent/tools/browse.mjs text <id>            # visible text of one node
- *   node packages/agent/tools/browse.mjs shot <file.jpg>      # native screenshot → file
- *   node packages/agent/tools/browse.mjs snap [id] [file.png] # snapdom render (product path)
- *   node packages/agent/tools/browse.mjs rec <s> [id] [file]  # record N seconds of the element
+ *   node tools/browse.mjs serve [--headed] [--readonly] [--allow d1,d2] [--redact t1,t2]
+ *   node tools/browse.mjs open <url>           # navigate + ~2KB digest
+ *   node tools/browse.mjs look [id]            # what changed · with id: zoom
+ *   node tools/browse.mjs outline              # FULL outline (escalation)
+ *   node tools/browse.mjs find <text…>         # search WHOLE page → ids (ranked, with hrefs)
+ *   node tools/browse.mjs parent <id>          # climb to the CARD around a node
+ *   node tools/browse.mjs map [offset]         # page the actionables map past 40
+ *   node tools/browse.mjs click <id|x,y>       # click (auto-scrolls to id)
+ *   node tools/browse.mjs type <text…>         # type into focused element
+ *   node tools/browse.mjs enter                # press Enter
+ *   node tools/browse.mjs text <id>            # visible text of one node
+ *   node tools/browse.mjs shot <file.jpg>      # native screenshot → file
+ *   node tools/browse.mjs snap [id] [file.png] # snapdom render (product path)
+ *   node tools/browse.mjs rec <s> [id] [file]  # record N seconds of the element
  *                                                             # (.gif/.webm/.mp4 — snapdom's own
  *                                                             # gifExport/videoExport plugins)
- *   node packages/agent/tools/browse.mjs cp save <name>       # name the current baseline
- *   node packages/agent/tools/browse.mjs cp list              # named checkpoints this session
- *   node packages/agent/tools/browse.mjs cp diff <name>       # what changed vs a named baseline
- *   node packages/agent/tools/browse.mjs run "<cmd…>" …       # batch: N commands, ONE process,
+ *   node tools/browse.mjs cp save <name>       # name the current baseline
+ *   node tools/browse.mjs cp list              # named checkpoints this session
+ *   node tools/browse.mjs cp diff <name>       # what changed vs a named baseline
+ *   node tools/browse.mjs run "<cmd…>" …       # batch: N commands, ONE process,
  *                                                             # abort on first error, JSONL per verb
- *   node packages/agent/tools/browse.mjs status | stop
+ *   node tools/browse.mjs status | stop
  *
  * Policy (daemon flags, agent-browser-inspired): --readonly refuses the mutating verbs
  * (click/type/enter); --allow <domains> gates navigation AND aborts every network request
  * outside the allowlist (subdomains implied). Page-derived text is fenced between
  * «««/»»» markers: data, never instructions.
  *
- * Every command is appended to a durable JSONL log (packages/agent/logs/<session>.jsonl):
+ * Every command is appended to a durable JSONL log (logs/<session>.jsonl):
  * ts, seq, epoch, urls before/after, resolved role/name, duration, error, image hashes,
  * policy denials. Typed text never lands raw in the log. Observations are numbered
  * (obs #N = epoch); ids only resolve within the epoch that minted them.
@@ -50,12 +50,18 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 // Standalone install (~/.claude/snapdom-agent via install-global.mjs): paths.json
 // points back at the repo (for node_modules) and sdk.js is prebuilt — the daemon
 // then runs machine-wide regardless of which branch the repo is sitting on.
-let REPO = join(HERE, '..', '..', '..')
+let REPO = null
+let AGENT = join(HERE, '..')
 let STANDALONE = false
 try {
-  REPO = JSON.parse(await readFile(join(HERE, 'paths.json'), 'utf8')).repo
+  const paths = JSON.parse(await readFile(join(HERE, 'paths.json'), 'utf8'))
+  REPO = paths.repo
+  AGENT = paths.agent || AGENT // installs written before the subtree split have no `agent`
   STANDALONE = true
-} catch { /* dev mode: running from the repo tree */ }
+} catch {
+  // dev mode: running from the repo tree, host resolved the same way as everywhere else
+  REPO = (await import(join(HERE, 'host-repo.mjs'))).resolveHost()
+}
 const PORT = 8377
 const [, , CMD, ...ARGS] = process.argv
 
@@ -103,7 +109,7 @@ if (CMD !== 'serve') {
     }
     process.exit(0)
   } catch {
-    console.error(`daemon not running — start it with:\n  node packages/agent/tools/browse.mjs serve`)
+    console.error(`daemon not running — start it with:\n  node tools/browse.mjs serve`)
     process.exit(1)
   }
 }
@@ -118,7 +124,7 @@ try {
 } catch {
   // dev mode: build from the repo tree. Same definition the installer uses — the two
   // used to be separate copies and drifted (see sdk-bundle.mjs).
-  SDK = await (await import(join(REPO, 'packages/agent/tools/sdk-bundle.mjs'))).buildSdk(REPO)
+  SDK = await (await import(join(AGENT, 'tools/sdk-bundle.mjs'))).buildSdk(REPO, AGENT)
 }
 
 // ── Policy: the verbs become an actual permission boundary, not just intent ──────────

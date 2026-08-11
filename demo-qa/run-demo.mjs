@@ -11,7 +11,7 @@
  * oracle arm: browser_act + browser_assert (structured pass/checks, ~200 bytes)
  * pixel arm : before/after screenshots + perceptual diff (what a visual assertion sees)
  *
- *   node packages/agent/demo-qa/run-demo.mjs
+ *   node demo-qa/run-demo.mjs
  */
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
@@ -20,7 +20,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const APP = pathToFileURL(join(HERE, 'app.html')).href
 
 // ── MCP client (stdio, zero deps) ────────────────────────────────────────────────────

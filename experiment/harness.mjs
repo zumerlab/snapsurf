@@ -5,7 +5,7 @@
  * via an in-page MutationObserver + a11y diff (no post-render signals), arm A ships
  * before/after PNGs. Same model, equivalent prompts, same tasks.
  *
- *   node packages/agent/experiment/harness.mjs [--reps 5] [--model claude-opus-5]
+ *   node experiment/harness.mjs [--reps 5] [--model claude-opus-5]
  *
  * Without a key it runs in --dry mode: every arm still executes and every mechanical
  * metric (payload bytes, invalid-click detection, change-detection FP/FN, latency) is
@@ -22,7 +22,8 @@ import { dirname, join } from 'node:path'
 import { scoreVerdict } from './verdict.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
 const args = process.argv.slice(2)

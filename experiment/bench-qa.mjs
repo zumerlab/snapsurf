@@ -18,7 +18,7 @@
  *
  * Output: experiment/results/bench-qa.md (+ raw JSON alongside).
  *
- *   node packages/agent/experiment/bench-qa.mjs
+ *   node experiment/bench-qa.mjs
  */
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
@@ -27,7 +27,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const CORPUS = join(HERE, '..', 'corpus')
 const TMP = join('/tmp', 'snapdom-bench-qa')
 await mkdir(TMP, { recursive: true })

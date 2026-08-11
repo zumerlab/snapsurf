@@ -1,7 +1,7 @@
 /**
  * doc-contract.mjs — does the documentation match the product?
  *
- *   node packages/agent/experiment/doc-contract.mjs
+ *   node experiment/doc-contract.mjs
  *
  * The real phase-4 gate is a stranger integrating from the README in under 30 minutes.
  * That needs a person or a model who has never seen this, and it has NOT been run.

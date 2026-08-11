@@ -12,7 +12,7 @@
  * element-path matchers are left out on purpose — judging them would mean replicating
  * their DOM harness, and a small objective subset beats a large arguable one.
  *
- *   node packages/agent/experiment/formal/d-third-party.mjs --arm oracle|pixels [--tasks N]
+ *   node experiment/formal/d-third-party.mjs --arm oracle|pixels [--tasks N]
  *
  * Metric: key nodes completed / total key nodes, per arm. It is WebCanvas's metric,
  * not ours.

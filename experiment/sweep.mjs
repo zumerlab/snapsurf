@@ -14,13 +14,14 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 const SDK = await (async () => {
   const esbuild = await import('esbuild')
   const { writeFile: wf } = await import('node:fs/promises')
   const entry = join(HERE, 'sdk-entry.mjs')
-  await wf(entry, `import { inspect } from '${join(REPO, 'packages/agent/src/index.js')}'\nwindow.__agentInspect = inspect\n`)
+  await wf(entry, `import { inspect } from '${join(AGENT, 'src/index.js')}'\nwindow.__agentInspect = inspect\n`)
   const res = await esbuild.build({ entryPoints: [entry], bundle: true, minify: true, format: 'iife', write: false, platform: 'browser', absWorkingDir: REPO })
   return res.outputFiles[0].text
 })()

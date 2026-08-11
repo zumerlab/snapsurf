@@ -1,7 +1,7 @@
 /**
  * contract-gates.mjs — the acceptance tests an external benchmark wrote for its findings.
  *
- *   node packages/agent/experiment/contract-gates.mjs
+ *   node experiment/contract-gates.mjs
  *
  * Every check here is one defect's own acceptance test, taken verbatim from the report
  * that found it, plus the negative controls the same report says must never break. They

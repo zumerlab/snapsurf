@@ -7,7 +7,7 @@
  *
  * Same browser, same session, same action: their comparison and ours, side by side.
  *
- *   node packages/agent/experiment/e5-coexistence.mjs
+ *   node experiment/e5-coexistence.mjs
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -19,7 +19,8 @@ import { createServer } from 'node:http'
 const run = promisify(execFile)
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
-const REPO = join(AGENT, '..', '..')
+const { resolveHost } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const TMP = '/tmp/snapdom-e5'
 await mkdir(TMP, { recursive: true })
 const ab = (args, opts = {}) => run('agent-browser', args, { timeout: 60000, maxBuffer: 16 << 20, ...opts })

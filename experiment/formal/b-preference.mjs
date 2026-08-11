@@ -11,7 +11,7 @@
  * Both channels drive the SAME real browser (our daemon), so the choice is genuine:
  * either one can solve the task.
  *
- *   node packages/agent/experiment/formal/b-preference.mjs --arm free|pixels|oracle
+ *   node experiment/formal/b-preference.mjs --arm free|pixels|oracle
  *
  * Measures: choice per STEP (not per task), accumulated tokens per turn (the crossover
  * point), success, and wall time.

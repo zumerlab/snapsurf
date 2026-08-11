@@ -12,10 +12,16 @@
  */
 import { join } from 'node:path'
 
-/** @param {string} REPO absolute path to the repo root @returns {Promise<string>} IIFE bundle */
-export async function buildSdk(REPO) {
+/**
+ * @param {string} REPO absolute path to the snapdom HOST repo (core sources + node_modules)
+ * @param {string} [AGENT] absolute path to the agent sources root. Defaults to the legacy
+ *   monorepo layout (HOST/packages/agent); pass it when the agent lives in its own repo,
+ *   which is the case since the subtree split into zumerlab/snapdom-agent.
+ * @returns {Promise<string>} IIFE bundle
+ */
+export async function buildSdk(REPO, AGENT = join(REPO, 'packages/agent')) {
   const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
-  const contents = `import { observe, observeChunked, buildUi, agentOracle, redactString } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+  const contents = `import { observe, observeChunked, buildUi, agentOracle, redactString } from '${join(AGENT, 'src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
 import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
 import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'

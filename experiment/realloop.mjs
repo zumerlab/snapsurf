@@ -6,9 +6,9 @@
  *   B  oracle only            (outline+agentMap first turn, changes+map after)
  *   C  screenshot + oracle
  *
- *   node packages/agent/experiment/realloop.mjs --dry           # free: validates every
+ *   node experiment/realloop.mjs --dry           # free: validates every
  *        task's golden path + measures each arm's first-turn payload + prints a budget
- *   node packages/agent/experiment/realloop.mjs [--reps 2] [--model claude-sonnet-5]
+ *   node experiment/realloop.mjs [--reps 2] [--model claude-sonnet-5]
  *        [--steps 5] [--tasks id,id]                            # paid run
  *
  * Success is a URL predicate checked in the page — never the model's own claim.
@@ -29,7 +29,8 @@ import { dirname, join } from 'node:path'
 import { usd, PRICES } from './cost.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
 const args = process.argv.slice(2)
@@ -438,8 +439,8 @@ async function dry(browser, sdk) {
 const SDK = await (async () => {
   const esbuild = await import('esbuild')
   const entry = join(HERE, 'sdk-entry.mjs')
-  await writeFile(entry, `import { inspect } from '${join(REPO, 'packages/agent/src/index.js')}'
-import { agentOracle } from '${join(REPO, 'packages/agent/src/plugin.js')}'
+  await writeFile(entry, `import { inspect } from '${join(AGENT, 'src/index.js')}'
+import { agentOracle } from '${join(AGENT, 'src/plugin.js')}'
 import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
 window.__agentInspect = inspect
 window.__agentOracle = agentOracle

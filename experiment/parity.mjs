@@ -15,7 +15,7 @@
  * Compares `changed` and the set of kinds. A disagreement is a bug in ONE mode, and
  * the report has to say which.
  *
- *   node packages/agent/experiment/parity.mjs
+ *   node experiment/parity.mjs
  *
  * LANDMINE: port 8377 is shared — S2 starts its own daemon and S3 makes the MCP server
  * start one. They run SEQUENTIALLY, with a verified stop in between.
@@ -28,7 +28,8 @@ import { createInterface } from 'node:readline'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
-const REPO = join(AGENT, '..', '..')
+const { resolveHost } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const CORPUS = join(AGENT, 'corpus')
 const TMP = '/tmp/snapdom-parity'
 await mkdir(TMP, { recursive: true })

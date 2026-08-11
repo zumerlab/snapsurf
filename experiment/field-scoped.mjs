@@ -1,7 +1,7 @@
 /**
  * Field pass, done right: a REGION, and text + image together.
  *
- *   node packages/agent/experiment/field-scoped.mjs
+ *   node experiment/field-scoped.mjs
  *
  * The first field pass walked `document.body` of five sites and concluded the walk
  * "does not scale". That measured the worst case anyone would ever ask for. snapdom's
@@ -21,7 +21,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = join(HERE, '..', '..', '..')
+const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
 /** One realistic "the agent cares about this" region per site. */

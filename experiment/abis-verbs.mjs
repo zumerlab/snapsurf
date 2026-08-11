@@ -6,7 +6,7 @@
  * implementation and not a test. These are features we offer callers without knowing
  * whether they work in the current bundle.
  *
- *   node packages/agent/experiment/abis-verbs.mjs
+ *   node experiment/abis-verbs.mjs
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
