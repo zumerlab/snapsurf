@@ -33,7 +33,7 @@ import { dirname, join } from 'node:path'
 import { usd } from './cost.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
+const { resolveHost, hostSnapdom, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
 const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
@@ -270,7 +270,7 @@ async function bundleSdk() {
   await mkdir(OUT, { recursive: true })
   await writeFile(entry, `
 import { observe, buildUi } from '${join(HERE, '..', 'src', 'plugin.js').replace(/\\/g, '/')}'
-import { snapdom } from '${join(REPO, 'src', 'api', 'snapdom.js').replace(/\\/g, '/')}'
+import { snapdom } from '${hostSnapdom(REPO).replace(/\\/g, '/')}'
 window.__observe = observe; window.__buildUi = buildUi; window.__snapdom = snapdom
 `)
   const res = await esbuild.build({ entryPoints: [entry], bundle: true, format: 'iife', write: false, platform: 'browser', absWorkingDir: REPO })

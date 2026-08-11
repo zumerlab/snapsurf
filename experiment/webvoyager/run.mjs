@@ -41,7 +41,7 @@ import { withRetry } from './retry.mjs'
 import { usd } from '../cost.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { resolveHost, AGENT_ROOT: AGENT } = await import('../../tools/host-repo.mjs')
+const { resolveHost, hostSnapdom, AGENT_ROOT: AGENT } = await import('../../tools/host-repo.mjs')
 const REPO = resolveHost()
 const OUT = join(HERE, 'results')
 
@@ -552,7 +552,7 @@ const SDK = await (async () => {
   const entry = join(HERE, '.sdk-entry.mjs')
   await writeFile(entry, `import { inspect } from '${join(AGENT, 'src/index.js')}'
 import { agentOracle } from '${join(AGENT, 'src/plugin.js')}'
-import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
+import { snapdom } from '${hostSnapdom(REPO)}'
 window.__agentInspect = inspect
 window.__agentOracle = agentOracle
 window.__snapdom = snapdom

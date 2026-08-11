@@ -4,15 +4,15 @@
 // snapdom core sources, which live in a sibling checkout — not in node_modules, since
 // `@zumer/snapdom@^3.0.0` is a peer that is never published from here. So:
 //
-//   - `@zumer/snapdom` is aliased to the HOST repo's live source (same thing the old
-//     monorepo did with a ../../../ relative import, minus the layout assumption),
+//   - `@zumer/snapdom` is aliased to the HOST repo's BUILD (dist/snapdom.mjs), so the
+//     suite measures the artifact users get, not a src tree only we compile,
 //   - vitest itself is borrowed from the HOST repo's node_modules (see package.json).
 //
 // Point SNAPDOM_REPO at another checkout to test against it (e.g. main instead of v3).
 // No imports from 'vitest/config' on purpose: this repo has no node_modules of its own,
 // and defineConfig is only types — a plain object is the same config.
 import { join } from 'node:path'
-import { resolveHost, AGENT_ROOT as HERE } from './tools/host-repo.mjs'
+import { resolveHost, hostSnapdom, AGENT_ROOT as HERE } from './tools/host-repo.mjs'
 
 const HOST = resolveHost()
 
@@ -21,7 +21,8 @@ export default {
   // vite's cache here instead of writing it into the tree the host repo also uses.
   cacheDir: join(HERE, '.vite-cache'),
   resolve: {
-    alias: { '@zumer/snapdom': join(HOST, 'src', 'api', 'snapdom.js') },
+    // the host's BUILD, not its src: the suite measures the artifact users get
+    alias: { '@zumer/snapdom': hostSnapdom(HOST) },
   },
   // The host tree is outside this root; vite must be allowed to serve it.
   server: { fs: { allow: [HERE, HOST] } },

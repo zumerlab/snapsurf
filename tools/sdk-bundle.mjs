@@ -20,9 +20,10 @@ import { join } from 'node:path'
  * @returns {Promise<string>} IIFE bundle
  */
 export async function buildSdk(REPO, AGENT = join(REPO, 'packages/agent')) {
+  const { hostSnapdom } = await import('./host-repo.mjs')
   const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
   const contents = `import { observe, observeChunked, buildUi, agentOracle, redactString } from '${join(AGENT, 'src/plugin.js')}'
-import { snapdom } from '${join(REPO, 'src/api/snapdom.js')}'
+import { snapdom } from '${hostSnapdom(REPO)}'
 import { videoExport } from '${join(REPO, 'packages/plugins/video-export.js')}'
 import { gifExport } from '${join(REPO, 'packages/plugins/gif-export.js')}'
 window.__agentObserve = observe
@@ -37,8 +38,10 @@ window.__snapdomGif = gifExport
   const out = (await esbuild.build({
     stdin: { contents, resolveDir: REPO, loader: 'js' },
     bundle: true, minify: true, format: 'iife', write: false, platform: 'browser',
-    // the official plugins import the published name; point it at the live source
-    alias: { '@zumer/snapdom': join(REPO, 'src/api/snapdom.js') },
+    // the official plugins import the published name; point it at the host's build, so
+    // the whole bundle carries ONE copy of snapdom (aliasing to src would inline a second
+    // one next to dist's, and the two would keep separate caches and plugin registries)
+    alias: { '@zumer/snapdom': hostSnapdom(REPO) },
   })).outputFiles[0].text
   // A bundle missing one of these globals is a silent breakage: the daemon starts,
   // `open` may even work, and the verb that needs it throws in the page instead.
