@@ -1442,6 +1442,13 @@ const CHALLENGE_MARKERS = [
   { vendor: 'datadome', title: /(blocked|verification)/i, body: /datadome|dd_?cookie/i },
   { vendor: 'perimeterx', title: /access to this page has been denied/i, body: /px-captcha|perimeterx|_pxhd/i },
   { vendor: 'imperva', title: /(request unsuccessful|incapsula)/i, body: /incapsula|_incap_|imperva/i },
+  // Google reCAPTCHA wall pages (MercadoLibre's /captcha/wall): field-found by TWO
+  // models in one parity run — the wall serves status 200 with none of the markers
+  // above, so blocked:true never reached the consumer and both callers had to infer
+  // the block from prose. 'recaptcha' names the widget actually shown, which is
+  // honest where guessing the site's WAF would not be.
+  { vendor: 'recaptcha', title: /(por seguridad|complet[aá] este paso|verificaci[oó]n|unusual traffic|are you a robot)/i,
+    body: /www\.google\.com\/recaptcha|grecaptcha|g-recaptcha/i },
 ]
 
 async function detectChallenge(S, resp) {
@@ -1466,13 +1473,17 @@ async function detectChallenge(S, resp) {
   // "cloudflare" while the page rendered a DataDome challenge), and for anyone routing
   // retries per vendor a confidently wrong name is worse than `unknown`. Collect them
   // all; `vendor` stays the strongest single signal for existing consumers.
+  // A wall can arrive as HTTP 200 on a dedicated path (mercadolibre.com.ar/captcha/wall):
+  // the URL is then challenge-shaped evidence of the same strength as a 403.
+  let captchaUrl = false
+  try { captchaUrl = /\/captcha(\/|$|\?)/i.test(new URL(S.page.url()).pathname) } catch { /* opaque URL */ }
   const hits = []
   for (const m of CHALLENGE_MARKERS) {
     const byTitle = m.title.test(probe.title)
     const byBody = m.body.test(probe.body)
     // A body marker alone is weak (a site may merely USE the vendor); pair it with a
     // challenge-shaped status or title so a protected-but-served page is not mislabelled.
-    if ((byTitle && byBody) || (byBody && (status === 403 || status === 429 || status === 503)) || (byTitle && status >= 400)) {
+    if ((byTitle && byBody) || (byBody && (status === 403 || status === 429 || status === 503 || captchaUrl)) || (byTitle && status >= 400)) {
       hits.push({ vendor: m.vendor, signal: byTitle ? 'interstitial title' : 'challenge resource', strong: byTitle && byBody })
     }
   }
@@ -1488,6 +1499,9 @@ async function detectChallenge(S, resp) {
     }
   }
   // Blocked without a recognised vendor still beats silence.
+  if (captchaUrl && probe.text < 800) {
+    return { blocked: true, vendor: 'unknown', reason: 'captcha_wall', status, signal: 'captcha wall URL with thin body' }
+  }
   if ((status === 403 || status === 429) && probe.text < 400) {
     return { blocked: true, vendor: 'unknown', reason: 'http_' + status, status, signal: 'status with near-empty body' }
   }

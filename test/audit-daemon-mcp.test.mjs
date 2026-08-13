@@ -982,6 +982,30 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
       }
     })
 
+    await t.test('reports a status-200 reCAPTCHA wall as blocked, never as a thin page', async () => {
+      // Field-found by two models in one parity run: MercadoLibre's /captcha/wall
+      // serves HTTP 200 and no legacy marker matched, so blocked:true never reached
+      // either consumer and both had to infer the block from prose.
+      const fixture = createServer((req, response) => {
+        response.setHeader('content-type', 'text/html')
+        response.end('<!doctype html><html><head><title>Verificación</title></head><body>' +
+          '<h1>Por seguridad, completá este paso</h1>' +
+          '<script src="https://www.google.com/recaptcha/api.js"></script>' +
+          '<div class="g-recaptcha"></div></body></html>')
+      })
+      await new Promise((done, reject) => { fixture.once('error', reject); fixture.listen(0, '127.0.0.1', done) })
+      try {
+        const session = (await post('session', ['open'])).meta.sessionId
+        const opened = await post('open', [`http://127.0.0.1:${fixture.address().port}/captcha/wall`], session)
+        assert.equal(opened.ok, true, opened.error)
+        assert.equal(opened.meta.blocked, true, 'a 200-status captcha wall must still report blocked')
+        assert.equal(opened.meta.challenge.vendor, 'recaptcha')
+        assert.match(opened.text, /BLOCKED/i)
+      } finally {
+        await new Promise((done) => fixture.close(done))
+      }
+    })
+
     await t.test('labels screenshots, snapdom captures and recordings as unredacted pixels', async () => {
       const openedSession = await post('session', ['open'])
       const pixelSession = openedSession.meta.sessionId
