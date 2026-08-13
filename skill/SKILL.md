@@ -161,7 +161,14 @@ When the session has both worlds available, the measured division of labor
 ## Limits
 
 - Sites with captcha/bot-walls (mercadolibre result navigation, duckduckgo search)
-  cannot be operated — report it, do not insist.
+  cannot be operated — report it, do not insist. A 200-status wall is still reported
+  as BLOCKED (recaptcha marker + /captcha/ URL signal).
+- **Front-door pattern** (round-4 field find): a deep link with filter params can be
+  walled (eBay search 403) while the site's home opens fine — enter via the home,
+  then re-issue the deep link with the warm cookie jar.
+- **Lazy listings**: dense result lists hydrate on scroll and the walk only sees the
+  DOM that exists. `scroll <id|top|bottom|y>` scrolls WITHOUT acting (ids stay
+  valid), then `look` shows what appeared.
 - Huge pages (>10k nodes): `open` can take a few seconds (known ceiling). The settle
   is adaptive (networkidle with a cap): small pages open in <1s; SPAs with eternal
   polling pay the cap (3.5s on open, 1.5-2s on click/enter).

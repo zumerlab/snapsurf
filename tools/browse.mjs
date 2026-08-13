@@ -1231,7 +1231,7 @@ async function invalidatePageBaselines(S) {
 // Semantic reads and id actions cannot cross popup realms. Re-observe the newly active
 // page before such a command; this also creates fresh public ids and expires the previous
 // realm's resolver strings. Status/session/help/stop remain cheap and do not need a view.
-const VIEW_COMMANDS = new Set(['look', 'find', 'parent', 'outline', 'map', 'click', 'text', 'snap', 'cp', 'rec', 'assert'])
+const VIEW_COMMANDS = new Set(['look', 'find', 'parent', 'outline', 'map', 'click', 'text', 'snap', 'cp', 'rec', 'assert', 'scroll'])
 // ── Carried identity across navigations ──────────────────────────────────────────────
 // The page realm dies with the document, so the strong-identity slice of every FULL
 // observation is retained HERE, in the daemon. On the first full observation after a
@@ -1774,6 +1774,35 @@ const HANDLERS = {
     await S.page.keyboard.press('Enter')
     S.meta = { settle: await settle(S, 2000) }
     return `enter · URL: ${safeUrl(S.page.url(), S.redact)} — run look`
+  },
+  async scroll([target], S) {
+    // Round-4 field finding: dense listings (eBay) hydrate their organic results on
+    // scroll, and the walk honestly sees only the DOM that exists — but the only way
+    // to scroll without acting was snap's capture side-effect. First-class scrolling:
+    // by id (element to center), to 'top'/'bottom', or to an absolute y. Ids from the
+    // current observation stay valid (scroll does not re-observe); lazy content needs
+    // a settle — run look afterwards to see what appeared.
+    if (!target) return 'usage: scroll <id|top|bottom|y-pixels>'
+    const outcome = await inPage(S, (want) => {
+      if (want === 'top') { window.scrollTo({ top: 0, behavior: 'instant' }); return { y: 0, mode: 'top' } }
+      if (want === 'bottom') {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+        return { y: Math.round(window.scrollY), mode: 'bottom' }
+      }
+      if (/^\d+$/.test(want)) {
+        window.scrollTo({ top: Number(want), behavior: 'instant' })
+        return { y: Math.round(window.scrollY), mode: 'absolute' }
+      }
+      const resolved = window.__agentResolveUi(want, { requireBox: true })
+      if (!resolved) return null
+      resolved.el.scrollIntoView({ block: 'center', behavior: 'instant' })
+      return { y: Math.round(window.scrollY), mode: 'element' }
+    }, target)
+    if (outcome === null) throw new Error(`unknown or detached id: ${target} — re-observe and retry`)
+    // Give lazy loaders a beat: hydration typically fires on the scroll event and
+    // resolves over the network. The settle is bounded; look afterwards tells the truth.
+    S.meta = { scrolled: target, y: outcome.y, mode: outcome.mode, settle: await settle(S, 1500, 750) }
+    return `scrolled (${outcome.mode}) to y=${outcome.y} — lazy content may have loaded; run look to see what appeared (ids from the current observation remain valid)`
   },
   async text([id], S) {
     const result = await inPage(S, (nid) => {
@@ -2394,7 +2423,8 @@ const HANDLERS = {
       '  outline          full trimmed outline of the current observation',
       '  click <id|x,y>   real mouse click (auto-scrolls; refuses clipped/offscreen targets, ok:false)',
       '  type <text> · enter',
-      '  text <id>        innerText of one node',
+      '  text <id>        innerText of one node (falls back to the accessible name, declared)',
+      '  scroll <id|top|bottom|y>   scroll WITHOUT acting — hydrates lazy listings; ids stay valid; look after',
       '  redact <t1,t2|off>  set/replace session privacy rules at runtime (no args: show count)',
       '  snap [id] [file] pixels of ONE region (snapdom capture) · shot [file] native screenshot',
       '  assert <json>    deterministic checks on the diff — fail-loud (see MCP browser_assert description)',

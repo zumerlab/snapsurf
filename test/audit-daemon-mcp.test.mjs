@@ -982,6 +982,30 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
       }
     })
 
+    await t.test('scroll hydrates lazy content without acting and keeps ids valid', async () => {
+      // Round-4 field case: a listing that only materializes its rows on scroll.
+      const html = '<!doctype html><meta charset="utf-8"><h1>Lazy list</h1>' +
+        '<div style="height:3000px">tall spacer</div><ul id="list"></ul>' +
+        '<script>let fired=false;addEventListener("scroll",()=>{if(fired||window.scrollY<2000)return;fired=true;' +
+        "document.getElementById('list').innerHTML='<li><a href=\"#a\">Hydrated item alpha</a></li><li><a href=\"#b\">Hydrated item beta</a></li>'})</script>"
+      const session = (await post('session', ['open'])).meta.sessionId
+      const opened = await post('open', [`data:text/html;charset=utf-8,${encodeURIComponent(html)}`], session)
+      assert.equal(opened.ok, true, opened.error)
+      const before = await post('find', ['Hydrated item'], session)
+      assert.equal((before.meta.matches || []).length, 0, 'lazy content must not exist before scroll')
+
+      const scrolled = await post('scroll', ['bottom'], session)
+      assert.equal(scrolled.ok, true, scrolled.error)
+      assert.ok(scrolled.meta.y > 1500, 'must actually scroll')
+
+      const diff = await post('look', [], session)
+      assert.equal(diff.ok, true, diff.error)
+      assert.ok(diff.meta.changed, 'the hydrated rows are a real diff')
+      const found = await post('find', ['Hydrated item alpha'], session)
+      assert.ok((found.meta.matches || []).some((m) => /alpha/.test(m.name || m.text || '')),
+        'hydrated content must be findable after scroll+look')
+    })
+
     await t.test('text falls back to the accessible name, declared as such', async () => {
       // Parity round 3: Google Flights rows carry the whole fare in aria-label and no
       // visible text — both models got "(no text)" from a node whose name had it all.

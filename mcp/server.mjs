@@ -306,6 +306,12 @@ const TOOLS = [
     run: async ({ sessionId, ...spec } = {}) => cmd('assert', [JSON.stringify(spec)], { sessionId }),
   },
   {
+    name: 'browser_scroll',
+    description: 'Scroll WITHOUT acting: by element id (to center), to "top"/"bottom", or to an absolute y in pixels. The one legitimate reason: dense listings hydrate their content lazily on scroll and the semantic walk honestly sees only the DOM that exists — scroll, then browser_verify to see what appeared. Ids from the current observation remain valid (scrolling does not re-observe). Includes a bounded settle for the lazy loaders.',
+    inputSchema: { type: 'object', properties: { target: { type: 'string', description: 'id n_xxx, "top", "bottom", or a y offset in pixels' }, sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' } }, required: ['target'] },
+    run: async ({ target, sessionId }) => cmd('scroll', [target], { sessionId }),
+  },
+  {
     name: 'browser_text',
     description: 'Full visible text of ONE node (by id) — to extract numbers, titles or exact values without interpreting pixels. Returns `text` in structuredContent, with `truncated: true` when the value was cut — a cut value must be escalated, not recorded.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, id: { type: 'string' } }, required: ['id'] },
