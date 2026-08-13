@@ -288,7 +288,7 @@ function record(label, report, reportBytes, svgBytes, error) {
   if (!rows.length) rows.push('<li>nada cambió — y eso es un dato afirmado, no una suposición</li>')
 
   const bytesLine = svgBytes === null
-    ? `reporte ${(reportBytes / 1024).toFixed(1)} KB · <strong>sin clone, sin svg</strong> (stage live)`
+    ? `reporte ${(reportBytes / 1024).toFixed(1)} KB · <strong>sin clone, sin svg</strong> (stage dom)`
     : `reporte ${(reportBytes / 1024).toFixed(1)} KB · svg ${(svgBytes / 1024).toFixed(0)} KB · ${((reportBytes / svgBytes) * 100).toFixed(1)}%`
   li.innerHTML = `<div class="tick-head"><span class="n">#${tick}</span>
       <span class="action-label">${label}</span>
@@ -304,8 +304,9 @@ async function observe(label) {
   try {
     const result = await snapdom(scope, { plugins: [watch], embedFonts: false, cache: 'disabled' })
     const report = await result.toSensor()
-    // At stage 'live' no picture exists — accessing result.url would (rightly) throw.
-    const svgBytes = result.stage === 'render' ? result.url.length : null
+    // At stage 'dom' no picture exists — reading result.url would (rightly) throw, and
+    // it is now a non-enumerable getter so JSON.stringify(result) no longer explodes.
+    const svgBytes = result.needs === 'render' ? result.url.length : null
     record(label, report, JSON.stringify(report).length, svgBytes)
   } catch (error) {
     record(label, null, 0, 0, error)
@@ -313,11 +314,11 @@ async function observe(label) {
 }
 
 $('#stage-toggle').addEventListener('click', async () => {
-  mode = mode === 'render' ? 'live' : 'render'
+  mode = mode === 'render' ? 'dom' : 'render'
   $('#stage-toggle').textContent = `needs: ${mode}`
   watch.dispose()
   watch = sensor({ needs: mode })
-  await observe(`Cambio a needs:'${mode}' — baseline nuevo${mode === 'live' ? ', sin clone' : ''}`)
+  await observe(`Cambio a needs:'${mode}' — baseline nuevo${mode === 'dom' ? ', sin clone' : ''}`)
 })
 
 // ── acciones reales sobre el DOM ──────────────────────────────

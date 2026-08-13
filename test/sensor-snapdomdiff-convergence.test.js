@@ -73,8 +73,8 @@ describe('sensor × snapdomDIFF (differential recapture) convergence', () => {
       renderMs.push(ms() - t)
     }
 
-    // ── Arm C: sensor at needs:'live' — no clone, no render, nothing to memoize ──
-    const watchLive = sensor({ needs: 'live' })
+    // ── Arm C: sensor at needs:'dom' — no clone, no render, nothing to memoize ──
+    const watchLive = sensor({ needs: 'dom' })
     plugins.push(watchLive)
     const liveMs = []
     let lastReport = null

@@ -255,7 +255,7 @@ function emptyBounded() {
 }
 
 function baseReport({ status, after, limits, privacy, continuity, drift, stage, source }) {
-  const live = stage === 'live'
+  const domOnly = stage === 'dom'
   const blindSpots = bounded(
     collectBlindSpots(after),
     limits.blindSpots,
@@ -293,9 +293,9 @@ function baseReport({ status, after, limits, privacy, continuity, drift, stage, 
       scope: 'SNAPDOM_CAPTURE_ROOT',
       ...(stage ? { stage } : {}),
       engineFrame: {
-        clonePrepared: !live,
-        nodeMapApplied: !live,
-        styleCacheApplied: !live,
+        clonePrepared: !domOnly,
+        nodeMapApplied: !domOnly,
+        styleCacheApplied: !domOnly,
         driftWatch: drift?.unwatched ? 'UNWATCHED' : 'NET_OF_ENGINE_PREP',
         ...(drift?.mutations > 0 ? { mutationsDuringPrep: drift.mutations } : {}),
       },
@@ -316,11 +316,11 @@ function baseReport({ status, after, limits, privacy, continuity, drift, stage, 
       nodesAfter: after.nodes.size,
       rootContinuity: continuity ? cloneValue(continuity) : { status: 'CONTINUOUS' },
     },
-    visual: live
+    visual: domOnly
       ? {
         // The capture stopped before the clone: no picture of THIS instant exists and
         // none can be taken afterwards. Pixels on demand = a NEW scoped capture (clip).
-        svg: 'NOT_CAPTURED_STAGE_LIVE',
+        svg: 'NOT_CAPTURED_STAGE_DOM',
         raster: 'REQUEST_A_NEW_SCOPED_CAPTURE_WITH_CLIP',
       }
       : stage === 'clone'
@@ -409,12 +409,14 @@ export function sensor(options = {}) {
   let privacy = normalizePrivacy(options.privacy)
   let noise = options.noise
   const limits = normalizeLimits(options.limits)
-  // SnapDOM v3 stage vocabulary. Default 'render' per PLUGIN_SPEC: lowering the stage
-  // takes the picture away, and that is the CALLER's call. sensor({needs:'live'}) is
-  // the no-clone fast path: the walk runs on the live DOM and nothing is cloned.
-  const needs = options.needs === undefined ? 'render' : options.needs
-  if (!['live', 'clone', 'render'].includes(needs)) {
-    throw new TypeError("[snapdom-sensor] needs must be 'live', 'clone' or 'render'")
+  // SnapDOM v3 stage vocabulary ('dom' | 'clone' | 'render'). Default 'render' per
+  // PLUGIN_SPEC: lowering the stage takes the picture away, and that is the CALLER's
+  // call. sensor({needs:'dom'}) is the no-clone fast path: the walk runs on the live
+  // DOM and nothing is cloned. ('live' is accepted as a deprecated alias for 'dom'.)
+  let needs = options.needs === undefined ? 'render' : options.needs
+  if (needs === 'live') needs = 'dom'
+  if (!['dom', 'clone', 'render'].includes(needs)) {
+    throw new TypeError("[snapdom-sensor] needs must be 'dom', 'clone' or 'render'")
   }
   let baselines = new WeakMap()
   let trackedRoots = []
@@ -514,8 +516,9 @@ export function sensor(options = {}) {
   }
 
   // One observation per capture, from whichever hook matches the RESOLVED stage:
-  // 'live' walks the live DOM in beforeClone (no clone exists, none is needed);
+  // 'dom' walks the live DOM in beforeClone (no clone exists, none is needed);
   // 'clone'/'render' walk in afterClone against the prepared frame, as always.
+  // v3 stamps the resolved stage on ctx.options.needs (the max of all plugins' needs).
   const runObservation = (ctx, { engineFrame, stage, source }) => {
     if (ctx.options[REPORT_SLOT]) { dropDriftWatch(); return }
     const drift = consumeDriftWatch(ctx.element)
@@ -571,11 +574,12 @@ export function sensor(options = {}) {
         throw new TypeError('[snapdom-sensor] burst:true is incompatible with fresh sensor frames')
       }
       // The stage-less legacy runtime IGNORES needs and silently runs the full
-      // pipeline — the worst way to find out. A live sensor on such a runtime is a
-      // named error, not a silent clone. (v3 stamps the resolved stage on options.)
-      if (needs === 'live' && ctx?.options && ctx.options.__stage === undefined) {
+      // pipeline — the worst way to find out. A dom-stage sensor on such a runtime is
+      // a named error, not a silent clone. (v3 stamps the resolved stage on
+      // ctx.options.needs before any hook runs; a legacy runtime never does.)
+      if (needs === 'dom' && ctx?.options && ctx.options.needs === undefined) {
         const error = new Error(
-          "[snapdom-sensor] needs:'live' requires a staged SnapDOM runtime (v3): this runtime would silently run the full pipeline")
+          "[snapdom-sensor] needs:'dom' requires a staged SnapDOM runtime (v3): this runtime would silently run the full pipeline")
         error.code = 'SNAPDOM_SENSOR_STAGES_REQUIRED'
         throw error
       }
@@ -588,20 +592,20 @@ export function sensor(options = {}) {
 
     beforeClone(ctx) {
       if (disposed) { dropDriftWatch(); throw new Error('[snapdom-sensor] plugin is disposed') }
-      if (ctx?.options?.__stage !== 'live') return // a deeper stage observes in afterClone
+      if (ctx?.options?.needs !== 'dom') return // a deeper stage observes in afterClone
       if (!isElement(ctx?.element) || !ctx.element.isConnected) {
         dropDriftWatch()
         throw new TypeError('[snapdom-sensor] beforeClone requires a connected capture root')
       }
-      runObservation(ctx, { stage: 'live', source: 'LIVE_DOM_WALK' })
+      runObservation(ctx, { stage: 'dom', source: 'LIVE_DOM_WALK' })
     },
 
     afterClone(ctx) {
       if (disposed) { dropDriftWatch(); throw new Error('[snapdom-sensor] plugin is disposed') }
-      if (ctx?.options?.__stage === 'live') return // already observed live; nothing deeper ran
+      if (ctx?.options?.needs === 'dom') return // already observed at dom stage; nothing deeper ran
       try { validateFrame(ctx) } catch (error) { dropDriftWatch(); throw error }
       runObservation(ctx, {
-        stage: ctx.options.__stage || 'render',
+        stage: ctx.options.needs || 'render',
         source: 'SNAPDOM_AFTER_CLONE_FRAME',
         engineFrame: {
           clone: ctx.clone,

@@ -51,16 +51,19 @@ One plugin instance is stateful. Reuse it sequentially, do not share it across c
 captures of the same root, and call `reset(root?)` or `dispose()` when its history is no
 longer needed.
 
-On a staged SnapDOM v3 runtime the sensor takes the standard `needs` knob:
-`sensor({ needs: 'live' })` walks the LIVE DOM in `beforeClone` — **no clone is taken**
-(the ~89% cut) — and the report says so: `coverage.source: 'LIVE_DOM_WALK'`,
-`visual.svg: 'NOT_CAPTURED_STAGE_LIVE'`, `visual.raster:
-'REQUEST_A_NEW_SCOPED_CAPTURE_WITH_CLIP'` (pixels of a later instant are a NEW capture —
-use `clip` to scope it to the uncertain region). The default stays `'render'` per the
-plugin spec: lowering the stage takes the picture away, and that is the caller's call.
-If another plugin raises the resolved stage, the sensor follows it back to the prepared
-frame automatically. On a stage-less legacy runtime, `needs:'live'` throws
+On a staged SnapDOM v3 runtime the sensor takes the standard `needs` knob (stage
+vocabulary `'dom' | 'clone' | 'render'`): `sensor({ needs: 'dom' })` walks the LIVE DOM
+in `beforeClone` — **no clone is taken** (the ~89% cut) — and the report says so:
+`coverage.source: 'LIVE_DOM_WALK'`, `visual.svg: 'NOT_CAPTURED_STAGE_DOM'`,
+`visual.raster: 'REQUEST_A_NEW_SCOPED_CAPTURE_WITH_CLIP'` (pixels of a later instant are
+a NEW capture — use `clip` to scope it to the uncertain region). The default stays
+`'render'` per the plugin spec: lowering the stage takes the picture away, and that is
+the caller's call. The sensor reads the resolved stage from `ctx.options.needs` (v3
+stamps the max of all plugins' needs there) and `result.needs` reports it — so if
+another plugin raises the stage, the sensor follows it back to the prepared frame
+automatically. On a stage-less legacy runtime, `needs:'dom'` throws
 `SNAPDOM_SENSOR_STAGES_REQUIRED` instead of letting the full pipeline run silently.
+(`'live'` is accepted as a deprecated alias for `'dom'`.)
 
 The package declares `@zumer/snapdom` as a peer dependency and contains no Playwright,
 CDP, MCP, Node runtime or browser controller. It remains private development software;
