@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "directed-host-receipt-value-v1",
+  "registeredAt": "2026-08-12T15:55:00.000Z",
+  "status": "PREREGISTERED_BEFORE_BROWSER_RUN",
+  "question": "On a large rendered page with a local action contract, what incremental verification value does the installed browser receipt SDK add to an already-strong directed host verifier?",
+  "scope": {
+    "comparison": [
+      "H: directed host verifier",
+      "H+R: the same directed host verifier plus one browser-SDK receipt cycle"
+    ],
+    "excluded": [
+      "browser-control comparison",
+      "whole-body accessibility snapshot as the baseline",
+      "LLM judging",
+      "personal Chrome, profiles, tabs, cookies, sessions, or extensions",
+      "external websites or external network requests"
+    ]
+  },
+  "fixture": {
+    "page": "local deterministic HTML served on an operating-system-assigned loopback port other than 8377",
+    "largePage": "3000 decoy cards outside the operation scope",
+    "receiptRoot": "the same local operation scope used by the directed verifier",
+    "actionContract": [
+      "target status transitions from Ready to Approved",
+      "neighbor status remains Ready",
+      "target action remains centre-point hittable",
+      "the operation scope contains no semantic evidence gap"
+    ]
+  },
+  "cases": [
+    {
+      "id": "intended",
+      "oracleTruth": "PASS",
+      "effect": "target transitions; neighbor, actionability, and observability remain valid"
+    },
+    {
+      "id": "wrong-target",
+      "oracleTruth": "FAIL",
+      "effect": "neighbor transitions instead of target"
+    },
+    {
+      "id": "occlusion",
+      "oracleTruth": "FAIL",
+      "effect": "target transitions but a new overlay intercepts its action control"
+    },
+    {
+      "id": "unknown",
+      "oracleTruth": "FAIL",
+      "effect": "target transitions but a new canvas in the operation scope contains an independently readable harmful pixel effect"
+    }
+  ],
+  "schedule": {
+    "repetitionsPerCase": 5,
+    "pairedTrials": 20,
+    "readerOrder": "balanced by (caseIndex + repetition) parity before and after the action",
+    "pageReset": "fresh page per paired trial"
+  },
+  "arms": {
+    "H": {
+      "predicates": [
+        "target-transition",
+        "neighbor-stable",
+        "target-actionable",
+        "scope-observable"
+      ],
+      "verdictPolicy": "UNKNOWN if scope-observable is false; otherwise PASS iff every remaining predicate passes, else FAIL",
+      "evidence": "JSON-safe observed facts and predicate results only"
+    },
+    "H+R": {
+      "predicates": "identical to H; no directed check may be removed",
+      "receipt": "one pre-action baseline and one post-action receipt over the operation scope",
+      "verdictPolicy": "the H verdict, except an additional receipt evidence gap or torn observation may conservatively yield UNKNOWN; the receipt may not manufacture PASS",
+      "evidence": "the complete H evidence plus the SDK's public JSON-safe receipt"
+    }
+  },
+  "independentOracle": {
+    "implementation": "separate low-level DOM/pixel reader that does not call either arm or the SDK",
+    "passCondition": "target Approved AND neighbor Ready AND centre-point hit target action AND no harmful canvas pixel",
+    "calibration": "the oracle result must equal the preregistered truth for every trial or the experiment is INVALID"
+  },
+  "primaryMetrics": {
+    "correctness": "verdict equals oracle truth; UNKNOWN is not counted correct against PASS/FAIL truth",
+    "falseGreen": "oracle FAIL and arm PASS",
+    "falseNegative": "oracle PASS and arm FAIL",
+    "unknown": "arm verdict UNKNOWN",
+    "denominator": "all 20 scheduled paired trials; operational errors remain in the denominator"
+  },
+  "secondaryMetrics": {
+    "authoring": "directed predicate count, host verification calls, and receipt API calls",
+    "evidenceBytes": "UTF-8 bytes of the exact JSON-safe arm evidence returned to the consumer",
+    "runtimeIntegration": "installed package fields, runtime dependency fields, bundle bytes/hash, and browser permission requirement",
+    "wallTime": "browser-side elapsed milliseconds, descriptive only; no speed superiority decision"
+  },
+  "integrityGates": [
+    "the SDK is npm-packed and installed into a temporary directory with dev dependencies omitted",
+    "the installed SDK has no runtime dependency fields",
+    "Chromium uses a dedicated temporary persistent profile that is deleted",
+    "the loopback server chooses an OS-assigned port and rejects port 8377",
+    "all browser requests remain on the fixture origin or blob URLs",
+    "all 20 trials complete exactly once per arm",
+    "the independent oracle matches every preregistered truth",
+    "the runner, preregistration, tarball, installed bundle, and result receive SHA-256 provenance"
+  ],
+  "decisionRule": {
+    "incrementalCorrectness": "supported only if H+R has fewer false greens or more correct verdicts without increasing false negatives, under the identical directed contract",
+    "incrementalDiagnosticOnly": "if primary verdict metrics tie, any advantage must be described only as standardized evidence/uncertainty, with its byte, call, and wall-time costs",
+    "noDemonstratedIncrement": "if metrics tie and receipt evidence does not add a uniquely consumable fact, report no incremental value for this fixed, well-authored contract",
+    "commercialClaim": "no commercial-demand, willingness-to-pay, or multisite-generalization claim is estimable from this fixture"
+  }
+}

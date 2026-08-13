@@ -13,7 +13,7 @@ assertion around it flaky by construction.
 ## The tests
 
 ```bash
-node packages/agent/demo-qa/run-demo.mjs
+node demo-qa/run-demo.mjs
 ```
 
 Two cases, both run end-to-end THROUGH the MCP server (`browser_open`, `browser_find`,

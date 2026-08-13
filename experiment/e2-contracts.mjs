@@ -19,6 +19,7 @@ import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
+import { daemonFetch } from '../tools/daemon-client.mjs'
 
 const run = promisify(execFile)
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -84,7 +85,7 @@ const url = (k) => `http://127.0.0.1:${PORT}/${k}.html`
 
 // ── Our side: our own daemon ────────────────────────────────────────────────────────
 const daemon = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'serve'], { stdio: 'ignore' })
-const cmd = (c, args = []) => fetch('http://127.0.0.1:8377/cmd', {
+const cmd = (c, args = []) => daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true }),
 }).then((r) => r.json()).catch((e) => ({ ok: false, text: String(e) }))
@@ -128,11 +129,11 @@ record('C1 occlusion (warned BEFORE the click?)', oursOcc, `${theirsOcc} · ${th
 for (const [page, label] of [['remount', 'remount (nodo destruido y recreado idéntico)'], ['reorder', 'lista reordenada']]) {
   await cmd('open', [url(page)])
   const f1 = await cmd('find', [page === 'remount' ? 'Guardar' : 'Gamma'])
-  const id1 = (f1.text || '').match(/n_\w+/)?.[0]
+  const id1 = (f1.text || '').match(/\bn_[A-Za-z0-9_-]+\b/)?.[0]
   await sleep(1800)
   await cmd('look')
   const f2 = await cmd('find', [page === 'remount' ? 'Guardar' : 'Gamma'])
-  const id2 = (f2.text || '').match(/n_\w+/)?.[0]
+  const id2 = (f2.text || '').match(/\bn_[A-Za-z0-9_-]+\b/)?.[0]
   const oursStable = id1 && id2 && id1 === id2
 
   await ab(['open', url(page)])

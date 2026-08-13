@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "verdict": "PASS",
+  "scope": {
+    "claim": "In this synthetic buyer fixture, the browser SDK embeds into an existing extension host with an identical manifest permission surface.",
+    "excludes": [
+      "real Chrome or a user profile",
+      "real SSO/authentication",
+      "production reliability or customer value",
+      "Playwright as product runtime"
+    ]
+  },
+  "package": {
+    "name": "@zumer/snapdom-receipt",
+    "version": "0.0.0-development",
+    "packedBytes": 15587,
+    "unpackedBytes": 40254,
+    "runtimeDependencies": [],
+    "bundleBytes": 38595,
+    "bundleGzipBytes": 14545,
+    "bundleSha256": "889f6c2366b88361525ba6298fec31774959b2223e9621ec46c5910116554f36"
+  },
+  "integration": {
+    "buyerFunctionBeforeSnapdom": "Existing isolated content script recognizes its authenticated workspace.",
+    "sdkPlacement": "Bundled into the buyer content script at build time.",
+    "manifestPermissionDelta": {},
+    "beforeSurface": {
+      "permissions": [],
+      "optional_permissions": [],
+      "host_permissions": [],
+      "optional_host_permissions": [],
+      "content_scripts": [
+        {
+          "matches": [
+            "http://127.0.0.1/*"
+          ],
+          "exclude_matches": [],
+          "all_frames": false,
+          "match_about_blank": false,
+          "world": "ISOLATED"
+        }
+      ],
+      "externally_connectable": null
+    },
+    "afterSurface": {
+      "permissions": [],
+      "optional_permissions": [],
+      "host_permissions": [],
+      "optional_host_permissions": [],
+      "content_scripts": [
+        {
+          "matches": [
+            "http://127.0.0.1/*"
+          ],
+          "exclude_matches": [],
+          "all_frames": false,
+          "match_about_blank": false,
+          "world": "ISOLATED"
+        }
+      ],
+      "externally_connectable": null
+    },
+    "runtimeForbiddenSurfaceMatches": [],
+    "integratedContentSha256": "6c79b9ab3848ea041dd63c946fcacc65c88988cff2e43bf945a6f4c88952a1a2",
+    "transport": {
+      "channel": "oem-buyer-internal-v1",
+      "path": [
+        "content-script",
+        "service-worker",
+        "extension-page"
+      ],
+      "api": "chrome.runtime.sendMessage/onMessage"
+    }
+  },
+  "hermeticFixture": {
+    "loopback": true,
+    "osAssignedPort": true,
+    "forbiddenManualPortUsed": false,
+    "temporaryChromiumProfile": true,
+    "personalChromeAccessed": false,
+    "auth": {
+      "kind": "synthetic preseeded fixture state",
+      "httpOnlyCookieReadableByPage": false,
+      "localStorageValuePresentBeforeObservation": true,
+      "navigationOrLoginReplayByExtension": false
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/fixture",
+        "authenticated": true,
+        "cookieHeaderPresent": true
+      }
+    ]
+  },
+  "wireEvidence": {
+    "secretPresent": false,
+    "receiptIngressCount": 1,
+    "hostReady": {
+      "renderedAuthenticatedState": true,
+      "buyerLocalStatePresent": true,
+      "checkpointVersion": 2,
+      "baselineContract": "snapdom.action-baseline/v1"
+    },
+    "receipt": {
+      "contract": "snapdom.action-receipt/v1",
+      "version": 1,
+      "taskOutcome": "NOT_ASSESSED",
+      "postcondition": {
+        "kind": "changed",
+        "expected": {
+          "changed": true
+        },
+        "outcome": "PASS",
+        "reason": "changed is true"
+      },
+      "observed": {
+        "changed": true,
+        "torn": 0,
+        "changes": {
+          "items": [],
+          "total": 2,
+          "truncated": 2
+        },
+        "actionabilityDelta": {
+          "becameCovered": {
+            "items": [],
+            "total": 0,
+            "truncated": 0
+          },
+          "becameVisible": {
+            "items": [],
+            "total": 0,
+            "truncated": 0
+          }
+        },
+        "unobservable": {
+          "items": [],
+          "total": 0,
+          "truncated": 0
+        }
+      },
+      "privacy": {
+        "rulesActive": 0,
+        "applied": false
+      },
+      "limits": {
+        "changes": 0,
+        "actionability": 0,
+        "unobservable": 0
+      }
+    }
+  }
+}

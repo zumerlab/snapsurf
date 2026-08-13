@@ -1,16 +1,26 @@
 # snapDOM Agent: checking whether a web agent's action actually did anything
 
-Draft, rewritten in English · 2026-08-01 · private branch `agent-lab`
+Historical research draft, rewritten in English · 2026-08-01 · corrected 2026-08-12
+
+> **Current status.** This document preserves internal measurements and the mistakes they
+> exposed; it is not a current competitive claim. The earlier readings that SnapDOM had
+> established superiority on false greens, cost, or browser-agent effectiveness are
+> withdrawn. The `0 versus 6` experiment gave only one arm a case-specific postcondition,
+> the token estimates do not define a current tokenizer or billing model, and the tested
+> baselines are not a substitute for current Playwright Test or Playwright MCP. The active
+> decision and equal-intent protocol are in `docs/VALUE-COMPARISON.md`.
 
 ## Summary
 
 A program that uses a web page — clicking, typing, navigating — has to answer one
 question after every step: *did that work?*
 
-Most tools answer it by looking again. They take another screenshot, or fetch the
-accessibility tree again, and let the model compare. That works until the page has a
-clock, a spinner or a carousel on it. Then the picture is different even when nothing
-happened, and the model can conclude it succeeded when it didn't.
+Some agent loops answer it only by looking again: they take another screenshot or fetch
+the accessibility tree and let the model compare. That can fail on a page with a clock,
+spinner, or carousel. Mature authored-test tools do more: Playwright Test has retrying
+state, URL, value, CSS, screenshot, and ARIA assertions, while Playwright MCP's testing
+capability exposes direct verification tools and interactions return a current
+accessibility snapshot.
 
 snapDOM Agent adds a second reading to snapDOM. It walks the page after the browser has
 applied styles and computed layout, and records what it saw. Before an action you save a
@@ -20,28 +30,32 @@ its state changed, its style changed, it moved, or it got bigger or smaller. It 
 tells you which element, how confident it is that this is the same element as before, and
 whether a control that used to be clickable is now covered by something else.
 
-This is not a replacement for screenshots, and it is not a replacement for any existing
-browser tool. It is one more source of information, and it is best at one specific job:
-telling you that a step did nothing, on a page where the picture changed anyway.
+This is not a replacement for screenshots or Playwright. It is a candidate additional
+source of information for one specific job: reporting a typed before/after effect and
+explicit uncertainty on a page where unrelated content also changed. Whether that layer
+adds enough value over current Playwright capabilities is still an open measurement.
 
 What is measured, with the file that holds each number:
 
 - On 19 hand-written test cases it got all 19 right, with no false alarms on the 8 noise
   cases (`experiment/results/bench-qa.md`).
 - On 8 deliberately planted silent failures, checking a stated expectation produced 0
-  wrong "it worked" answers. Three other channels produced 6 each out of 8
-  (`experiment/results/c-false-green.md`).
+  wrong "it worked" answers. Generic change channels produced up to 6 each out of 8
+  (`experiment/results/c-false-green.md`). This is evidence for explicit postconditions,
+  not evidence that this implementation is more accurate than an equivalent Playwright
+  assertion: the generic arms were not given the same intent.
 - On tasks written by other people it completed 28% of the scoring steps — the same range
   everyone else is in. Our own task suite gave 99%, which means our tasks were easy
   (`experiment/formal/results/d-third-party.md`).
 - Extracting contact details from real company sites, it reads a channel that text
-  conversion destroys — an email is often a `mailto:` in an attribute. One batch measured
-  a 30-point advantage on email; a later controlled sample did not reproduce it and found
-  a site where the typed href names the wrong mailbox (§5.1b). It is a second channel,
-  not a better one.
+  conversion can destroy — an email is often a `mailto:` in an attribute. One batch
+  measured a 30-point difference on email; a later controlled sample did not reproduce
+  it and found a site where the typed href names the wrong mailbox (§5.1b). It is a second
+  channel, not a demonstrated advantage.
 
-The third result is the important one to read first. This tool does not make an agent
-better at finishing tasks. It makes the agent's failures visible.
+The third result is the important one to read first. This study did not show that the
+tool makes an agent better at finishing tasks. Making failures more explicit remains the
+product hypothesis, not an established comparative result.
 
 ## 1. The problem
 
@@ -55,8 +69,10 @@ pixels while the application state is identical.
 say that a font finished loading and re-flowed the text, and it does not say that a
 dialog is now sitting on top of the Buy button.
 
-**Most agents never check at all.** They act and move on. If the click did nothing and
-the page had some motion in it anyway, the agent believes it made progress.
+**Some agent loops do not state or check a postcondition.** They act and move on. If the
+click did nothing and the page had some motion in it anyway, the loop can mistakenly
+infer progress. This is not a description of Playwright Test's assertion surface or of
+Playwright MCP when its testing tools are enabled.
 
 That last case has a name in this document: **a wrong success report**. The agent says
 the action worked; an independent check of the application says it did not. Published
@@ -67,10 +83,11 @@ as a reason to care, not as evidence about this tool (see `docs/LANDSCAPE.md` §
 
 ## 2. What it does
 
-It is a plugin for snapDOM. It runs inside the page, as ordinary JavaScript. It does not
-need Chrome DevTools Protocol and it does not launch a second browser. That is what lets
-it work inside a Chrome extension, inside a copilot embedded in someone else's app, or
-inside an Electron webview, where the usual tools cannot run.
+The core is a plugin for snapDOM and runs inside the page as ordinary JavaScript. That
+embedded library does not require Chrome DevTools Protocol or launch a second browser;
+the CLI and MCP modes do use Playwright Chromium. The in-page form can fit a Chrome
+extension, an embedded copilot, or an Electron webview where launching another browser
+or attaching CDP is unavailable.
 
 The loop is:
 
@@ -87,7 +104,9 @@ Four things come out of one look:
 
 - a list of the things you can click, with role, name and position;
 - an indented outline of the page, shaped for a model to read;
-- a reference point with no image and no copy of the page;
+- a reference point with no image or serialized DOM. It still contains readable
+  accessible names, structure, masked state, geometry, and fingerprints, so it remains a
+  sensitive artifact;
 - the comparison against an earlier reference point.
 
 The picture is still available when the question is genuinely visual. Pixels and
@@ -136,19 +155,25 @@ at rest were children of a single animated strip.
 
 It detects `disabled`, `checked`, `expanded`, `pressed`, `selected` and `open`.
 
-Field values are hashed so an edit is detected, but only a mask is stored. Passwords,
-emails, phone numbers, one-time codes and card fields do not even get the mask. The hash
-is not salted, so someone holding a saved reference point could test a *guess* against
-it. Treat saved reference points from pages with secret values as sensitive.
+Raw values from `<input>`, `<textarea>`, and `<select>` are never serialized or returned.
+Password, email, telephone, and other sensitive `autocomplete` categories store only
+presence and a coarse length bucket, never a digest derived from the value. An edit that
+stays within one bucket may therefore be missed, and the observation reports that region
+as `unobservable` with `sourceType: "sensitive-input-value"`. Ordinary fields store a
+capped bullet mask plus a deterministic value fingerprint for change detection; someone
+holding the checkpoint could test guesses against that fingerprint.
 
-You can also give it a list of strings to hide. Any name, label, text or state value
-containing one of them leaves as `[redacted]` on every surface. Matching still works,
-because identity travels as hashes rather than as readable text. Asking whether a hidden
-string exists is refused rather than answered, because answering would confirm it. Every
-reading taken with rules active carries a count of how many times each rule matched,
-identified by rule number and never by the rule's text — naming the rule in a report sent
-to a model would leak the thing you asked to hide. Screenshots are pixels and are not
-covered by any of this. Full detail in `docs/PRIVACY.md`.
+Treat every persisted checkpoint as sensitive. It contains structural and state
+evidence even when it contains no raw field values, and ordinary filled fields add the
+guess-testable fingerprint described above.
+
+You can also give it a list of literal strings to hide. Matching readable fields leave as
+`[redacted]`, and asking whether a protected string exists is refused rather than
+answered because the answer would confirm it. Daemon and MCP consumers receive only the
+policy revision, the number of active rules, and `applied: true`; they do **not** receive
+per-rule hit or match counts, which would create a presence oracle. Detailed operator
+telemetry, where present, stays out of the consumer response. Screenshots are pixels and
+are not covered by semantic redaction. Full detail is in `docs/PRIVACY.md`.
 
 Canvas elements are reported as visible content with no readable structure. Iframes it
 cannot open are reported the same way. It does not pretend to understand things that only
@@ -179,7 +204,7 @@ That separation is the point: the thing being tested does not get to grade itsel
 Everything in this section was re-run on 2026-08-01 with no API spend, except §5.6, §5.7,
 §5.9 and §5.10, which need a paid model and are reported from their stored runs.
 
-### 5.1 Detecting change
+### 5.1 Internal change-detection corpus
 
 19 cases: 11 real changes, 8 that only look like changes. The real ones include edited
 text, a button becoming enabled, a replaced element, a reordered list and a change inside
@@ -195,18 +220,24 @@ animation, a CSS-in-JS class rewrite and a canvas repaint.
 The pixel method missed the `disabled` flip, which has no visual difference. The
 accessibility tree missed a late font swap that did change the rendered page.
 
-The same 19 cases were also run through `agent-browser`'s snapshot diff, the closest
-comparable thing that exists in public. As it comes out of the box it scores 11/19,
+The same 19 cases were also run through the then-current `agent-browser` snapshot diff.
+As configured in this internal runner it scored 11/19,
 because its element references are renumbered between readings and every reading
 therefore looks different. After normalizing those references away it scores 17/19
 (`experiment/results/e1-agent-browser.md`). The remaining distance is concentrated in
 text noise and in changes with no textual representation — a real gap, but a much smaller
 one than the comparison against pixels suggests.
 
-### 5.1b Where the advantage actually is: data that lives in an attribute
+These results describe fixed, self-authored fixtures and historical baseline
+implementations. They are useful regression evidence. They are **not** a comparison with
+current Playwright Test assertions or Playwright MCP and do not establish product
+superiority.
 
-A production run of 57 company sites across two batches, extracting business contact
-details, located the advantage more precisely than any of our own benchmarks had.
+### 5.1b Historical attribute-channel experiment
+
+A historical run of 57 company sites across two batches, extracting business contact
+details, suggested that an attribute channel might preserve evidence lost by text
+conversion.
 
 | Field being extracted | This tool vs a fetch-and-convert toolchain |
 |---|---|
@@ -221,7 +252,7 @@ destroys the typing that made it findable. The same holds for anything living in
 attribute rather than the prose: `tel:` links, canonical URLs, `datetime`, `value`, the
 target of a button.
 
-**A later controlled sample did not reproduce the advantage, and one site inverts it.**
+**A later controlled sample did not reproduce that difference, and one site inverts it.**
 On six sites with ground truth frozen from raw HTML before either method ran, the two tied
 3/3, and on the Free Software Foundation's contact page the `mailto:` href gives
 `campaigns@fsf.org` while the visible text says to write to `info@fsf.org` — the typed
@@ -234,27 +265,35 @@ a **second** channel, not a superior one. It carries data that text conversion d
 and it can also carry a different — sometimes wrong — value than the page tells a human to
 use. Read both; do not treat the href as the source of truth.
 
-Two caveats from the same run. The advantage only materialises if the consumer reads the
+Two caveats from the same run. Any difference only materialises if the consumer reads the
 typed fields rather than the rendered prose — the run that produced these numbers had to
 be corrected first, because the fields existed but were not being published where a
 programmatic client looks (§8, last bullet). And an empty form field's accessible name is
 its placeholder, so `john@company.com` can appear in a digest looking exactly like a real
 address; those entries are now flagged rather than left to be mistaken for data.
 
-### 5.2 How much information it costs
+### 5.2 Historical information-size estimates
 
 Across 36 sites, the comparison after an action had a median size of **19 tokens** on the
 sites that were quiet at rest, and 36 tokens counting all 36 sites. A screenshot of the
 same viewport is about 1,365 tokens.
+
+Those token figures are retained as historical observations, not a current cost claim.
+The run did not freeze a tokenizer and billing model that can support a present-day
+comparison. New evaluations report exact UTF-8 bytes, tool calls, model rounds, and
+timing boundaries; they convert to tokens or money only when the tokenizer and price are
+specified.
 
 The first reading is a different story. On 30 of the 36 sites, the initial outline cost
 more than a screenshot would have. A compact summary brought one Wikipedia page from
 12.4 KB down to 3.4 KB, and the conclusion still holds: the advantage is in reporting
 small changes, not in describing a large page for the first time.
 
-The saved reference point is also not small in absolute terms. In the synthetic benchmark
-it is about **3.3× the size of the serialized DOM** (`test/bench.test.js`). It is
-designed to be cheap to *compare*, not cheap to store. Only the difference is small.
+The saved reference point is also not small in absolute terms. The current columnar
+checkpoint gate measures roughly **1.9× the size of the serialized DOM** on its synthetic
+fixtures (`test/bench.test.js`), with explicit per-node budgets. It is designed to be
+cheap to *compare*, not necessarily smaller than DOM serialization. Only the returned
+difference is small.
 
 ### 5.3 Noise on real sites
 
@@ -288,15 +327,16 @@ one region instead of the whole page.
 
 ### 5.5 Working without CDP
 
-A real Manifest V3 extension worked on 3 of 3 sites under their real Content Security
-Policy, including GitHub. Its contract test passes 27 of 27 checks, covering the shape of
-the reply, the main-thread budget under a 4× slowdown, occlusion, correctly reporting no
-change, soft navigation in a single-page app, and five privacy checks
-(`companion/gate.mjs`).
+A historical Manifest V3 run worked on 3 of 3 sites under their then-current Content
+Security Policy, including GitHub. The checked-in contract gate covers reply shape,
+main-thread budget under slowdown, occlusion, correctly reporting no change, soft
+navigation, and privacy behavior (`companion/gate.mjs`). Run the gate for its current
+case total rather than copying an old count.
 
-This is the situation the project exists for. Inside an extension or an embedded app,
-Playwright and CDP are not available, while a script in the extension's isolated world
-can read the page.
+This is one deployment shape the project targets. An extension content reader can run in
+an isolated world without attaching Playwright or CDP to that component. That is a
+deployment distinction, not evidence that it verifies effects better than a
+Playwright-controlled browser.
 
 ### 5.6 A small pilot with a model
 
@@ -364,6 +404,50 @@ checking that specific thing was stable at 8/8 across both runs.
 
 This is why the useful unit is a stated expectation, not a raw difference.
 
+This experiment does **not** establish superiority over Playwright Test. The
+stated-expectation arm received per-case postconditions; the comparison arms answered the
+weaker question "did anything change?". A fair comparison must give Playwright the same
+postcondition through its retrying assertions (and, where needed, custom predicates).
+The preregistered comparison and first descriptive focal are recorded in
+`docs/VALUE-COMPARISON.md`.
+
+### 5.8a Current local MCP-to-MCP probe
+
+A later hermetic runner compared current Playwright MCP 0.0.79 with `--caps=testing`
+against SnapDOM MCP 0.1.0 on four deterministic local postconditions. Each ran as a
+correct effect and a near miss, three times, through three separately reported arms:
+Playwright out-of-box tools, SnapDOM's direct assertion, and Playwright's arbitrary
+`browser_evaluate` escape hatch. There was no model. The expected verdict came from a
+frozen server-side manifest activated by an action ping; it did not observe the DOM.
+
+All three arms matched that manifest in 24/24 trials: 72/72 route trials total, with no
+false green, false negative, or `UNKNOWN`. These are repeated authored fixtures, not 72
+independent cases and not an estimate of general accuracy.
+
+| Arm (same 24 trials) | Median verify rounds | Median full-flow rounds | Median verify effective B | Median full-flow effective B | Median verify ms | Median full-flow ms |
+|---|---:|---:|---:|---:|---:|---:|
+| Playwright out of box | 1.5 | 3.5 | 558.5 | 2,557.5 | 5.6 | 195.1 |
+| SnapDOM direct assertion | 1 | 3 | 2,660 | 5,288 | 17.0 | 556.9 |
+| Playwright custom evaluation | 1 | 3 | 1,206 | 3,330.5 | 55.5 | 252.0 |
+
+SnapDOM's observed value was a uniform one-call declarative vocabulary for transition,
+side-effect, coverage, and no-op checks with typed evidence. It was not a general cost
+win: Playwright out-of-box was much smaller in the pooled medians and used no extra
+verification call for semantic no-op. The covered-modal near miss was the opposite
+endpoint: SnapDOM's direct assertion took one round and 19.8 ms, while Playwright's
+built-in non-mutating hover actionability probe took two rounds and 1,214.4 ms; custom
+hit testing took one authored-JavaScript round and 54.7 ms. Branch short-circuiting is
+reported per case rather than hidden: Playwright's two-conjunct checkbox and add routes
+used two verification calls on success and one when the first near-miss conjunct failed.
+
+Full flow includes setup/navigation, action, verification, and linked-artifact reads; it
+excludes npm/browser installation, MCP startup, and expected-truth polling. Timings are
+descriptive local medians, not a causal performance estimate. The schema cost was 14,418
+B for SnapDOM and 22,271 B for Playwright including the initialized notification, but a
+client loading SnapDOM alongside Playwright pays both. The raw wires, per-case table,
+cleanup record, and exact protocol are in `experiment/results/mcp-value.json`,
+`experiment/results/mcp-value.md`, and `experiment/mcp-value.mjs`.
+
 ### 5.9 Tasks written by other people
 
 Eight tasks from Mind2Web-Live, on live sites, scored by someone else's criteria (the
@@ -385,8 +469,9 @@ conclusion whatsoever, but the direction is against the tool and is recorded for
 reason.
 
 The honest statement: **this phase gives no evidence that reading structure instead of
-pixels helps an agent finish more tasks.** The measured advantages are cost (§5.2) and
-catching wrong success reports (§5.8).
+pixels helps an agent finish more tasks.** The historical size observations (§5.2) and
+false-green fixture (§5.8) motivate further testing, but neither is a current
+equal-intent advantage claim.
 
 ### 5.10 Does a model choose it when nothing tells it to?
 
@@ -397,11 +482,10 @@ pictures to orient itself. That supports offering both, not replacing one with t
 
 ### 5.11 It runs inside other tools
 
-The whole reader bundles to 45 KB and can be injected into `agent-browser` through that
-tool's own `eval` command. Its flow keeps working, and the change report comes back on
-top of it (`experiment/results/e5-coexistence.md`). Distribution is this project's
-weakest point, so being able to run inside an existing tool matters more than competing
-with it.
+A historical reader build bundled to 45 KB and was injected into `agent-browser`
+through that tool's own `eval` command. Its flow worked and the change report came back
+on top of it (`experiment/results/e5-coexistence.md`). That dated size is not the current
+companion bundle size; the durable result is architectural coexistence, not 45 KB.
 
 ### 5.12 Do all the entry points agree?
 
@@ -437,6 +521,10 @@ for the full image. Images are charged by area, so a large screenshot can be che
 tokens than the JSON describing it, even while being 25–38× larger in bytes. The honest
 claim there is precision, not cost.
 
+As in §5.2, those token totals are historical because the tokenizer and billing model
+were not frozen for a current comparison. They must not be reused as present-day model
+cost claims.
+
 ## 6. When the model using it makes a mistake
 
 Models misuse tools. They write a broken specification, reuse an identifier from an old
@@ -456,16 +544,22 @@ different element. Repeating role and name reduces that risk. It is not a guaran
 
 ## 7. What can be concluded
 
-1. On a controlled set of cases, this tells application changes apart from visual noise
-   better than the two baselines tested, and better out of the box than the closest
-   comparable public tool.
-2. Pictures and structure together are more complete than either alone. Pixels explain
-   appearance. Structure explains identity, state, and whether you can click.
-3. The most useful thing it does is confirm or deny that an action had an effect. Knowing
-   that a click did nothing stops an agent from building on a false assumption.
+1. On the self-authored corpus, the implementation produced the frozen expected answers
+   and distinguished the tested semantic effects from the tested noise cases. That makes
+   the corpus useful as a regression suite, not as independent competitive evidence.
+2. The implementation can return typed before/after changes, coverage evidence, and
+   explicit `torn` or `unobservable` uncertainty in one response. That is a real product
+   surface. The local MCP probe established a narrower ergonomic distinction—one uniform
+   declarative verification call across four effects—but not an accuracy, byte, latency,
+   diagnostic, or agent-success advantage over Playwright.
+3. Pixels and semantics answer different questions. A verifier may need both, especially
+   for appearance, canvas, and unreadable frame content.
 
-What cannot be concluded: that it makes agents finish more tasks. §5.9 measured that
-directly, on tasks written elsewhere, and found no such evidence.
+What cannot be concluded: that SnapDOM is more accurate, faster, cheaper, or more
+effective than current Playwright Test or Playwright MCP, or that it makes agents finish
+more tasks. A broader claim still requires the powered, equal-intent, independently
+judged protocol in `docs/VALUE-COMPARISON.md`; the four-case local probe is not that
+confirmatory run.
 
 ## 8. Reasons to distrust these numbers
 
@@ -486,48 +580,58 @@ directly, on tasks written elsewhere, and found no such evidence.
 - Repeatability is only claimed within one environment. No claim is made across browsers
   or engines.
 - **A capability that is not read is not a capability.** The typed fields that produce the
-  §5.1b advantage existed for a long time before they were published where a programmatic
-  client looks, and the first production report of them concluded the tool could not read
-  a page at all. Measured advantages depend on the consumer being able to reach them.
+  historical §5.1b difference existed for a long time before they were published where a
+  programmatic consumer looks, and the first production report of them concluded the tool
+  could not read a page at all. Measured effects depend on the consumer being able to
+  reach them.
 - **The tests did not cover every way the tool ships.** On 2026-08-01 the globally
   installed copy was found broken: three of its verbs threw an error inside the page,
   because the bundle was defined twice and the two copies drifted apart. Every test ran
   against the repository tree, so nothing caught it. The duplication is gone and the
-  tests now also run against the installed copy, but the lesson stands — a passing test
-  suite only covers the paths it was pointed at.
+  repository now includes a task-owned installed-copy smoke check; the real user-level
+  `~/.claude` copy remains an explicit machine-state test. The lesson stands — a passing
+  suite covers only the paths it was pointed at.
 
 ## 9. What would improve this most
 
 - Finish §5.9: run the comparison arm completely and widen the task set.
 - Run a public benchmark end to end. The WebVoyager harness in `experiment/webvoyager/`
-  is ready and verified without spending anything — 25 of 25 sites load, all four
-  channels complete the loop — but no accuracy number of our own exists on it yet.
+  has a dry-run path, but no current accuracy result is claimed here.
 - Report cost per task *completed and verified*, rather than pass rate alone.
 - Test the matcher against a public grounding benchmark. It works on our corpus; its
   behaviour on the long tail of professional interfaces is unknown.
 
 ## Appendix A. Reproducing this
 
-Data lives in `experiment/results/` and `experiment/formal/results/`. Everything below
-runs without an API key.
+Data lives in `experiment/results/` and `experiment/formal/results/`. Run these commands
+from this repository root. The runners print their current totals; this table deliberately
+does not copy pass counts that can become stale.
 
-| What | Command from the repository root | Expected |
+| What | Repository-root command | Contract |
 |---|---|---|
-| Unit tests | `npx vitest run packages/agent/test --browser.headless` | 50 pass |
-| Reading quality, no model | `npx vitest run packages/agent/experiment/signal.test.js --browser.headless` | 8 pass |
-| Change detection (§5.1) | `node packages/agent/experiment/bench-qa.mjs` | 19/19, 0 false alarms |
-| Comparable tool (§5.1) | `node packages/agent/experiment/e1-agent-browser.mjs` | 11/19 as-is, 17/19 normalized |
-| Entry points agree (§5.12) | `node packages/agent/experiment/parity.mjs` | 0 disagreements |
-| Extension contract (§5.5) | `node packages/agent/companion/gate.mjs` | 27/27 |
-| Every verb, both installs | `node packages/agent/experiment/abis-verbs.mjs [--daemon <path>]` | 19/19 |
-| Speed (§5.4) | `node packages/agent/experiment/scaling.mjs` | cost per element roughly flat |
-| Real-site noise (§5.3) | `node packages/agent/experiment/sweep.mjs` | 18 of 36 quiet |
-| Wrong success reports (§5.8) | `node packages/agent/experiment/c-false-green.mjs` | 8/8 and 0 for the stated-expectation arm |
-| Verification demo | `node packages/agent/demo-qa/run-demo.mjs` | real change detected, no-op reported as no change |
-| Public benchmark, dry run | `node packages/agent/experiment/webvoyager/run.mjs --dry --headless` | 25/25 sites load |
+| Core plus daemon/MCP regressions | `npm test` | exits nonzero on a failed check |
+| Lint and bundle freshness | `npm run test:lint && npm run test:bundles` | exits nonzero on lint or generated-bundle drift |
+| Isolated offline regression set | `npm run test:regression` | uses task-owned isolated runtime state |
+| Adversarial experiment | `npm run test:adversarial` | runs through the isolated wrapper |
+| Companion boundary | `node companion/gate.mjs` | exercises the fixed-id hostile-page fixture |
+| Package artifact | `npm run test:pack` | checks the generated package, not only the checkout |
+| Cold install | `npm run test:cold` | copies **git-tracked files only** into empty task-owned locations |
+| Change corpus (§5.1) | `node experiment/bench-qa.mjs` | evaluates the checked-in fixture truth |
+| Historical baseline (§5.1) | `node experiment/e1-agent-browser.mjs` | descriptive historical runner; not current Playwright |
+| Entry-point parity (§5.12) | `node experiment/parity.mjs` | reports disagreements rather than assuming parity |
+| Daemon verbs | `node experiment/abis-verbs.mjs [--daemon <path>]` | optional path checks a specified daemon copy |
+| Historical false-green fixture (§5.8) | `node experiment/c-false-green.mjs` | internal asymmetric experiment, not a Playwright comparison |
+| Current MCP protocol (§5.8a) | `node experiment/mcp-value.mjs --dry` | prints pinned cases, routes, metrics, and isolation contract without launching a browser |
+| Current MCP local run (§5.8a) | `MCP_VALUE_REPETITIONS=3 MCP_VALUE_REQUIRE_ALL_CORRECT=1 MCP_VALUE_OUTPUT=work/mcp-value.json node experiment/mcp-value.mjs --run` | resolves Chromium for Testing through the pinned MCP package into temporary task state, runs only localhost fixtures, and refuses publication on verdict or cleanup failure |
+| Current focal protocol, no network | `node experiment/value-focal.mjs --dry` | prints the protocol and isolation contract; no benchmark result |
 
-Paid: `experiment/formal/` (§5.7, §5.10), `experiment/formal/d-third-party.mjs` (§5.9),
-and a real run of `experiment/webvoyager/run.mjs`.
+Some historical runners require network access, an external tool installation, or a paid
+model even though they require no browser profile. Their stored observations must not be
+silently replaced with a new run. In particular, the schema-2 focal requires the explicit
+`--network` flag and does not reproduce the historical schema-1 measurements.
+The MCP local run also needs network access to acquire the pinned package and browser;
+its measured fixture traffic remains localhost-only and it does not use a personal
+browser profile.
 
 ## Appendix B. Where things are
 

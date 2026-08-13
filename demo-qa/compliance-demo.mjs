@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, readFile, readdir } from 'node:fs/promises'
 import { createServer } from 'node:http'
+import { daemonFetch } from '../tools/daemon-client.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
@@ -47,7 +48,7 @@ await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
 const URL_ = `http://127.0.0.1:${PORT}/records/${CASE.ref}`
 
 const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
-const cmd = (c, args = []) => fetch('http://127.0.0.1:8377/cmd', {
+const cmd = (c, args = []) => daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true }),
 }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }))
@@ -132,7 +133,7 @@ const html = `<!doctype html><meta charset="utf-8"><title>Observation-boundary r
 <li><strong>Screenshots are pixels and are not redacted.</strong> If a region is sensitive, do not request its image.</li>
 <li><strong>Matching is literal substring, case-insensitive.</strong> It does not infer that "M. Quiroga" is the same person as "Marta Quiroga"; rules are supplied by the operator.</li>
 <li><strong>Saved reference points contain a non-salted hash of input values.</strong> A holder could test a <em>guessed</em> value against one. Treat them as sensitive artifacts.</li>
-<li><strong>Authenticated pages:</strong> this tool uses its own cookie jar and reads the signed-out view. It reports <code>authState</code> rather than pretending otherwise.</li>
+<li><strong>Authenticated pages:</strong> this tool uses an isolated browser context. It reports <code>authState: unknown</code> and the cookie count instead of inferring identity from cookies alone.</li>
 </ul>
 </div>
 

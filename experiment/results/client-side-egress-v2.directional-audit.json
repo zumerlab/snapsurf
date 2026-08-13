@@ -1,0 +1,542 @@
+{
+  "schema": 1,
+  "classification": "read-only directional audit of retained client-side-egress-v2 evidence bodies",
+  "question": "Do the retained pre/post bodies prove the authored state transition in the correct direction, rather than merely containing all four strings?",
+  "exactContract": {
+    "pre": {
+      "cart": "0",
+      "status": "Ready"
+    },
+    "post": {
+      "cart": "1",
+      "status": "Added Item 0"
+    }
+  },
+  "trials": [
+    {
+      "id": "rows-50-rep-0",
+      "rowCount": 50,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-50-rep-1",
+      "rowCount": 50,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-50-rep-2",
+      "rowCount": 50,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-50-rep-3",
+      "rowCount": 50,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-250-rep-0",
+      "rowCount": 250,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-250-rep-1",
+      "rowCount": 250,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-250-rep-2",
+      "rowCount": 250,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-250-rep-3",
+      "rowCount": 250,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-1000-rep-0",
+      "rowCount": 1000,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-1000-rep-1",
+      "rowCount": 1000,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-1000-rep-2",
+      "rowCount": 1000,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-1000-rep-3",
+      "rowCount": 1000,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-3000-rep-0",
+      "rowCount": 3000,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-3000-rep-1",
+      "rowCount": 3000,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-3000-rep-2",
+      "rowCount": 3000,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    },
+    {
+      "id": "rows-3000-rep-3",
+      "rowCount": 3000,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "snapdom": {
+        "checks": {
+          "preIsBaseline": true,
+          "preBanner": true,
+          "preCart": true,
+          "postChanged": true,
+          "postBanner": true,
+          "postCart": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true
+        },
+        "exactPrePost": true
+      }
+    }
+  ],
+  "integrity": {
+    "sourceResultSha256": "5b4f953041980a80955e528c877f31b49e832ecaad19829a15c6d4bf61a38845",
+    "sourceArchiveSha256": "d22a763c27f7f3375d31910828f7d62e63115b822f0e6527986fa5a6de6777ab",
+    "sourceArchiveMatchesResult": true,
+    "trials": 16,
+    "expectedTrials": 16,
+    "allAriaDirectionalContractsExact": true,
+    "allSnapdomDirectionalContractsExact": true
+  },
+  "caveats": [
+    "This audit strengthens the fixture-level evidence check; it does not make ARIA and SnapDOM equivalent evidence formats.",
+    "The fixture and expected fields remain self-authored and synthetic."
+  ]
+}

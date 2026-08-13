@@ -1,0 +1,526 @@
+{
+  "schemaVersion": 2,
+  "mode": "network",
+  "started": "2026-08-12T04:17:03.649Z",
+  "finished": "2026-08-12T04:17:41.124Z",
+  "runClassification": "single-run focal observation",
+  "publicPages": {
+    "controls": "https://the-internet.herokuapp.com/dynamic_controls",
+    "modal": "https://getbootstrap.com/docs/5.3/components/modal/",
+    "delayed": "https://the-internet.herokuapp.com/dynamic_loading/2"
+  },
+  "methodology": {
+    "classification": "focal descriptive comparison; not a throughput benchmark",
+    "unit": "one action-to-verdict observation per effect and arm; navigation/runtime installation excluded",
+    "truth": "declared visible DOM/ARIA postconditions listed per case; no independent hidden oracle in this focal",
+    "timing": "schema 2: setup/baseline/precondition outside timer; target lookup, action and postconditions inside timer; evidence serialization and controlled failure probe outside timer",
+    "bytes": "UTF-8 serialized bytes; no token estimates",
+    "evidence": {
+      "playwrightSuccess": "expect() serializes no semantic success evidence; ariaSnapshot() was called explicitly and counted separately",
+      "playwrightFailure": "a deliberately wrong, short-timeout expect() captures matcher diagnostics; ariaSnapshot availability is recorded",
+      "snapdomSuccess": "the authenticated command envelope includes structured assertion checks and diff evidence",
+      "snapdomFailure": "a deliberately absent exists predicate captures the authenticated structured failure envelope"
+    },
+    "comparabilityCaveat": "Schema 2 aligns timer boundaries and declared effects more closely, but observation surfaces, retry boundaries, implementation/runtime versions, polling, action settling and evidence contracts differ. Latency and byte columns remain observations, not causal rankings."
+  },
+  "cases": [
+    {
+      "effect": "remove",
+      "page": "controls",
+      "truth": "The initially visible checkbox is absent and the page reports \"It's gone!\".",
+      "alignment": "visible-checkbox precondition outside timing; timed target lookup, action, checkbox transition and final message; PW uses DOM absence while SnapDOM uses disappearance from its semantic snapshot"
+    },
+    {
+      "effect": "add",
+      "page": "controls",
+      "truth": "A visible checkbox is added back and the page reports \"It's back!\".",
+      "alignment": "absent-checkbox precondition outside timing; both arms check the checkbox transition and \"It's back!\""
+    },
+    {
+      "effect": "state-enable",
+      "page": "controls",
+      "truth": "The disabled input becomes enabled and the page reports \"It's enabled!\".",
+      "alignment": "disabled-input baseline/precondition outside timing; both arms check the enabled transition and final message"
+    },
+    {
+      "effect": "modal",
+      "page": "modal",
+      "truth": "The live Bootstrap dialog appears and its Woo-hoo paragraph is rendered without geometric occlusion.",
+      "alignment": "same four claims; Playwright needs a custom elementFromPoint predicate for occlusion"
+    },
+    {
+      "effect": "delayed",
+      "page": "delayed",
+      "truth": "After Start, Hello World! is rendered after the asynchronous loading phase.",
+      "alignment": "same declared effect; both allow up to 10 seconds for target appearance, but their sequential assertion/retry boundaries differ"
+    },
+    {
+      "effect": "no-op",
+      "page": "delayed",
+      "truth": "After the delayed result has settled, a 300 ms wait produces no semantic change.",
+      "alignment": "same declared effect but different observation surfaces: Playwright compares body ARIA while SnapDOM also observes supported layout/style/state signals"
+    }
+  ],
+  "versions": {
+    "node": "v25.8.1",
+    "directPlaywright": "1.55.1",
+    "directChromium": "140.0.7339.186",
+    "snapdomAgent": "0.1.0",
+    "snapdomInternalPlaywright": "1.55.1",
+    "snapdomExpectedChromium": "140.0.7339.186 (revision 1193, from pinned browsers.json)"
+  },
+  "isolation": {
+    "directArm": "chromium.launch + fresh browser.newContext; no userDataDir",
+    "snapdomArm": "product daemon chromium.launch + fresh contexts; no userDataDir",
+    "temporaryRoot": "mkdtemp (path omitted from result)",
+    "daemonPort": "OS-assigned and explicitly not 8377",
+    "cleanup": "finally closes contexts/processes and removes temporary root"
+  },
+  "arms": {
+    "playwrightTestDirect": [
+      {
+        "effect": "remove",
+        "verdict": "pass",
+        "setupApi": [
+          "expect(page.locator('#checkbox')).toBeVisible()"
+        ],
+        "timedApi": [
+          "page.locator('#checkbox-example button').waitFor({state:'visible'})",
+          "button.click()",
+          "expect(page.locator('#checkbox')).toHaveCount(0)",
+          "expect(page.locator('#checkbox-example #message')).toHaveText(\"It's gone!\")"
+        ],
+        "evidenceApi": [
+          "page.locator('#checkbox-example').ariaSnapshot()"
+        ],
+        "outcomeLocators": 3,
+        "preconditionAssertions": 1,
+        "targetLookupCalls": 1,
+        "timedAssertions": 2,
+        "customPredicates": 0,
+        "setupMs": 12.6,
+        "explicitEvidenceCalls": 1,
+        "latencyMs": 3907,
+        "automaticSuccessEvidenceBytes": 0,
+        "explicitAriaEvidenceBytes": 52,
+        "failureDiagnosticBytes": 820,
+        "failureHasAriaSnapshot": false,
+        "failureFirstLine": "expect(locator).toBeVisible() failed"
+      },
+      {
+        "effect": "add",
+        "verdict": "pass",
+        "setupApi": [
+          "expect(page.locator('#checkbox')).toHaveCount(0)"
+        ],
+        "timedApi": [
+          "page.locator('#checkbox-example button').waitFor({state:'visible'})",
+          "button.click()",
+          "expect(page.locator('#checkbox')).toBeVisible()",
+          "expect(page.locator('#checkbox-example #message')).toHaveText(\"It's back!\")"
+        ],
+        "evidenceApi": [
+          "page.locator('#checkbox-example').ariaSnapshot()"
+        ],
+        "outcomeLocators": 3,
+        "preconditionAssertions": 1,
+        "targetLookupCalls": 1,
+        "timedAssertions": 2,
+        "customPredicates": 0,
+        "setupMs": 2.2,
+        "explicitEvidenceCalls": 1,
+        "latencyMs": 3896.9,
+        "automaticSuccessEvidenceBytes": 0,
+        "explicitAriaEvidenceBytes": 87,
+        "failureDiagnosticBytes": 1045,
+        "failureHasAriaSnapshot": false,
+        "failureFirstLine": "expect(locator).toHaveCount(expected) failed"
+      },
+      {
+        "effect": "state-enable",
+        "verdict": "pass",
+        "setupApi": [
+          "expect(page.locator('#input-example input')).toBeDisabled()"
+        ],
+        "timedApi": [
+          "page.locator('#input-example button').waitFor({state:'visible'})",
+          "enable.click()",
+          "expect(page.locator('#input-example input')).toBeEnabled()",
+          "expect(page.locator('#input-example #message')).toHaveText(\"It's enabled!\")"
+        ],
+        "evidenceApi": [
+          "page.locator('#input-example').ariaSnapshot()"
+        ],
+        "outcomeLocators": 3,
+        "preconditionAssertions": 1,
+        "targetLookupCalls": 1,
+        "timedAssertions": 2,
+        "customPredicates": 0,
+        "setupMs": 2.5,
+        "explicitEvidenceCalls": 1,
+        "latencyMs": 3894.9,
+        "automaticSuccessEvidenceBytes": 0,
+        "explicitAriaEvidenceBytes": 101,
+        "failureDiagnosticBytes": 1190,
+        "failureHasAriaSnapshot": false,
+        "failureFirstLine": "expect(locator).toBeDisabled() failed"
+      },
+      {
+        "effect": "modal",
+        "verdict": "pass",
+        "setupApi": [
+          "expect(page.locator('#exampleModalLive')).toBeHidden()"
+        ],
+        "timedApi": [
+          "page.getByRole('button',{name:'Launch demo modal',exact:true}).first().waitFor({state:'visible'})",
+          "launch.click()",
+          "expect(dialog).toBeVisible()",
+          "expect(paragraph).toBeVisible()",
+          "paragraph.evaluate(elementFromPoint centre containment)",
+          "expect(clear).toBe(true)"
+        ],
+        "evidenceApi": [
+          "dialog.ariaSnapshot()"
+        ],
+        "outcomeLocators": 3,
+        "preconditionAssertions": 1,
+        "targetLookupCalls": 1,
+        "timedAssertions": 3,
+        "customPredicates": 1,
+        "setupMs": 9.4,
+        "explicitEvidenceCalls": 1,
+        "latencyMs": 428.2,
+        "automaticSuccessEvidenceBytes": 0,
+        "explicitAriaEvidenceBytes": 212,
+        "failureDiagnosticBytes": 1565,
+        "failureHasAriaSnapshot": false,
+        "failureFirstLine": "expect(locator).toBeHidden() failed"
+      },
+      {
+        "effect": "delayed",
+        "verdict": "pass",
+        "setupApi": [
+          "expect(page.locator('#finish')).toBeHidden()"
+        ],
+        "timedApi": [
+          "page.getByRole('button',{name:'Start'}).waitFor({state:'visible'})",
+          "start.click()",
+          "expect(page.locator('#finish')).toBeVisible({timeout:10000})",
+          "expect(page.locator('#finish')).toHaveText('Hello World!')"
+        ],
+        "evidenceApi": [
+          "page.locator('#finish').ariaSnapshot()"
+        ],
+        "outcomeLocators": 2,
+        "preconditionAssertions": 1,
+        "targetLookupCalls": 1,
+        "timedAssertions": 2,
+        "customPredicates": 0,
+        "setupMs": 7.7,
+        "explicitEvidenceCalls": 1,
+        "latencyMs": 5909.7,
+        "automaticSuccessEvidenceBytes": 0,
+        "explicitAriaEvidenceBytes": 47,
+        "failureDiagnosticBytes": 1125,
+        "failureHasAriaSnapshot": false,
+        "failureFirstLine": "expect(locator).toBeHidden() failed"
+      },
+      {
+        "effect": "no-op",
+        "verdict": "pass",
+        "setupApi": [
+          "before=await page.locator('body').ariaSnapshot()"
+        ],
+        "timedApi": [
+          "wait 300ms",
+          "after=await page.locator('body').ariaSnapshot()",
+          "expect(after).toBe(before)"
+        ],
+        "evidenceApi": [
+          "serialize {before,after}"
+        ],
+        "outcomeLocators": 1,
+        "preconditionAssertions": 0,
+        "targetLookupCalls": 0,
+        "timedAssertions": 1,
+        "customPredicates": 0,
+        "setupMs": 4.9,
+        "explicitEvidenceCalls": 1,
+        "latencyMs": 308.2,
+        "automaticSuccessEvidenceBytes": 0,
+        "explicitAriaEvidenceBytes": 881,
+        "failureDiagnosticBytes": 4763,
+        "failureHasAriaSnapshot": false,
+        "failureFirstLine": "expect(locator).toContainText(expected) failed"
+      }
+    ],
+    "snapdomAuthenticatedDaemon": {
+      "portPolicy": "OS-assigned and not 8377",
+      "results": [
+        {
+          "effect": "remove",
+          "verdict": "pass",
+          "setupApi": [
+            "find checkbox by exact role; require a match (outside timer)"
+          ],
+          "timedApi": [
+            "find Remove",
+            "click returned id",
+            "assert changed + removed checkbox + exists \"It's gone!\""
+          ],
+          "preconditionChecks": 1,
+          "targetLookupCalls": 1,
+          "assertCalls": 1,
+          "timedChecks": 3,
+          "setupMs": 5.7,
+          "latencyMs": 3029,
+          "fullEnvelopeBytes": 3309,
+          "structuredAssertBytes": 2913,
+          "failureEnvelopeBytes": 553,
+          "attempts": 24,
+          "actualChecks": [
+            {
+              "type": "changed",
+              "expected": true,
+              "actual": true,
+              "pass": true
+            },
+            {
+              "type": "mustInclude",
+              "expected": {
+                "kind": "removed",
+                "role": "checkbox"
+              },
+              "actual": "found",
+              "pass": true
+            },
+            {
+              "type": "exists",
+              "expected": "It's gone!",
+              "actual": "3 match(es)",
+              "pass": true
+            }
+          ]
+        },
+        {
+          "effect": "add",
+          "verdict": "pass",
+          "setupApi": [
+            "find checkbox by exact role; require no match (outside timer)"
+          ],
+          "timedApi": [
+            "find Add",
+            "click returned id",
+            "assert changed + added checkbox + exists \"It's back!\""
+          ],
+          "preconditionChecks": 1,
+          "targetLookupCalls": 1,
+          "assertCalls": 1,
+          "timedChecks": 3,
+          "setupMs": 2.8,
+          "latencyMs": 3085,
+          "fullEnvelopeBytes": 3461,
+          "structuredAssertBytes": 3067,
+          "failureEnvelopeBytes": 553,
+          "attempts": 25,
+          "actualChecks": [
+            {
+              "type": "changed",
+              "expected": true,
+              "actual": true,
+              "pass": true
+            },
+            {
+              "type": "mustInclude",
+              "expected": {
+                "kind": "added",
+                "role": "checkbox"
+              },
+              "actual": "found",
+              "pass": true
+            },
+            {
+              "type": "exists",
+              "expected": "It's back!",
+              "actual": "3 match(es)",
+              "pass": true
+            }
+          ]
+        },
+        {
+          "effect": "state-enable",
+          "verdict": "pass",
+          "setupApi": [
+            "outline; require input[textbox] state {disabled} (outside timer)"
+          ],
+          "timedApi": [
+            "find Enable",
+            "click returned id",
+            "assert changed + textbox state to disabled:false + exists \"It's enabled!\""
+          ],
+          "preconditionChecks": 1,
+          "targetLookupCalls": 1,
+          "assertCalls": 1,
+          "timedChecks": 3,
+          "setupMs": 2.8,
+          "latencyMs": 3090.1,
+          "fullEnvelopeBytes": 4338,
+          "structuredAssertBytes": 3914,
+          "failureEnvelopeBytes": 553,
+          "attempts": 25,
+          "actualChecks": [
+            {
+              "type": "changed",
+              "expected": true,
+              "actual": true,
+              "pass": true
+            },
+            {
+              "type": "mustInclude",
+              "expected": {
+                "kind": "state",
+                "role": "textbox",
+                "to": {
+                  "disabled": false
+                }
+              },
+              "actual": "found",
+              "pass": true
+            },
+            {
+              "type": "exists",
+              "expected": "It's enabled!",
+              "actual": "3 match(es)",
+              "pass": true
+            }
+          ]
+        },
+        {
+          "effect": "modal",
+          "verdict": "pass",
+          "setupApi": [
+            "find dialog; require no rendered dialog match (outside timer)"
+          ],
+          "timedApi": [
+            "find Launch demo modal",
+            "click returned id",
+            "assert changed + added dialog + exists modal text + notCovered modal text"
+          ],
+          "preconditionChecks": 1,
+          "targetLookupCalls": 1,
+          "assertCalls": 1,
+          "timedChecks": 4,
+          "setupMs": 7.9,
+          "latencyMs": 451.4,
+          "fullEnvelopeBytes": 4266,
+          "structuredAssertBytes": 3750,
+          "failureEnvelopeBytes": 553,
+          "attempts": 1,
+          "actualChecks": [
+            {
+              "type": "changed",
+              "expected": true,
+              "actual": true,
+              "pass": true
+            },
+            {
+              "type": "mustInclude",
+              "expected": {
+                "kind": "added",
+                "role": "dialog"
+              },
+              "actual": "found",
+              "pass": true
+            },
+            {
+              "type": "exists",
+              "expected": "Woo-hoo, you’re reading this text in a modal!",
+              "actual": "6 match(es)",
+              "pass": true
+            },
+            {
+              "type": "notCovered",
+              "expected": "Woo-hoo, you’re reading this text in a modal!",
+              "actual": "clear",
+              "pass": true
+            }
+          ]
+        },
+        {
+          "effect": "delayed",
+          "verdict": "pass",
+          "setupApi": [
+            "find Hello World!; require no rendered match (outside timer)"
+          ],
+          "timedApi": [
+            "find Start",
+            "click returned id",
+            "assert changed + added Hello World! + exists Hello World!"
+          ],
+          "preconditionChecks": 1,
+          "targetLookupCalls": 1,
+          "assertCalls": 1,
+          "timedChecks": 3,
+          "setupMs": 2.1,
+          "latencyMs": 5096.5,
+          "fullEnvelopeBytes": 2086,
+          "structuredAssertBytes": 1684,
+          "failureEnvelopeBytes": 556,
+          "attempts": 43,
+          "actualChecks": [
+            {
+              "type": "changed",
+              "expected": true,
+              "actual": true,
+              "pass": true
+            },
+            {
+              "type": "mustInclude",
+              "expected": {
+                "kind": "added",
+                "name": "Hello World!"
+              },
+              "actual": "found",
+              "pass": true
+            },
+            {
+              "type": "exists",
+              "expected": "Hello World!",
+              "actual": "3 match(es)",
+              "pass": true
+            }
+          ]
+        },
+        {
+          "effect": "no-op",
+          "verdict": "pass",
+          "setupApi": [
+            "reuse the settled baseline consumed after delayed assertion"
+          ],
+          "timedApi": [
+            "wait 300ms",
+            "assert changed:false"
+          ],
+          "preconditionChecks": 0,
+          "targetLookupCalls": 0,
+          "assertCalls": 1,
+          "timedChecks": 1,
+          "setupMs": 0.1,
+          "latencyMs": 316.3,
+          "fullEnvelopeBytes": 526,
+          "structuredAssertBytes": 304,
+          "failureEnvelopeBytes": 556,
+          "attempts": 1,
+          "actualChecks": [
+            {
+              "type": "changed",
+              "expected": false,
+              "actual": false,
+              "pass": true
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

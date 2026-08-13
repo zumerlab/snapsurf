@@ -1,0 +1,375 @@
+{
+  "schema": 1,
+  "classification": "single-machine scaling experiment; descriptive, not a token or speed claim",
+  "question": "Does a client-side typed delta avoid resending whole-page semantic state as the page grows?",
+  "browser": {
+    "engine": "chromium",
+    "version": "140.0.7339.186",
+    "profile": "task-owned temporary profile"
+  },
+  "companionPath": "allowlisted client extension -> companion service worker -> isolated content script",
+  "scales": [
+    50,
+    250,
+    1000,
+    3000
+  ],
+  "repetitions": 3,
+  "summary": [
+    {
+      "count": 50,
+      "medianActionables": 51,
+      "medianAriaSnapshotBytes": 5757,
+      "medianSnapdomResponseBytes": 6681,
+      "ariaToSnapdomByteRatio": 0.86,
+      "medianAriaWallMs": 19.01,
+      "medianSnapdomWallMs": 12.65
+    },
+    {
+      "count": 250,
+      "medianActionables": 251,
+      "medianAriaSnapshotBytes": 29007,
+      "medianSnapdomResponseBytes": 6385,
+      "ariaToSnapdomByteRatio": 4.54,
+      "medianAriaWallMs": 28.71,
+      "medianSnapdomWallMs": 28.45
+    },
+    {
+      "count": 1000,
+      "medianActionables": 1001,
+      "medianAriaSnapshotBytes": 116757,
+      "medianSnapdomResponseBytes": 6388,
+      "ariaToSnapdomByteRatio": 18.28,
+      "medianAriaWallMs": 55.96,
+      "medianSnapdomWallMs": 116.81
+    },
+    {
+      "count": 3000,
+      "medianActionables": 3001,
+      "medianAriaSnapshotBytes": 356757,
+      "medianSnapdomResponseBytes": 6389,
+      "ariaToSnapdomByteRatio": 55.84,
+      "medianAriaWallMs": 269.64,
+      "medianSnapdomWallMs": 287.61
+    }
+  ],
+  "trials": [
+    {
+      "count": 50,
+      "rep": 0,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 51,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6681,
+        "wallMs": 13.66,
+        "reportedWalkMs": 9,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 5757,
+        "wallMs": 19.01
+      }
+    },
+    {
+      "count": 50,
+      "rep": 1,
+      "readOrder": [
+        "aria",
+        "snapdom"
+      ],
+      "actionables": 51,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6681,
+        "wallMs": 12.52,
+        "reportedWalkMs": 9,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 5757,
+        "wallMs": 5
+      }
+    },
+    {
+      "count": 50,
+      "rep": 2,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 51,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6681,
+        "wallMs": 12.65,
+        "reportedWalkMs": 9,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 5757,
+        "wallMs": 19.44
+      }
+    },
+    {
+      "count": 250,
+      "rep": 0,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 251,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6385,
+        "wallMs": 28.3,
+        "reportedWalkMs": 24,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 29007,
+        "wallMs": 31.87
+      }
+    },
+    {
+      "count": 250,
+      "rep": 1,
+      "readOrder": [
+        "aria",
+        "snapdom"
+      ],
+      "actionables": 251,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6385,
+        "wallMs": 43.98,
+        "reportedWalkMs": 28,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 29007,
+        "wallMs": 14.73
+      }
+    },
+    {
+      "count": 250,
+      "rep": 2,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 251,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6385,
+        "wallMs": 28.45,
+        "reportedWalkMs": 24,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 29007,
+        "wallMs": 28.71
+      }
+    },
+    {
+      "count": 1000,
+      "rep": 0,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 1001,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6388,
+        "wallMs": 116.81,
+        "reportedWalkMs": 111,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 116757,
+        "wallMs": 55.96
+      }
+    },
+    {
+      "count": 1000,
+      "rep": 1,
+      "readOrder": [
+        "aria",
+        "snapdom"
+      ],
+      "actionables": 1001,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6387,
+        "wallMs": 112.25,
+        "reportedWalkMs": 90,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 116757,
+        "wallMs": 60.67
+      }
+    },
+    {
+      "count": 1000,
+      "rep": 2,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 1001,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6388,
+        "wallMs": 118.27,
+        "reportedWalkMs": 111,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 116757,
+        "wallMs": 54.44
+      }
+    },
+    {
+      "count": 3000,
+      "rep": 0,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 3001,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6389,
+        "wallMs": 287.72,
+        "reportedWalkMs": 273,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 356757,
+        "wallMs": 260.36
+      }
+    },
+    {
+      "count": 3000,
+      "rep": 1,
+      "readOrder": [
+        "aria",
+        "snapdom"
+      ],
+      "actionables": 3001,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6389,
+        "wallMs": 278.25,
+        "reportedWalkMs": 248,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 356757,
+        "wallMs": 269.64
+      }
+    },
+    {
+      "count": 3000,
+      "rep": 2,
+      "readOrder": [
+        "snapdom",
+        "aria"
+      ],
+      "actionables": 3001,
+      "truth": {
+        "snapdom": true,
+        "aria": true
+      },
+      "snapdom": {
+        "responseBytes": 6389,
+        "wallMs": 287.61,
+        "reportedWalkMs": 275,
+        "changes": 2,
+        "torn": 0,
+        "unobservable": 0
+      },
+      "aria": {
+        "snapshotBytes": 356757,
+        "wallMs": 271.32
+      }
+    }
+  ],
+  "integrity": {
+    "trials": 12,
+    "expectedTrials": 12,
+    "allTruthMatched": true,
+    "zeroTorn": true,
+    "zeroUnobservable": true,
+    "fixturePortNot8377": true,
+    "fixturePortClosed": true,
+    "profileRemoved": true
+  },
+  "caveats": [
+    "The ARIA snapshot and SnapDOM response do not contain identical evidence: SnapDOM adds geometry, typed change and uncertainty fields.",
+    "The fixture is synthetic and the action changes a small fixed region; this tests scaling behavior, not real-site task success.",
+    "Wall time is descriptive because the two readers have different implementations and were run sequentially with alternating order.",
+    "UTF-8 bytes are not model tokens. No token estimate is reported.",
+    "Playwright launches the isolated test browser, but the measured SnapDOM product path itself uses no CDP/debugger request."
+  ]
+}

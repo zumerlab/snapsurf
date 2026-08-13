@@ -1,0 +1,5137 @@
+{
+  "payloadSha256": "5c6d92e3e4c9cac98cbcd9479dfa536f72d345d2293ac9712da6ec92bb6007b4",
+  "payloadHashDefinition": "SHA-256 of UTF-8 JSON.stringify(resultPayload, null, 2) plus one trailing newline",
+  "resultPayload": {
+    "schemaVersion": 1,
+    "experimentId": "directed-host-receipt-value-v1",
+    "completedAt": "2026-08-12T16:13:23.396Z",
+    "question": "What incremental value does the installed receipt SDK add to the same strong directed host verifier on a large page with a local effect?",
+    "method": {
+      "preregistration": "experiment/results/directed-host-receipt-value.preregistration.json",
+      "pairedTrials": 20,
+      "repetitionsPerCase": 5,
+      "decoyCards": 3000,
+      "receiptScope": "#operation-scope",
+      "actionControl": "shared fixture mutation; browser control is not compared",
+      "oracle": "separate primitive DOM, hit-test, and canvas-pixel reader",
+      "isolation": "temporary Chromium persistent context and profile; loopback-only fixture; no personal Chrome state",
+      "readerOrder": "balanced; post order reverses baseline order"
+    },
+    "metricDefinitions": {
+      "correct": "arm verdict equals independent oracle PASS/FAIL truth",
+      "falseGreen": "oracle FAIL and arm PASS",
+      "falseNegative": "oracle PASS and arm FAIL",
+      "unknown": "arm verdict UNKNOWN; remains in the primary denominator and is not counted correct",
+      "evidenceBytes": "UTF-8 bytes of exact post-action JSON evidence returned to the consumer; local baseline state is reported separately",
+      "wallTime": "browser-side reader wall time, descriptive only"
+    },
+    "primary": {
+      "H": {
+        "scheduled": 20,
+        "correct": 15,
+        "correctnessRate": 0.75,
+        "falseGreen": 0,
+        "falseNegative": 0,
+        "unknown": 5,
+        "opError": 0,
+        "verdictCounts": {
+          "PASS": 5,
+          "FAIL": 10,
+          "UNKNOWN": 5,
+          "OP_ERROR": 0
+        },
+        "evidenceBytes": {
+          "median": 593,
+          "min": 590,
+          "max": 706
+        },
+        "browserWallMs": {
+          "medianBaseline": 0.1,
+          "medianPost": 0.05,
+          "medianCycle": 0.2,
+          "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+        }
+      },
+      "HR": {
+        "scheduled": 20,
+        "correct": 15,
+        "correctnessRate": 0.75,
+        "falseGreen": 0,
+        "falseNegative": 0,
+        "unknown": 5,
+        "opError": 0,
+        "verdictCounts": {
+          "PASS": 5,
+          "FAIL": 10,
+          "UNKNOWN": 5,
+          "OP_ERROR": 0
+        },
+        "evidenceBytes": {
+          "median": 1344,
+          "min": 1294,
+          "max": 2184
+        },
+        "browserWallMs": {
+          "medianBaseline": 2.6,
+          "medianPost": 1.7,
+          "medianCycle": 4.3,
+          "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+        }
+      }
+    },
+    "byCase": {
+      "intended": {
+        "truth": "PASS",
+        "H": {
+          "scheduled": 5,
+          "correct": 5,
+          "correctnessRate": 1,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 0,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 5,
+            "FAIL": 0,
+            "UNKNOWN": 0,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 590,
+            "min": 590,
+            "max": 590
+          },
+          "browserWallMs": {
+            "medianBaseline": 0.1,
+            "medianPost": 0.1,
+            "medianCycle": 0.2,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        },
+        "HR": {
+          "scheduled": 5,
+          "correct": 5,
+          "correctnessRate": 1,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 0,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 5,
+            "FAIL": 0,
+            "UNKNOWN": 0,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 1294,
+            "min": 1294,
+            "max": 1294
+          },
+          "browserWallMs": {
+            "medianBaseline": 2.6,
+            "medianPost": 1.7,
+            "medianCycle": 4.3,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        }
+      },
+      "wrong-target": {
+        "truth": "FAIL",
+        "H": {
+          "scheduled": 5,
+          "correct": 5,
+          "correctnessRate": 1,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 0,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 0,
+            "FAIL": 5,
+            "UNKNOWN": 0,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 592,
+            "min": 592,
+            "max": 592
+          },
+          "browserWallMs": {
+            "medianBaseline": 0.1,
+            "medianPost": 0,
+            "medianCycle": 0.1,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        },
+        "HR": {
+          "scheduled": 5,
+          "correct": 5,
+          "correctnessRate": 1,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 0,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 0,
+            "FAIL": 5,
+            "UNKNOWN": 0,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 1296,
+            "min": 1296,
+            "max": 1296
+          },
+          "browserWallMs": {
+            "medianBaseline": 2.7,
+            "medianPost": 1.7,
+            "medianCycle": 4.4,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        }
+      },
+      "occlusion": {
+        "truth": "FAIL",
+        "H": {
+          "scheduled": 5,
+          "correct": 5,
+          "correctnessRate": 1,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 0,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 0,
+            "FAIL": 5,
+            "UNKNOWN": 0,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 594,
+            "min": 594,
+            "max": 594
+          },
+          "browserWallMs": {
+            "medianBaseline": 0.1,
+            "medianPost": 0,
+            "medianCycle": 0.1,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        },
+        "HR": {
+          "scheduled": 5,
+          "correct": 5,
+          "correctnessRate": 1,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 0,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 0,
+            "FAIL": 5,
+            "UNKNOWN": 0,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 1392,
+            "min": 1392,
+            "max": 1392
+          },
+          "browserWallMs": {
+            "medianBaseline": 2.5,
+            "medianPost": 1.8,
+            "medianCycle": 4.3,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        }
+      },
+      "unknown": {
+        "truth": "FAIL",
+        "H": {
+          "scheduled": 5,
+          "correct": 0,
+          "correctnessRate": 0,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 5,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 0,
+            "FAIL": 0,
+            "UNKNOWN": 5,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 706,
+            "min": 706,
+            "max": 706
+          },
+          "browserWallMs": {
+            "medianBaseline": 0.1,
+            "medianPost": 0.1,
+            "medianCycle": 0.2,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        },
+        "HR": {
+          "scheduled": 5,
+          "correct": 0,
+          "correctnessRate": 0,
+          "falseGreen": 0,
+          "falseNegative": 0,
+          "unknown": 5,
+          "opError": 0,
+          "verdictCounts": {
+            "PASS": 0,
+            "FAIL": 0,
+            "UNKNOWN": 5,
+            "OP_ERROR": 0
+          },
+          "evidenceBytes": {
+            "median": 2184,
+            "min": 2184,
+            "max": 2184
+          },
+          "browserWallMs": {
+            "medianBaseline": 2.5,
+            "medianPost": 1.8,
+            "medianCycle": 4.3,
+            "interpretation": "descriptive browser-side reader wall time; not a speed-superiority metric"
+          }
+        }
+      }
+    },
+    "authoringAndIntegration": {
+      "H": {
+        "directedPredicates": 4,
+        "hostCallsPerCycle": 2,
+        "receiptApiCallsPerCycle": 0,
+        "runtimeDependencies": [],
+        "browserAccess": "same-page DOM access to the declared operation scope; no special browser permission in this embedded fixture"
+      },
+      "HR": {
+        "directedPredicates": 4,
+        "hostCallsPerCycle": 2,
+        "receiptApiCallsPerCycle": 2,
+        "receiptAdapter": "createBaseline+createReceipt",
+        "package": "@zumer/snapdom-receipt",
+        "version": "0.0.0-development",
+        "bundleBytes": 38595,
+        "runtimeDependencies": [],
+        "browserAccess": "same-page DOM access to the declared operation scope; no CDP/debugger, Node, daemon, browser download, or additional permission in this embedded fixture",
+        "staticEgressEvidenceScope": "generated browser bundle only",
+        "staticEgressMatches": []
+      },
+      "testHarnessExcludedFromProductIntegration": "Playwright launches only the isolated experiment browser"
+    },
+    "outcome": {
+      "integrity": "VALID",
+      "integrityProblems": [],
+      "direction": "NO_INCREMENTAL_CORRECTNESS_ON_FIXED_STRONG_CONTRACT",
+      "estimable": [
+        "incremental verdict correctness for this deterministic, fixed, well-authored contract",
+        "consumer evidence bytes",
+        "browser-side reader wall time",
+        "packaged browser runtime/dependency surface"
+      ],
+      "notEstimable": [
+        "commercial demand or willingness to pay",
+        "multisite generalization",
+        "authoring savings across changing schemas",
+        "token cost",
+        "browser-control capability",
+        "backend truth"
+      ]
+    },
+    "integrity": {
+      "runnerSha256": "6cbcec73737e39f9785180b33e2816374fafc1450eaa6e093c3b9b2a087e321f",
+      "preregistrationSha256": "1fe7a32eaa5980f1c849e8712f2137a9de943d453fbaba7a514e5621ab5af6bf",
+      "tarballSha256": "178a493939c2e112956ab1d1bfea6467e5ee4de3ff18101b6595fb0541db3082",
+      "installedBundleSha256": "889f6c2366b88361525ba6298fec31774959b2223e9621ec46c5910116554f36",
+      "installedManifestSha256": "c49c6a8b813c302b77ae30ac6d7e25a695a94c53e04b41579edb43d353137a62",
+      "portWasOsAssigned": true,
+      "portWas8377": false,
+      "loopbackPort": 52431,
+      "unexpectedBrowserRequests": [],
+      "servedRequestCount": 20,
+      "tempProfileDeletedOnExit": true
+    },
+    "trials": [
+      {
+        "trialId": "intended-r1",
+        "caseId": "intended",
+        "repetition": 1,
+        "preregisteredTruth": "PASS",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 33.358,
+        "oracle": {
+          "verdict": "PASS",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "PASS",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_ao4fVrWwcKz6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1294,
+            "elapsedMs": 1.7000000476837158,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.6000001430511475,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 590,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.20000004768371582,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "intended-r2",
+        "caseId": "intended",
+        "repetition": 2,
+        "preregisteredTruth": "PASS",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 32.132,
+        "oracle": {
+          "verdict": "PASS",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 590,
+            "elapsedMs": 0.09999990463256836,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "PASS",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_fbsSDBXgBHn6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1294,
+            "elapsedMs": 1.5,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5999999046325684,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "intended-r3",
+        "caseId": "intended",
+        "repetition": 3,
+        "preregisteredTruth": "PASS",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 18.019,
+        "oracle": {
+          "verdict": "PASS",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "PASS",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_cBGbuLs3bl46",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1294,
+            "elapsedMs": 1.6000001430511475,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 590,
+            "elapsedMs": 0.20000004768371582,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "intended-r4",
+        "caseId": "intended",
+        "repetition": 4,
+        "preregisteredTruth": "PASS",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 28.122,
+        "oracle": {
+          "verdict": "PASS",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 590,
+            "elapsedMs": 0.19999980926513672,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "PASS",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_5NzXLrqW0EJ6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1294,
+            "elapsedMs": 1.7000000476837158,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.799999952316284,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "intended-r5",
+        "caseId": "intended",
+        "repetition": 5,
+        "preregisteredTruth": "PASS",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 30.339,
+        "oracle": {
+          "verdict": "PASS",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "PASS",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_eyq8DOW3Tzr6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1294,
+            "elapsedMs": 1.7000000476837158,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.700000047683716,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "PASS",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 590,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "wrong-target-r1",
+        "caseId": "wrong-target",
+        "repetition": 1,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 22.748,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Ready",
+            "neighborStatus": "Approved",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Approved",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 592,
+            "elapsedMs": 0.09999990463256836,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.10000014305114746,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Approved",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_5mro9WfruB_c",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1296,
+            "elapsedMs": 2,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.799999952316284,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "wrong-target-r2",
+        "caseId": "wrong-target",
+        "repetition": 2,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 27.523,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Ready",
+            "neighborStatus": "Approved",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Approved",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_ah36gZncDIIc",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1296,
+            "elapsedMs": 1.6999998092651367,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.6999998092651367,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Approved",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 592,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "wrong-target-r3",
+        "caseId": "wrong-target",
+        "repetition": 3,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 29.578,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Ready",
+            "neighborStatus": "Approved",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Approved",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 592,
+            "elapsedMs": 0.09999990463256836,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Approved",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_aS_5U4-8kVXc",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1296,
+            "elapsedMs": 1.6999998092651367,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.799999952316284,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "wrong-target-r4",
+        "caseId": "wrong-target",
+        "repetition": 4,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 30.114,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Ready",
+            "neighborStatus": "Approved",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Approved",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_68XEkOvimHrc",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1296,
+            "elapsedMs": 1.6999998092651367,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Approved",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 592,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.20000004768371582,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "wrong-target-r5",
+        "caseId": "wrong-target",
+        "repetition": 5,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 18.302,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Ready",
+            "neighborStatus": "Approved",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": false,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Approved",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 592,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": false,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Approved",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_cMBqiSRpezVc",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1296,
+            "elapsedMs": 1.7000000476837158,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "occlusion-r1",
+        "caseId": "occlusion",
+        "repetition": 1,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.41,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": false,
+            "topAtTarget": "action-blocker",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": false,
+                    "topAtTarget": "action-blocker"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": false,
+                    "topAtTarget": "action-blocker",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_88wsOJM4N-Q6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [
+                        {
+                          "id": "n_88wsOJM4N-Q7",
+                          "role": "button",
+                          "name": "Approve target",
+                          "coveredBy": {
+                            "role": "generic"
+                          }
+                        }
+                      ],
+                      "total": 1,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1392,
+            "elapsedMs": 1.7999999523162842,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": false,
+                  "topAtTarget": "action-blocker"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": false,
+                  "topAtTarget": "action-blocker",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 594,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "occlusion-r2",
+        "caseId": "occlusion",
+        "repetition": 2,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 20.205,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": false,
+            "topAtTarget": "action-blocker",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": false,
+                  "topAtTarget": "action-blocker"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": false,
+                  "topAtTarget": "action-blocker",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 594,
+            "elapsedMs": 0.10000014305114746,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": false,
+                    "topAtTarget": "action-blocker"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": false,
+                    "topAtTarget": "action-blocker",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_eMW7e7NbqWZ6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [
+                        {
+                          "id": "n_eMW7e7NbqWZ7",
+                          "role": "button",
+                          "name": "Approve target",
+                          "coveredBy": {
+                            "role": "generic"
+                          }
+                        }
+                      ],
+                      "total": 1,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1392,
+            "elapsedMs": 1.6000001430511475,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5999999046325684,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "occlusion-r3",
+        "caseId": "occlusion",
+        "repetition": 3,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.252,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": false,
+            "topAtTarget": "action-blocker",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": false,
+                    "topAtTarget": "action-blocker"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": false,
+                    "topAtTarget": "action-blocker",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_8Q4wtP7hxlq6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [
+                        {
+                          "id": "n_8Q4wtP7hxlq7",
+                          "role": "button",
+                          "name": "Approve target",
+                          "coveredBy": {
+                            "role": "generic"
+                          }
+                        }
+                      ],
+                      "total": 1,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1392,
+            "elapsedMs": 1.7999999523162842,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": false,
+                  "topAtTarget": "action-blocker"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": false,
+                  "topAtTarget": "action-blocker",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 594,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "occlusion-r4",
+        "caseId": "occlusion",
+        "repetition": 4,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.536,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": false,
+            "topAtTarget": "action-blocker",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": false,
+                  "topAtTarget": "action-blocker"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": false,
+                  "topAtTarget": "action-blocker",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 594,
+            "elapsedMs": 0.10000014305114746,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.10000014305114746,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": false,
+                    "topAtTarget": "action-blocker"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": false,
+                    "topAtTarget": "action-blocker",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_cOEYi6DBHVu6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [
+                        {
+                          "id": "n_cOEYi6DBHVu7",
+                          "role": "button",
+                          "name": "Approve target",
+                          "coveredBy": {
+                            "role": "generic"
+                          }
+                        }
+                      ],
+                      "total": 1,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1392,
+            "elapsedMs": 1.7000000476837158,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5999999046325684,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "occlusion-r5",
+        "caseId": "occlusion",
+        "repetition": 5,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.614,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": false,
+            "topAtTarget": "action-blocker",
+            "harmfulCanvas": false,
+            "pixel": null
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "FAIL",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": false,
+                    "topAtTarget": "action-blocker"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": true,
+                    "evidenceGaps": []
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": false,
+                    "topAtTarget": "action-blocker",
+                    "evidenceGaps": []
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_f3GyIN2Ynxf6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [
+                        {
+                          "id": "n_f3GyIN2Ynxf7",
+                          "role": "button",
+                          "name": "Approve target",
+                          "coveredBy": {
+                            "role": "generic"
+                          }
+                        }
+                      ],
+                      "total": 1,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [],
+                    "total": 0,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 1392,
+            "elapsedMs": 1.9000000953674316,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "FAIL",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "FAIL",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": false,
+                  "topAtTarget": "action-blocker"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": true,
+                  "evidenceGaps": []
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": false,
+                  "topAtTarget": "action-blocker",
+                  "evidenceGaps": []
+                }
+              }
+            },
+            "evidenceBytes": 594,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.19999980926513672,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "unknown-r1",
+        "caseId": "unknown",
+        "repetition": 1,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.334,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": true,
+            "pixel": [
+              255,
+              0,
+              0,
+              255
+            ]
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": false,
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              }
+            },
+            "evidenceBytes": 706,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.20000004768371582,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "UNKNOWN",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": false,
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_cQUSCW9X0Is1",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approval queue Target account Status Approved Approve target Neighbor account St"
+                      },
+                      {
+                        "id": "n_cQUSCW9X0Is3",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Target account Status Approved Approve target"
+                      },
+                      {
+                        "id": "n_cQUSCW9X0Is6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      },
+                      {
+                        "id": "n_cQUSCW9X0Is8",
+                        "kind": "moved",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_cQUSCW9X0Is8",
+                        "kind": "resized",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_cQUSCW9X0Is9",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Neighbor account Status Ready Approve neighbor"
+                      },
+                      {
+                        "id": "n_ctTvs5cXEYZ9",
+                        "kind": "added",
+                        "match": "new",
+                        "role": "img",
+                        "name": "Risk indicator"
+                      }
+                    ],
+                    "total": 7,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [
+                      {
+                        "id": "n_ctTvs5cXEYZ9",
+                        "role": "img",
+                        "sourceType": "canvas",
+                        "rasterAvailable": true,
+                        "bbox": [
+                          194,
+                          253,
+                          32,
+                          32
+                        ]
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 2184,
+            "elapsedMs": 1.9000000953674316,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.700000047683716,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "unknown-r2",
+        "caseId": "unknown",
+        "repetition": 2,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.318,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": true,
+            "pixel": [
+              255,
+              0,
+              0,
+              255
+            ]
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "UNKNOWN",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": false,
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_fWF2Out4aIR1",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approval queue Target account Status Approved Approve target Neighbor account St"
+                      },
+                      {
+                        "id": "n_fWF2Out4aIR3",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Target account Status Approved Approve target"
+                      },
+                      {
+                        "id": "n_fWF2Out4aIR6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      },
+                      {
+                        "id": "n_fWF2Out4aIR8",
+                        "kind": "moved",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_fWF2Out4aIR8",
+                        "kind": "resized",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_fWF2Out4aIR9",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Neighbor account Status Ready Approve neighbor"
+                      },
+                      {
+                        "id": "n_1Tx3mwPncET9",
+                        "kind": "added",
+                        "match": "new",
+                        "role": "img",
+                        "name": "Risk indicator"
+                      }
+                    ],
+                    "total": 7,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [
+                      {
+                        "id": "n_1Tx3mwPncET9",
+                        "role": "img",
+                        "sourceType": "canvas",
+                        "rasterAvailable": true,
+                        "bbox": [
+                          194,
+                          253,
+                          32,
+                          32
+                        ]
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 2184,
+            "elapsedMs": 1.9000000953674316,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": false,
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              }
+            },
+            "evidenceBytes": 706,
+            "elapsedMs": 0,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.10000014305114746,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "unknown-r3",
+        "caseId": "unknown",
+        "repetition": 3,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.158,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": true,
+            "pixel": [
+              255,
+              0,
+              0,
+              255
+            ]
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": false,
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              }
+            },
+            "evidenceBytes": 706,
+            "elapsedMs": 0.10000014305114746,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "UNKNOWN",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": false,
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_aqqdpSdLPf11",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approval queue Target account Status Approved Approve target Neighbor account St"
+                      },
+                      {
+                        "id": "n_aqqdpSdLPf13",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Target account Status Approved Approve target"
+                      },
+                      {
+                        "id": "n_aqqdpSdLPf16",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      },
+                      {
+                        "id": "n_aqqdpSdLPf18",
+                        "kind": "moved",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_aqqdpSdLPf18",
+                        "kind": "resized",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_aqqdpSdLPf19",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Neighbor account Status Ready Approve neighbor"
+                      },
+                      {
+                        "id": "n_0DxiqoY0UC19",
+                        "kind": "added",
+                        "match": "new",
+                        "role": "img",
+                        "name": "Risk indicator"
+                      }
+                    ],
+                    "total": 7,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [
+                      {
+                        "id": "n_0DxiqoY0UC19",
+                        "role": "img",
+                        "sourceType": "canvas",
+                        "rasterAvailable": true,
+                        "bbox": [
+                          194,
+                          253,
+                          32,
+                          32
+                        ]
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 2184,
+            "elapsedMs": 1.5,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "unknown-r4",
+        "caseId": "unknown",
+        "repetition": 4,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "H",
+          "HR"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.619,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": true,
+            "pixel": [
+              255,
+              0,
+              0,
+              255
+            ]
+          }
+        },
+        "arms": {
+          "HR": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "UNKNOWN",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": false,
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_9yivuFpl4vp1",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approval queue Target account Status Approved Approve target Neighbor account St"
+                      },
+                      {
+                        "id": "n_9yivuFpl4vp3",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Target account Status Approved Approve target"
+                      },
+                      {
+                        "id": "n_9yivuFpl4vp6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      },
+                      {
+                        "id": "n_9yivuFpl4vp8",
+                        "kind": "moved",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_9yivuFpl4vp8",
+                        "kind": "resized",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_9yivuFpl4vp9",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Neighbor account Status Ready Approve neighbor"
+                      },
+                      {
+                        "id": "n_dVwEdMllDmQ9",
+                        "kind": "added",
+                        "match": "new",
+                        "role": "img",
+                        "name": "Risk indicator"
+                      }
+                    ],
+                    "total": 7,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [
+                      {
+                        "id": "n_dVwEdMllDmQ9",
+                        "role": "img",
+                        "sourceType": "canvas",
+                        "rasterAvailable": true,
+                        "bbox": [
+                          194,
+                          253,
+                          32,
+                          32
+                        ]
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 2184,
+            "elapsedMs": 1.7999999523162842,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          },
+          "H": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": false,
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              }
+            },
+            "evidenceBytes": 706,
+            "elapsedMs": 0.09999990463256836,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.19999980926513672,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      },
+      {
+        "trialId": "unknown-r5",
+        "caseId": "unknown",
+        "repetition": 5,
+        "preregisteredTruth": "FAIL",
+        "readerOrder": [
+          "HR",
+          "H"
+        ],
+        "fixture": {
+          "decoys": 3000,
+          "totalElements": 12023,
+          "operationElements": 12
+        },
+        "actionAndSettleMs": 19.219,
+        "oracle": {
+          "verdict": "FAIL",
+          "facts": {
+            "targetStatus": "Approved",
+            "neighborStatus": "Ready",
+            "targetHittable": true,
+            "topAtTarget": "target-action",
+            "harmfulCanvas": true,
+            "pixel": [
+              255,
+              0,
+              0,
+              255
+            ]
+          }
+        },
+        "arms": {
+          "H": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "checks": [
+                {
+                  "id": "target-transition",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Approved"
+                },
+                {
+                  "id": "neighbor-stable",
+                  "pass": true,
+                  "before": "Ready",
+                  "after": "Ready"
+                },
+                {
+                  "id": "target-actionable",
+                  "pass": true,
+                  "topAtTarget": "target-action"
+                },
+                {
+                  "id": "scope-observable",
+                  "pass": false,
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              ],
+              "observed": {
+                "before": {
+                  "targetStatus": "Ready",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": []
+                },
+                "after": {
+                  "targetStatus": "Approved",
+                  "neighborStatus": "Ready",
+                  "targetHittable": true,
+                  "topAtTarget": "target-action",
+                  "evidenceGaps": [
+                    {
+                      "sourceType": "canvas",
+                      "marker": "opaque-risk-indicator"
+                    }
+                  ]
+                }
+              }
+            },
+            "evidenceBytes": 706,
+            "elapsedMs": 0.09999990463256836,
+            "hostCalls": 1,
+            "receiptApiCalls": 0,
+            "baseline": {
+              "elapsedMs": 0.09999990463256836,
+              "hostCalls": 1,
+              "receiptApiCalls": 0,
+              "baselineStateBytes": 119
+            }
+          },
+          "HR": {
+            "verdict": "UNKNOWN",
+            "evidence": {
+              "schemaVersion": 1,
+              "verdict": "UNKNOWN",
+              "host": {
+                "schemaVersion": 1,
+                "verdict": "UNKNOWN",
+                "checks": [
+                  {
+                    "id": "target-transition",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Approved"
+                  },
+                  {
+                    "id": "neighbor-stable",
+                    "pass": true,
+                    "before": "Ready",
+                    "after": "Ready"
+                  },
+                  {
+                    "id": "target-actionable",
+                    "pass": true,
+                    "topAtTarget": "target-action"
+                  },
+                  {
+                    "id": "scope-observable",
+                    "pass": false,
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                ],
+                "observed": {
+                  "before": {
+                    "targetStatus": "Ready",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": []
+                  },
+                  "after": {
+                    "targetStatus": "Approved",
+                    "neighborStatus": "Ready",
+                    "targetHittable": true,
+                    "topAtTarget": "target-action",
+                    "evidenceGaps": [
+                      {
+                        "sourceType": "canvas",
+                        "marker": "opaque-risk-indicator"
+                      }
+                    ]
+                  }
+                }
+              },
+              "receipt": {
+                "contract": "snapdom.action-receipt/v1",
+                "version": 1,
+                "taskOutcome": "NOT_ASSESSED",
+                "postcondition": {
+                  "kind": "changed",
+                  "expected": {
+                    "changed": true
+                  },
+                  "outcome": "PASS",
+                  "reason": "changed is true"
+                },
+                "observed": {
+                  "changed": true,
+                  "torn": 0,
+                  "changes": {
+                    "items": [
+                      {
+                        "id": "n_6d7eXrE9Q2u1",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approval queue Target account Status Approved Approve target Neighbor account St"
+                      },
+                      {
+                        "id": "n_6d7eXrE9Q2u3",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Target account Status Approved Approve target"
+                      },
+                      {
+                        "id": "n_6d7eXrE9Q2u6",
+                        "kind": "content",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Approved"
+                      },
+                      {
+                        "id": "n_6d7eXrE9Q2u8",
+                        "kind": "moved",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_6d7eXrE9Q2u8",
+                        "kind": "resized",
+                        "match": "ambiguous",
+                        "role": "generic"
+                      },
+                      {
+                        "id": "n_6d7eXrE9Q2u9",
+                        "kind": "resized",
+                        "match": "exact",
+                        "role": "generic",
+                        "name": "Neighbor account Status Ready Approve neighbor"
+                      },
+                      {
+                        "id": "n_4uDK6yyjI4a9",
+                        "kind": "added",
+                        "match": "new",
+                        "role": "img",
+                        "name": "Risk indicator"
+                      }
+                    ],
+                    "total": 7,
+                    "truncated": 0
+                  },
+                  "actionabilityDelta": {
+                    "becameCovered": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    },
+                    "becameVisible": {
+                      "items": [],
+                      "total": 0,
+                      "truncated": 0
+                    }
+                  },
+                  "unobservable": {
+                    "items": [
+                      {
+                        "id": "n_4uDK6yyjI4a9",
+                        "role": "img",
+                        "sourceType": "canvas",
+                        "rasterAvailable": true,
+                        "bbox": [
+                          194,
+                          253,
+                          32,
+                          32
+                        ]
+                      }
+                    ],
+                    "total": 1,
+                    "truncated": 0
+                  }
+                },
+                "privacy": {
+                  "rulesActive": 0,
+                  "applied": false
+                },
+                "limits": {
+                  "changes": 24,
+                  "actionability": 12,
+                  "unobservable": 12
+                }
+              }
+            },
+            "evidenceBytes": 2184,
+            "elapsedMs": 1.5999999046325684,
+            "hostCalls": 1,
+            "receiptApiCalls": 1,
+            "receiptAdapter": "createBaseline+createReceipt",
+            "baseline": {
+              "elapsedMs": 2.5999999046325684,
+              "hostCalls": 1,
+              "receiptApiCalls": 1,
+              "baselineStateBytes": 119,
+              "receiptCheckpointBytes": 1942,
+              "receiptAdapter": "createBaseline+createReceipt"
+            }
+          }
+        },
+        "sdkExports": [
+          "BASELINE_CONTRACT",
+          "RECEIPT_CONTRACT",
+          "buildUi",
+          "createBaseline",
+          "createReceipt",
+          "observe",
+          "observeChunked",
+          "probeCapabilities",
+          "redactString"
+        ]
+      }
+    ]
+  }
+}

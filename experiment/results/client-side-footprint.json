@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "productQuestion": "Can SnapDOM be shipped as a lightweight client-side perception and verification layer without shipping Playwright?",
+  "surfaces": {
+    "semanticObserver": {
+      "entry": "src/plugin.js",
+      "runtime": "browser JavaScript embedded by the host application, extension, or webview",
+      "requiresNodeAtRuntime": false,
+      "requiresBrowserDownload": false,
+      "requiresCdpOrDebugger": false,
+      "bytes": {
+        "raw": 35015,
+        "gzip": 13334,
+        "brotli": 12044,
+        "inputCount": 9,
+        "inputs": [
+          "src/aria.js",
+          "src/checkpoint.js",
+          "src/diff.js",
+          "src/hash.js",
+          "src/match.js",
+          "src/noise.js",
+          "src/plugin.js",
+          "src/query.js",
+          "src/snapshot.js"
+        ],
+        "selfContainedBrowserCode": true
+      }
+    },
+    "companionExtension": {
+      "files": [
+        "companion/content.bundle.js",
+        "companion/worker.js",
+        "companion/manifest.json"
+      ],
+      "runtime": "MV3 extension worker plus isolated content script in an existing Chromium tab",
+      "requiresNodeAtRuntime": false,
+      "requiresBrowserDownload": false,
+      "requiresCdpOrDebugger": false,
+      "bytes": {
+        "raw": 56196,
+        "gzip": 20537,
+        "brotli": 18571
+      },
+      "permissions": [
+        "storage",
+        "tabs"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "contentScriptWorlds": [
+        "ISOLATED"
+      ],
+      "externallyConnectableIds": 2
+    },
+    "visualSdk": {
+      "runtime": "browser JavaScript with semantic observer plus vendored snapDOM raster export",
+      "requiresNodeAtRuntime": false,
+      "requiresBrowserDownload": false,
+      "requiresCdpOrDebugger": false,
+      "bytes": {
+        "raw": 216026,
+        "gzip": 72589,
+        "brotli": 62279
+      }
+    },
+    "currentDevelopmentPackage": {
+      "runtime": "all-in-one Node package for library, CLI, daemon, MCP, and companion workflows",
+      "package": "@zumer/snapdom-agent@0.1.0",
+      "tarballBytes": 209936,
+      "unpackedBytes": 633616,
+      "fileCount": 33,
+      "dependencies": {
+        "esbuild": "0.28.1",
+        "playwright": "1.55.1"
+      },
+      "requiresNodeAtRuntimeForDaemonOrMcp": true,
+      "requiresPlaywrightBrowserForDaemonOrMcp": true
+    }
+  },
+  "localReferenceOnly": {
+    "caveat": "Machine-local installed footprints are context, not a portable benchmark or product requirement.",
+    "playwrightPackages": {
+      "playwright": {
+        "bytes": 4101480,
+        "files": 118
+      },
+      "playwright-core": {
+        "bytes": 8031764,
+        "files": 337
+      }
+    },
+    "cachedChromium": [
+      {
+        "name": "chromium-1193",
+        "bytes": 520523998,
+        "files": 332
+      },
+      {
+        "name": "chromium-1208",
+        "bytes": 567871629,
+        "files": 341
+      },
+      {
+        "name": "chromium_headless_shell-1193",
+        "bytes": 185405793,
+        "files": 14
+      },
+      {
+        "name": "chromium_headless_shell-1208",
+        "bytes": 196190279,
+        "files": 19
+      }
+    ]
+  },
+  "interpretationGuardrails": [
+    "Compare the semantic observer or companion runtime with a browser-control stack only when the buyer already has a browser session and needs an embedded observer.",
+    "Do not describe the current all-in-one npm package as Playwright-free; its daemon and MCP modes intentionally depend on Playwright.",
+    "The companion avoids debugger/CDP, but its current <all_urls> content-script match and tabs permission still create extension trust friction.",
+    "Footprint alone is not commercial value; adoption also requires a measurable workflow improvement."
+  ]
+}

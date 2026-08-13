@@ -123,12 +123,12 @@
 <li><strong>Screenshots are pixels and are not redacted.</strong> If a region is sensitive, do not request its image.</li>
 <li><strong>Matching is literal substring, case-insensitive.</strong> It does not infer that "M. Quiroga" is the same person as "Marta Quiroga"; rules are supplied by the operator.</li>
 <li><strong>Saved reference points contain a non-salted hash of input values.</strong> A holder could test a <em>guessed</em> value against one. Treat them as sensitive artifacts.</li>
-<li><strong>Authenticated pages:</strong> this tool uses its own cookie jar and reads the signed-out view. It reports <code>authState</code> rather than pretending otherwise.</li>
+<li><strong>Authenticated pages:</strong> this tool uses an isolated browser context. It reports <code>authState: unknown</code> and the cookie count instead of inferring identity from cookies alone.</li>
 </ul>
 </div>
 
 <footer>
-Reproduce: <code>node packages/agent/demo-qa/compliance-demo.mjs</code>.
+Reproduce: <code>node demo-qa/compliance-demo.mjs</code>.
 The behaviour shown is covered by automated gates — <code>npm run test:contract</code>
 (15 checks, including that redaction covers <code>href</code> and that a probe is refused)
 and 8 unit tests in <code>test/privacy-probe.test.js</code>.

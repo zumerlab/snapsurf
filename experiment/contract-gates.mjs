@@ -25,6 +25,7 @@ import { createServer } from 'node:http'
 import { createServer as createHttps } from 'node:https'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { daemonFetch } from '../tools/daemon-client.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
@@ -61,18 +62,26 @@ const PAGES = {
   '/late-fetch': { status: 200, headers: {}, body: '<!doctype html><html><body><h1>w</h1><script>fetch("/slow").then(function(r){return r.text()}).then(function(t){var a=document.createElement("a");a.href="/y";a.textContent=t;document.body.appendChild(a)})</script></body></html>' },
   '/slow': { status: 200, headers: {}, body: 'LATE-FETCH-LINK', delay: 300 },
 }
-const PORT = 8404
 const srv = createServer((req, res) => {
   const p = PAGES[req.url.split('?')[0]]
   if (!p) { res.writeHead(404); res.end('no'); return }
   const send = () => { res.writeHead(p.status, { 'content-type': 'text/html', ...p.headers }); res.end(p.body) }
   if (p.delay) setTimeout(send, p.delay); else send()
 })
-await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
-const U = (p) => `http://127.0.0.1:${PORT}${p}`
+let httpsSrv = null, TLS_URL = null, certDir = null
+let daemon = null
+let exitCode = 1
+
+try {
+await new Promise((resolve, reject) => {
+  srv.once('error', reject)
+  srv.listen(0, '127.0.0.1', resolve)
+})
+const fixtureAddress = srv.address()
+if (!fixtureAddress || typeof fixtureAddress === 'string') throw new Error('failed to bind contract fixture server')
+const U = (p) => `http://127.0.0.1:${fixtureAddress.port}${p}`
 
 // HTTPS with a throwaway self-signed cert, for the TLS classification check.
-let httpsSrv = null, TLS_URL = null, certDir = null
 try {
   certDir = mkdtempSync(join(tmpdir(), 'snapdom-tls-'))
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes',
@@ -80,13 +89,18 @@ try {
     '-days', '1', '-subj', '/CN=localhost'], { stdio: 'pipe' })
   httpsSrv = createHttps({ key: readFileSync(join(certDir, 'k.pem')), cert: readFileSync(join(certDir, 'c.pem')) },
     (req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<html><body>ok</body></html>') })
-  await new Promise((r) => httpsSrv.listen(8405, '127.0.0.1', r))
-  TLS_URL = 'https://127.0.0.1:8405/'
+  await new Promise((resolve, reject) => {
+    httpsSrv.once('error', reject)
+    httpsSrv.listen(0, '127.0.0.1', resolve)
+  })
+  const tlsAddress = httpsSrv.address()
+  if (!tlsAddress || typeof tlsAddress === 'string') throw new Error('failed to bind TLS fixture server')
+  TLS_URL = `https://127.0.0.1:${tlsAddress.port}/`
 } catch { /* no openssl: the TLS check reports as skipped rather than failing */ }
 
 // ── Daemon ───────────────────────────────────────────────────────────────────────────
-const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
-const cmd = (c, args = [], sessionId) => fetch('http://127.0.0.1:8377/cmd', {
+daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
+const cmd = (c, args = [], sessionId) => daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true, sessionId }),
 }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }))
@@ -160,8 +174,8 @@ if (failSid) await cmd('session', ['close', failSid])
 
 // ── D2 · whose view is this, without a second call ───────────────────────────────────
 const auth = await cmd('open', [U('/legit')])
-check('D2', 'the anonymous view announces itself on the first call',
-  auth.meta?.authState === 'anonymous' && auth.meta?.cookiesForOrigin === 0,
+check('D2', 'authentication stays unknown while cookie evidence travels on the first call',
+  auth.meta?.authState === 'unknown' && auth.meta?.cookiesForOrigin === 0,
   `authState=${auth.meta?.authState} cookies=${auth.meta?.cookiesForOrigin}`)
 
 // ── Negative controls · the properties that make the positives worth anything ────────
@@ -181,14 +195,28 @@ for (const [path, needle] of [['/late-dom', 'LATE-DOM-LINK'], ['/late-fetch', 'L
     seenIt ? `settled in ${r.meta?.settle?.quiet}ms` : 'MISSED — settle returned too early')
 }
 
-// ── Teardown ─────────────────────────────────────────────────────────────────────────
-await new Promise((r) => { const s = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
-try { daemon.kill() } catch { /* already gone */ }
-srv.close(); srv.closeAllConnections?.()
-if (httpsSrv) { httpsSrv.close(); httpsSrv.closeAllConnections?.() }
-if (certDir) { try { rmSync(certDir, { recursive: true, force: true }) } catch { /* ok */ } }
-
 const failed = results.filter((r) => !r.pass)
 console.log(`\n${results.length - failed.length}/${results.length} contract checks OK`)
 if (failed.length) console.log('FAILING: ' + failed.map((f) => `[${f.id}] ${f.name}`).join(' · '))
-process.exit(failed.length ? 1 : 0)
+exitCode = failed.length ? 1 : 0
+} finally {
+  if (daemon) {
+    await Promise.race([
+      new Promise((resolve) => {
+        const stop = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' })
+        stop.once('error', resolve)
+        stop.once('exit', resolve)
+      }),
+      sleep(5000),
+    ])
+    if (daemon.exitCode === null) daemon.kill('SIGTERM')
+  }
+  srv.closeAllConnections?.()
+  if (srv.listening) await new Promise((resolve) => srv.close(resolve))
+  if (httpsSrv) {
+    httpsSrv.closeAllConnections?.()
+    if (httpsSrv.listening) await new Promise((resolve) => httpsSrv.close(resolve))
+  }
+  if (certDir) { try { rmSync(certDir, { recursive: true, force: true }) } catch { /* ok */ } }
+}
+process.exitCode = exitCode

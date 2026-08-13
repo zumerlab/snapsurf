@@ -1,0 +1,852 @@
+{
+  "schema": 1,
+  "classification": "read-only independent directional and integrity audit of retained client-side-egress-v3 evidence bodies",
+  "question": "Do retained bodies prove the exact authored transition, official nested receipt semantics, explicit caps/truncation, and uncertainty outcomes in the correct direction?",
+  "primaryTrials": [
+    {
+      "id": "rows-50-rep-0",
+      "rowCount": 50,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-50-rep-1",
+      "rowCount": 50,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-50-rep-2",
+      "rowCount": 50,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-50-rep-3",
+      "rowCount": 50,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-250-rep-0",
+      "rowCount": 250,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-250-rep-1",
+      "rowCount": 250,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-250-rep-2",
+      "rowCount": 250,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-250-rep-3",
+      "rowCount": 250,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-1000-rep-0",
+      "rowCount": 1000,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-1000-rep-1",
+      "rowCount": 1000,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-1000-rep-2",
+      "rowCount": 1000,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-1000-rep-3",
+      "rowCount": 1000,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-3000-rep-0",
+      "rowCount": 3000,
+      "rep": 0,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-3000-rep-1",
+      "rowCount": 3000,
+      "rep": 1,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-3000-rep-2",
+      "rowCount": 3000,
+      "rep": 2,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "rows-3000-rep-3",
+      "rowCount": 3000,
+      "rep": 3,
+      "aria": {
+        "checks": {
+          "preBanner": true,
+          "preCart": true,
+          "preStatus": true,
+          "postBanner": true,
+          "postCart": true,
+          "postStatus": true,
+          "preHasNoPostState": true,
+          "postHasNoPreState": true
+        },
+        "exactPrePost": true
+      },
+      "receipt": {
+        "checks": {
+          "baselineContract": true,
+          "receiptContract": true,
+          "taskOutcomeNotAssessed": true,
+          "nestedChangedPostcondition": true,
+          "observedChanged": true,
+          "bannerDirection": true,
+          "badgeDirection": true,
+          "statusDirection": true,
+          "limitsExact": true,
+          "changesBounded": true,
+          "becameCoveredBounded": true,
+          "becameVisibleBounded": true,
+          "unobservableBounded": true
+        },
+        "exactPrePost": true
+      },
+      "oracle": true,
+      "recordedMetricsExact": true
+    }
+  ],
+  "uncertaintyTrials": [
+    {
+      "id": "uncertainty-0-rep-0",
+      "regionCount": 0,
+      "rep": 0,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-0-rep-1",
+      "regionCount": 0,
+      "rep": 1,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-0-rep-2",
+      "regionCount": 0,
+      "rep": 2,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-0-rep-3",
+      "regionCount": 0,
+      "rep": 3,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-10-rep-0",
+      "regionCount": 10,
+      "rep": 0,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-10-rep-1",
+      "regionCount": 10,
+      "rep": 1,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-10-rep-2",
+      "regionCount": 10,
+      "rep": 2,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-10-rep-3",
+      "regionCount": 10,
+      "rep": 3,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-100-rep-0",
+      "regionCount": 100,
+      "rep": 0,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-100-rep-1",
+      "regionCount": 100,
+      "rep": 1,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-100-rep-2",
+      "regionCount": 100,
+      "rep": 2,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-100-rep-3",
+      "regionCount": 100,
+      "rep": 3,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-300-rep-0",
+      "regionCount": 300,
+      "rep": 0,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-300-rep-1",
+      "regionCount": 300,
+      "rep": 1,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-300-rep-2",
+      "regionCount": 300,
+      "rep": 2,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    },
+    {
+      "id": "uncertainty-300-rep-3",
+      "regionCount": 300,
+      "rep": 3,
+      "baselineValid": true,
+      "contractExact": true,
+      "bounded": true,
+      "totalExact": true,
+      "itemCapExact": true,
+      "truncationExact": true,
+      "outcomeExact": true,
+      "recordedMetricsExact": true
+    }
+  ],
+  "integrity": {
+    "sourceRunnerSha256": "56aa784799caf79ef6f3fcefcd481c7200242403f68db61bb360d909c2f217dd",
+    "sourceResultSha256": "824a7947a8b9a2fa6a53f0a47dbfef0e654aaaf9d4bda46dae4d093ba09e02fa",
+    "sourceArchiveSha256": "5eb38f198b7d15563cb168a559ed86434d05d18dc4046d1f58a0bd75ea8642b5",
+    "runnerMatchesResult": true,
+    "archiveMatchesResult": true,
+    "archiveBodyCountMatchesResult": true,
+    "allArchivedBodiesUsedExactlyByReference": true,
+    "primaryTrials": 16,
+    "expectedPrimaryTrials": 16,
+    "uncertaintyTrials": 16,
+    "expectedUncertaintyTrials": 16,
+    "allAriaDirectionalContractsExact": true,
+    "allReceiptDirectionalContractsExact": true,
+    "allPrimitiveOraclesExact": true,
+    "allPrimaryMetricsExact": true,
+    "allUncertaintyBaselinesValid": true,
+    "allUncertaintyContractsExact": true,
+    "allUncertaintyBoundsExact": true,
+    "allUncertaintyOutcomesExact": true,
+    "allUncertaintyMetricsExact": true,
+    "taskOutcomeAlwaysNotAssessed": true
+  },
+  "caveats": [
+    "This audit validates retained synthetic evidence and arithmetic; it does not establish production behavior or commercial value.",
+    "ARIA remains a whole-root full-state comparator, not a best directed host verifier."
+  ]
+}

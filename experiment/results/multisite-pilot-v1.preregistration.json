@@ -1,0 +1,4144 @@
+{
+  "schemaVersion": 1,
+  "status": "FROZEN_BEFORE_BROWSER_START",
+  "frozenAt": "2026-08-12T14:50:34.268Z",
+  "sealedTruthCommitmentSha256": "f166f6d582b52586936f2d39461d0132f971e7f615deb2bd3c710683428631cb",
+  "publicProtocolSha256": "521de3e4a6bf943e2be68163c5ed16ee1edb9f8d8bc973841feee46c3fc4535b",
+  "implementation": {
+    "files": [
+      "experiment/multisite-pilot.mjs",
+      "experiment/multisite/cases.mjs",
+      "experiment/multisite/fixture-server.mjs",
+      "experiment/multisite/protocol.mjs",
+      "experiment/multisite/verifiers.mjs",
+      "src/checkpoint.js",
+      "src/diff.js",
+      "src/aria.js",
+      "src/hash.js",
+      "src/index.js",
+      "src/match.js",
+      "src/noise.js",
+      "src/plugin.js",
+      "src/query.js",
+      "src/snapshot.js",
+      "tools/sdk-bundle.mjs",
+      "vendor/snapdom/LICENSE",
+      "vendor/snapdom/README.md",
+      "vendor/snapdom/dist/snapdom.mjs",
+      "vendor/snapdom/plugins/gif-export.js",
+      "vendor/snapdom/plugins/video-export.js",
+      "package.json",
+      "package-lock.json"
+    ],
+    "sha256": "66fa9e28a9a53e6b961c633af9724d194d4977279a16aac35aad1c79b8ed99af",
+    "builtSdkSha256": "c7f154dd1643399469ba5004bef0bf97e080fa93d8260ad5a2c50dca20bfc98c",
+    "builtSdkBytes": 216026,
+    "playwright": "1.55.1",
+    "esbuild": "0.28.1",
+    "snapdomAgent": "0.1.0",
+    "arms": {
+      "playwright": "native Playwright locator assertions; non-mutating elementFromPoint actionability probes where required",
+      "snapdom": "SnapDOM typed before/after diff plus privacy-safe semantic snapshot queries"
+    }
+  },
+  "protocol": {
+    "schemaVersion": 1,
+    "classification": "controlled four-family authored-verifier pilot; not confirmatory evidence",
+    "unit": "paired arm trial on one opaque fixture run, one frozen action, and one neutral postcondition",
+    "truth": "server-side sealed application model calibrated against primitive DOM state before arm trials",
+    "arms": [
+      "playwright-authored",
+      "snapdom-authored"
+    ],
+    "variantsPerCase": 2,
+    "repetitions": 10,
+    "seed": "snapdom-multisite-stability-v1-2026-08-12-freeze",
+    "cases": [
+      {
+        "schemaVersion": 1,
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "title": "create one exact todo",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "one existing todo",
+          "Pilot alpha absent"
+        ],
+        "action": "Submit \"Pilot alpha\" through the New todo textbox.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "target-added",
+              "statement": "Pilot alpha is present exactly once."
+            },
+            {
+              "id": "count-plus-one",
+              "statement": "The todo count changes from one to two."
+            },
+            {
+              "id": "no-draft-only",
+              "statement": "The action did not merely save a draft/status."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "title": "complete the exact todo",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "Pilot alpha incomplete",
+          "Neighbor beta incomplete"
+        ],
+        "action": "Activate the checkbox for Pilot alpha.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "target-completed",
+              "statement": "Pilot alpha changes from incomplete to complete."
+            },
+            {
+              "id": "neighbor-stable",
+              "statement": "Neighbor beta remains incomplete."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "title": "filter to the active route",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "one active todo",
+          "one completed todo",
+          "route #/all"
+        ],
+        "action": "Activate the Active filter.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "active-route",
+              "statement": "The route becomes #/active."
+            },
+            {
+              "id": "active-visible",
+              "statement": "Active item remains visible."
+            },
+            {
+              "id": "completed-absent",
+              "statement": "Completed item is absent from the rendered list."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "title": "delete the exact todo",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "Pilot alpha present",
+          "Neighbor beta present"
+        ],
+        "action": "Activate Delete Pilot alpha.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "target-removed",
+              "statement": "Pilot alpha is absent."
+            },
+            {
+              "id": "neighbor-present",
+              "statement": "Neighbor beta remains present."
+            },
+            {
+              "id": "count-minus-one",
+              "statement": "The todo count changes from two to one."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "title": "login reaches inventory",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "login form visible",
+          "inventory absent"
+        ],
+        "action": "Submit the fixed public test credentials.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "inventory-visible",
+              "statement": "Products inventory is visible."
+            },
+            {
+              "id": "login-absent",
+              "statement": "The login form is absent."
+            },
+            {
+              "id": "error-absent",
+              "statement": "No login error is shown."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "title": "add the exact product",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "Backpack and Bike Light both not in cart",
+          "cart badge absent"
+        ],
+        "action": "Activate Add Backpack to cart.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "target-button-transition",
+              "statement": "Backpack control changes to Remove Backpack from cart."
+            },
+            {
+              "id": "neighbor-stable",
+              "statement": "Bike Light remains not in the cart."
+            },
+            {
+              "id": "badge-one",
+              "statement": "The cart badge becomes one."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "title": "remove the exact product",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "Backpack present",
+          "Bike Light present",
+          "cart badge two"
+        ],
+        "action": "Activate Remove Backpack from cart.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "target-removed",
+              "statement": "Backpack is absent from the cart."
+            },
+            {
+              "id": "neighbor-present",
+              "statement": "Bike Light remains in the cart."
+            },
+            {
+              "id": "badge-one",
+              "statement": "The cart badge changes from two to one."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "title": "remove the dynamic checkbox",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "dynamic checkbox visible",
+          "Remove button visible"
+        ],
+        "action": "Activate Remove.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "checkbox-absent",
+              "statement": "Dynamic checkbox is absent."
+            },
+            {
+              "id": "add-visible",
+              "statement": "Add button is visible."
+            },
+            {
+              "id": "gone-message",
+              "statement": "It's gone! is visible."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "title": "enable the textbox",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "textbox disabled",
+          "Enable button visible"
+        ],
+        "action": "Activate Enable.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "textbox-enabled",
+              "statement": "Editable field changes from disabled to enabled."
+            },
+            {
+              "id": "disable-visible",
+              "statement": "Disable button is visible."
+            },
+            {
+              "id": "enabled-message",
+              "statement": "It's enabled! is visible."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "title": "load the delayed content",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "Hello World absent",
+          "loading indicator absent"
+        ],
+        "action": "Activate Start.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "hello-visible",
+              "statement": "Hello World! is added and visible."
+            },
+            {
+              "id": "loader-absent",
+              "statement": "Loading indicator is absent after completion."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "title": "open an actionable modal",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "dialog absent",
+          "launcher actionable"
+        ],
+        "action": "Activate Launch demo modal.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "dialog-visible",
+              "statement": "Verification modal is visible."
+            },
+            {
+              "id": "close-actionable",
+              "statement": "Close modal is not geometrically covered."
+            },
+            {
+              "id": "launcher-covered",
+              "statement": "The backdrop covers the launcher."
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "title": "close the modal completely",
+        "fixture": {
+          "version": 1,
+          "viewport": [
+            1280,
+            720
+          ],
+          "locale": "en-US",
+          "timezone": "UTC"
+        },
+        "preconditions": [
+          "dialog visible",
+          "backdrop visible",
+          "launcher covered"
+        ],
+        "action": "Activate Close modal.",
+        "postcondition": {
+          "deadlineMs": 2000,
+          "conjuncts": [
+            {
+              "id": "dialog-absent",
+              "statement": "Verification modal is absent."
+            },
+            {
+              "id": "backdrop-absent",
+              "statement": "Modal backdrop is absent."
+            },
+            {
+              "id": "launcher-actionable",
+              "statement": "Launch demo modal is actionable again."
+            }
+          ]
+        }
+      }
+    ],
+    "schedule": [
+      {
+        "pairId": "5a59dbfede3bf29aefc47724",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f356dcae0958a0c4f537f25d",
+          "snapdom-authored": "f977e07b2cdf87890da0ff02"
+        }
+      },
+      {
+        "pairId": "8b2516b4c191c2293d6487b1",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "6c8c93b4b0c8936d29ee432b",
+          "snapdom-authored": "08e499dc1a6cce2b8b39ca21"
+        }
+      },
+      {
+        "pairId": "0b888ccfe6bf62517e9b3294",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "771662f4b114243964d332c1",
+          "snapdom-authored": "6a4a8bff86a07e9ed774844e"
+        }
+      },
+      {
+        "pairId": "73f19e9a74977b14d81dedd6",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c58a52b0eea895114bfe5658",
+          "snapdom-authored": "62331b294488e595ff1fb99c"
+        }
+      },
+      {
+        "pairId": "5c792c46508e975d5a83a5b2",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a8d3bd690e2dc05cc778ef1a",
+          "snapdom-authored": "0fbe86b781145e08be442599"
+        }
+      },
+      {
+        "pairId": "875ca55149fbb1808d44149a",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "5afca9b292c6e70aa8d614b6",
+          "snapdom-authored": "c305541eec05606ca5d07e85"
+        }
+      },
+      {
+        "pairId": "8354665121417d6284e18513",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a4b201841322e81c5bac8b99",
+          "snapdom-authored": "3018d85d66dd06dda139d7b5"
+        }
+      },
+      {
+        "pairId": "e9509aeb0abc5b749c6bd8e7",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ce30713de069132533e0ac5e",
+          "snapdom-authored": "b814f6babd88018d2e4f212c"
+        }
+      },
+      {
+        "pairId": "1dc446a6a03e5b48e1182e7a",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4238bb19bcce5fd9f9b4d75a",
+          "snapdom-authored": "c55b619d73d0142cefe51c18"
+        }
+      },
+      {
+        "pairId": "e2c85972eee8b24840916536",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "6bc4fcfd57246a15ea7e91a1",
+          "snapdom-authored": "3c638add01595fd0475cfa2f"
+        }
+      },
+      {
+        "pairId": "6762552d33debd242727cd58",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "66df5eb4522f92287a3339b8",
+          "snapdom-authored": "0946c70d770e36a95462f2c2"
+        }
+      },
+      {
+        "pairId": "3d8a6cb34612b8e433f9e32a",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f3c062557b92cb0633693028",
+          "snapdom-authored": "b8a00ca9b437cf14b7c52e6e"
+        }
+      },
+      {
+        "pairId": "51f8c01398a0b9f407d83cd2",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d3333d50059d127afc49b8d7",
+          "snapdom-authored": "ee92d016899dd5354779ab70"
+        }
+      },
+      {
+        "pairId": "b48576a4fd167ec8c22ed5ee",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "fe82e27c871165d04ceb4d57",
+          "snapdom-authored": "91bddc58d823e7c6cfd30ea8"
+        }
+      },
+      {
+        "pairId": "bb8820e2b4e5199ebbc1807b",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d3b96db9a516afbfa45c785f",
+          "snapdom-authored": "ade639f84b06fb5df98e6ccb"
+        }
+      },
+      {
+        "pairId": "576d9c483d81efc29fea3ada",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1d9a38acf656946035c21a1f",
+          "snapdom-authored": "f822728da647fbb8719fef64"
+        }
+      },
+      {
+        "pairId": "32517e20736324f6e6679787",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "86a6dfacbb02fb2f294ac72c",
+          "snapdom-authored": "4680ce22f70abaa2b6e3ab2f"
+        }
+      },
+      {
+        "pairId": "4f7326bee31aaaee93189402",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "62303fc404d328f63e3629dc",
+          "snapdom-authored": "94fc36a11d401148d9ca43af"
+        }
+      },
+      {
+        "pairId": "b1348f6a7185e69c88dc087a",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1a0762802138a078bc4184d0",
+          "snapdom-authored": "ec7b6ba0bd0fcdaf1611fd54"
+        }
+      },
+      {
+        "pairId": "2b71fc68165fe06d6ffb5202",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "08befd2f5f128c289761d710",
+          "snapdom-authored": "069a2d8b8b4800473ad53894"
+        }
+      },
+      {
+        "pairId": "d2cbdbd26a58b5eaa8fccc84",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "3f8f632ef0d7620a9261c1fa",
+          "snapdom-authored": "688c5a4e399c81ab4ded435b"
+        }
+      },
+      {
+        "pairId": "7528e0e7ae7d1399c58f4456",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "6221f1a6e8319988228dae78",
+          "snapdom-authored": "2807b01260f80a81121a4f74"
+        }
+      },
+      {
+        "pairId": "a89013891feee9e55cc66862",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "118324fe8fdb776682ea5964",
+          "snapdom-authored": "5d13e3e69ce662589c9da572"
+        }
+      },
+      {
+        "pairId": "ab701e2e6700735741cfad06",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1bcdc96867b48609b50273a0",
+          "snapdom-authored": "8a0ed325e7d8de971cd231e8"
+        }
+      },
+      {
+        "pairId": "c9d521e43a1fd11b5c17537e",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d003ea27e1f2a2cf57d23423",
+          "snapdom-authored": "f3f6c91e81ca73fb3ce6f0e1"
+        }
+      },
+      {
+        "pairId": "7db29912fb5a2e90530dffbe",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "caf97c634376dce6c5ea1328",
+          "snapdom-authored": "050179b8da796bb2127cdfe5"
+        }
+      },
+      {
+        "pairId": "29644687626e37cc9c676244",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "be8503bda3b5bdaae6aa57c5",
+          "snapdom-authored": "33c8ddca3c0a0026424749fb"
+        }
+      },
+      {
+        "pairId": "2eba774517c3ec4f918ca09e",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4aaf6229ebb0d8b260293741",
+          "snapdom-authored": "4126c3097955ab56b7aa7d4e"
+        }
+      },
+      {
+        "pairId": "3815e639dcc5779cbfd01105",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c494c4f2c5986c49e9b44891",
+          "snapdom-authored": "a48c385d8feb33ead7da05ad"
+        }
+      },
+      {
+        "pairId": "e268f864761157043af4659e",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ffabb4169ecb20ae41244710",
+          "snapdom-authored": "fa26177eb31bfc9244b511e1"
+        }
+      },
+      {
+        "pairId": "3280a63495248caf1e78fa76",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "3c81247d400e114325797a55",
+          "snapdom-authored": "80cf9e1694240d01f9182741"
+        }
+      },
+      {
+        "pairId": "ce7d835bb67e0784769d7af0",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "123c54924bb11a085aeddf8c",
+          "snapdom-authored": "bd791ae054960d1b66ab122e"
+        }
+      },
+      {
+        "pairId": "f876f96b106db5d1bf943e31",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4600b2646e40764b965bd5d2",
+          "snapdom-authored": "602e40160f6465f31353f92a"
+        }
+      },
+      {
+        "pairId": "a884d9a3a3462b75692c00a0",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "b166ad5302b67508c8c0b8d1",
+          "snapdom-authored": "cb0fab89cbb6f6f9d49c7c2d"
+        }
+      },
+      {
+        "pairId": "960980e0b5e90a39e40d4778",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0cd63d776a43a9a8b852b4c4",
+          "snapdom-authored": "532b96951344655aa9f81212"
+        }
+      },
+      {
+        "pairId": "8de525d2137e023e549a2675",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a816da447596c3fb254f3663",
+          "snapdom-authored": "769f8611e34de85591c8d424"
+        }
+      },
+      {
+        "pairId": "4e2cf4e5061cf2313ea58d0e",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2d381b52378eb58e70759533",
+          "snapdom-authored": "36013a171258bacacef3ca35"
+        }
+      },
+      {
+        "pairId": "2f1a3dcb2329be7f040720c6",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e714383fc5991340ec40948e",
+          "snapdom-authored": "c28acede3c8b014e5da4de43"
+        }
+      },
+      {
+        "pairId": "2da4e343ceeb981cda837faf",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ce77be8ffc175c5794d01cd9",
+          "snapdom-authored": "cd2226655e10da9dba173976"
+        }
+      },
+      {
+        "pairId": "1f525e0cbca5498bac87960b",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "93c65866aed27d23504a87b8",
+          "snapdom-authored": "eeb2a185879712d0be616dbb"
+        }
+      },
+      {
+        "pairId": "6dc727fc85a2204cb0c9da9a",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "15ed1d5172ccb6c099deae7b",
+          "snapdom-authored": "b04003c37d85594c12db975e"
+        }
+      },
+      {
+        "pairId": "39d70e73a5923267c582be3f",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a9a95301a9c8415ed3546d86",
+          "snapdom-authored": "9b1ebbd6ea2adc00f500c64b"
+        }
+      },
+      {
+        "pairId": "9ecb60e588aa537bc9f9fadb",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8be9817e9c6e57851abe27cf",
+          "snapdom-authored": "1558ac9898ab42570c537370"
+        }
+      },
+      {
+        "pairId": "b7f15bc53e2af2591cd37770",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "59f24168a87c68d4906da168",
+          "snapdom-authored": "26685db33661e44f9e56e78b"
+        }
+      },
+      {
+        "pairId": "893f9a5c06ca8d45e3efdd37",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d3daf99d9985887bac7e45f4",
+          "snapdom-authored": "3cad1ad74beecafc4456ed33"
+        }
+      },
+      {
+        "pairId": "1e0330fb83a10db98401fc06",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8c44312fae779b4b5ef6464f",
+          "snapdom-authored": "29c5d7a33ddd1fe3b6dc17cb"
+        }
+      },
+      {
+        "pairId": "51b65e1f04656cdef8afeac1",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "905f35c7b8e50dede5678ef3",
+          "snapdom-authored": "0c9c485591eeec58e2378d20"
+        }
+      },
+      {
+        "pairId": "0720a32f6bfbe27fd8edd185",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "5899e6c46755a6c309dff904",
+          "snapdom-authored": "af58c9e7ce9fa7f8f3dc6f70"
+        }
+      },
+      {
+        "pairId": "a5d795e26dab2a2b8f5d1676",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "da8c7ee2e39da0e134193859",
+          "snapdom-authored": "c6e12134744a776ada5537f7"
+        }
+      },
+      {
+        "pairId": "477cdb48ec3d98815f323529",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ec370803d16c1fd7ce82d69d",
+          "snapdom-authored": "0b29af3a6e1354b2c8c9d391"
+        }
+      },
+      {
+        "pairId": "c7dfd0edba508722b909bc18",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "5c051dbac64131ec4cad030d",
+          "snapdom-authored": "f9e5d4efd37787d2a15aad3d"
+        }
+      },
+      {
+        "pairId": "fba36bb3e8d5278c0964d251",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "64944b4d16ef68f4c8361032",
+          "snapdom-authored": "abefac5ecf32e35681ea0371"
+        }
+      },
+      {
+        "pairId": "6900b00d3f53065e58ea5c5a",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ee5f4e359051ecf9f754cdda",
+          "snapdom-authored": "c1fb4a57509f3e3728545da6"
+        }
+      },
+      {
+        "pairId": "368caeae40f79b034f661a0b",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8188eb8b9f8641f488cb7f0a",
+          "snapdom-authored": "7cc165a5e9221062318588db"
+        }
+      },
+      {
+        "pairId": "22c8572b79017ff62ffd33c6",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8807688fb6b0843e124195ef",
+          "snapdom-authored": "461fc2894e79cc025bb33274"
+        }
+      },
+      {
+        "pairId": "e5ffc082b4c5d606d8686ea9",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "5682d148947e84636b99d379",
+          "snapdom-authored": "a70567b94f9b5e34a6b4f12b"
+        }
+      },
+      {
+        "pairId": "fba3fb0f974423ed80129a3a",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ca67266060bf109d5930e19d",
+          "snapdom-authored": "545286363209166619ba8969"
+        }
+      },
+      {
+        "pairId": "16b68487bf0dcf0fcd5539c2",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "562570fe152b11f290693d53",
+          "snapdom-authored": "17b0de1f3b4077506d151eee"
+        }
+      },
+      {
+        "pairId": "b1a2f8a1012c9b617a2605fc",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "64b9bac6107cf74a3b13d407",
+          "snapdom-authored": "5958f93a434ac1b37d9bd774"
+        }
+      },
+      {
+        "pairId": "2a753e61177b0a05f7251026",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8e8832d9e6a7bf4bb038e925",
+          "snapdom-authored": "55d72787a76a3bab3b21860e"
+        }
+      },
+      {
+        "pairId": "0a7be0f3623f025dd3800dd3",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a4aea27fc10b21bd3678807c",
+          "snapdom-authored": "2e88e1fdfa604b127cb47b7f"
+        }
+      },
+      {
+        "pairId": "5dd5d3fcbee603feba2c6b30",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f54350e4dd5ccbb8f1216278",
+          "snapdom-authored": "236d67dbe1f403bb77bb7d03"
+        }
+      },
+      {
+        "pairId": "dc5a6e3d83b5b2ddd4f5977c",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "9c373828adb50a30e2a41e1d",
+          "snapdom-authored": "5590d2e0e23d722fb18f30aa"
+        }
+      },
+      {
+        "pairId": "14b7a8f240ce9e676754f388",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "98610d26eac6664f3a77b33a",
+          "snapdom-authored": "183f43300597362659fc11ac"
+        }
+      },
+      {
+        "pairId": "3f408650035d4f2b0f7d8ac8",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "accc3e330578bd533fadccec",
+          "snapdom-authored": "876e1724ea61ccf75b450373"
+        }
+      },
+      {
+        "pairId": "8b1862182dae73155009f358",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2dba24451e2fb18f3d8cec87",
+          "snapdom-authored": "d0f5c29431d3838dde0e8ff4"
+        }
+      },
+      {
+        "pairId": "6d27e03382886fee4fc3f713",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "64fb9e5cbc32f3b88f87b3d4",
+          "snapdom-authored": "2cb993575e67355fc0165c68"
+        }
+      },
+      {
+        "pairId": "e0ec5787fca0a7571019f420",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "25b9fa0489e4304bbac46f9a",
+          "snapdom-authored": "508856a44c3dc66cec45486f"
+        }
+      },
+      {
+        "pairId": "4d734dc0c3c9daf01a77c017",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "61548233edf36d6c066d60f2",
+          "snapdom-authored": "479aa45ad7c5f6bc874d6df7"
+        }
+      },
+      {
+        "pairId": "4960a022c633e72d80850c36",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f29e05424881957405ad2871",
+          "snapdom-authored": "464b2ce3f3c2f3738137b4ce"
+        }
+      },
+      {
+        "pairId": "61a03cc9e1eaaa124f8a99d7",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d57f8ff3aa9eb361ac3a2714",
+          "snapdom-authored": "7b25a4a616937ec4b05ff548"
+        }
+      },
+      {
+        "pairId": "672e725c330fa58f2e80fe92",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "3ef518d1164a0fb7d791266e",
+          "snapdom-authored": "57ca748cd8409bf965ca18d7"
+        }
+      },
+      {
+        "pairId": "bae8522bfdc8adb32cac6853",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1167627af2b1d997bd4d4d2f",
+          "snapdom-authored": "9b4c9cd0f2dda1a57ccc9f3c"
+        }
+      },
+      {
+        "pairId": "63e0b093ac0d23ad0b305b5f",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8a5f74e80cd89b62fc3f7727",
+          "snapdom-authored": "343151e5359554eb810c4118"
+        }
+      },
+      {
+        "pairId": "22c1a102acbd4ba448aac95a",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d74d60d1a344a82daf3dbf47",
+          "snapdom-authored": "01184444748e575c1bd93635"
+        }
+      },
+      {
+        "pairId": "f0d7e9bf57618c1b4e970674",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "fb3b0eb7820c1ae7cab6b9e6",
+          "snapdom-authored": "56d72f99dc74b7cbfdcabcf9"
+        }
+      },
+      {
+        "pairId": "39ea95ac70c37fe4998552fb",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "9a1d40d13a457e1b124425f8",
+          "snapdom-authored": "8beb8eb45f53e0d7ea281cfc"
+        }
+      },
+      {
+        "pairId": "dd7774cefe78c54318e93ed3",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "60c5e05011d6e76b04d16aea",
+          "snapdom-authored": "63912f79a3f469cfee46483f"
+        }
+      },
+      {
+        "pairId": "17fb608de8a68da9999632e0",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "b5124a23aeea044c289b4c6e",
+          "snapdom-authored": "4e3d3117532a82e1e09b1b47"
+        }
+      },
+      {
+        "pairId": "67246d06159882b062971835",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "789091db0933fb692411d9ac",
+          "snapdom-authored": "6b438e9b9182ffc6f32ecbdc"
+        }
+      },
+      {
+        "pairId": "945e35cc7da84d88c1130030",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d46853dbdf5a13142849e4e4",
+          "snapdom-authored": "3c3f7fbcbca7b7c536d6bde8"
+        }
+      },
+      {
+        "pairId": "4101a24a2f92c0c0168a0406",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8395a85754ebd2eb0c9322b0",
+          "snapdom-authored": "77aa7588dbeb40d1e9ca927e"
+        }
+      },
+      {
+        "pairId": "5fcc8fbc5f369ec207a094a8",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "dfc0abbff8415d4aff355c65",
+          "snapdom-authored": "36d433910cc6973c40295ce4"
+        }
+      },
+      {
+        "pairId": "b0a32ce1398c6f10136e11ec",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4b0b36f54b01b0f4ba7903c3",
+          "snapdom-authored": "4db543855bf7bf0c57ba3f02"
+        }
+      },
+      {
+        "pairId": "b927b40c3331dcadd8c1ba23",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a39066dace0a61049801ae7a",
+          "snapdom-authored": "22fba2b113860f4d17b8e585"
+        }
+      },
+      {
+        "pairId": "a2594b46b26956d073a0278d",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "300d4fe77b9f4cd1b53b1d80",
+          "snapdom-authored": "54facf7d3868dc5cd368193d"
+        }
+      },
+      {
+        "pairId": "0604d72ff071aa396c1ff419",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e3ae835df3f756a79ce511ca",
+          "snapdom-authored": "4a3c7b67c9a7bf3f8a66b69e"
+        }
+      },
+      {
+        "pairId": "c23b24d764cb58e11f1db9e5",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "eb3755169b06e309058fdf95",
+          "snapdom-authored": "bb94c85c6d413edf458a3227"
+        }
+      },
+      {
+        "pairId": "16a18f6db1ae0659c95e1551",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "3f4ebe88b97f18e13a655e53",
+          "snapdom-authored": "02719bf5a4c215e851115d8b"
+        }
+      },
+      {
+        "pairId": "fb83ecf9d406b65351d8a03f",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "7275416de53b8474649acca8",
+          "snapdom-authored": "1c6028fe844161e873766336"
+        }
+      },
+      {
+        "pairId": "e79c9bc00b58f241661e1f2d",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "878bbc22c22412ed6334a11e",
+          "snapdom-authored": "e9f6a7efa18d49f7b0ac0994"
+        }
+      },
+      {
+        "pairId": "72a7b2a99aa1ccb0a154e63c",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "305ace7d21392bc70b10539d",
+          "snapdom-authored": "b2e053f1098dca4e069cf85c"
+        }
+      },
+      {
+        "pairId": "2cf71ba914e4f7f5c1a4cdda",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "29a9be3c19c10d9fbde5952d",
+          "snapdom-authored": "06ca6b7f33c17efe64ca9df8"
+        }
+      },
+      {
+        "pairId": "dfed081af20a766faa552696",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "783063b99d9dbf2c77a4cba9",
+          "snapdom-authored": "834e8134fbb7b254d6c93808"
+        }
+      },
+      {
+        "pairId": "8d251e4b3f99ad48a16d185f",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "eb12b8e775881502be843ad2",
+          "snapdom-authored": "da110079b407157f8433e0ed"
+        }
+      },
+      {
+        "pairId": "c34a764ed043d026274f894b",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "da7fd6ff0b991a7b2bf19c39",
+          "snapdom-authored": "8561c745a4daf1e8f645b35f"
+        }
+      },
+      {
+        "pairId": "76e4870e32348b1b6f975283",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "682c43ff65eb47532318b844",
+          "snapdom-authored": "44af432e6de512a92c2732e9"
+        }
+      },
+      {
+        "pairId": "012510fde94ebd08a53bc4e1",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ac646ed44e5e5f62bd860263",
+          "snapdom-authored": "b709f750af18d8492f89af41"
+        }
+      },
+      {
+        "pairId": "a06061bf9a2d6ae42fc3a191",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "539a55b1fde4ef58959dda3c",
+          "snapdom-authored": "65c54bba0638113b9a7226ab"
+        }
+      },
+      {
+        "pairId": "c8b54c31665aa595429e2835",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "b32bdf587ce02561890b4ee8",
+          "snapdom-authored": "df6dc9fa335a4ff092525e69"
+        }
+      },
+      {
+        "pairId": "1ac14da5ba8c8adc9d463671",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "746e905d6de61214379c8fa0",
+          "snapdom-authored": "4031ee855ad198ed9ca250b5"
+        }
+      },
+      {
+        "pairId": "a52919c660660568a0e53eca",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "69d4e1233315d602196fb0de",
+          "snapdom-authored": "13085d4b270a35c3f00e4759"
+        }
+      },
+      {
+        "pairId": "30025576c6d10e63d79f0d05",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c4d71fe78b26b22bda18cad4",
+          "snapdom-authored": "f62fc983d3ef46de894ae1bb"
+        }
+      },
+      {
+        "pairId": "02da1812a703c5b5781737e1",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4a6782b86e52a0fc99f6f098",
+          "snapdom-authored": "fa7028f19e22e88d592752d4"
+        }
+      },
+      {
+        "pairId": "7ceb494ac6e60e1b67c3f791",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "7e94183269cfd0b724588aae",
+          "snapdom-authored": "a695e5cae5c7d41d1b35938e"
+        }
+      },
+      {
+        "pairId": "86aa00ee2011dfa460fe122d",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "66c08b4545415ef3f765fc78",
+          "snapdom-authored": "cb25bc0dd4c104c4b23fe846"
+        }
+      },
+      {
+        "pairId": "01c41cb30aa6a8d87554dc00",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "04df9e31531ea7570bb87ec5",
+          "snapdom-authored": "d11c213074ebdde492d95e91"
+        }
+      },
+      {
+        "pairId": "4f0297ae118c832879cdb136",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "7afe468691c87b17b28b2f71",
+          "snapdom-authored": "c4a683e2e65e348b5225405e"
+        }
+      },
+      {
+        "pairId": "1a082a60b0a0a69d64607d78",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f97d4b42174c6cbb201d5134",
+          "snapdom-authored": "f5cbfb9cdbe7cb19679dd031"
+        }
+      },
+      {
+        "pairId": "38734a708dc3ca87ee60aa12",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "32990b9801274e7f593791f2",
+          "snapdom-authored": "8c2f2151df5eadc508d86355"
+        }
+      },
+      {
+        "pairId": "a89ee7ce5f3145f99d414893",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "86303c9f455d7a1c6536f23d",
+          "snapdom-authored": "b5be9d69b9e7d1774f6c0aac"
+        }
+      },
+      {
+        "pairId": "4f6d433673e1fac64d3423b0",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "114a142286adab108462c2c9",
+          "snapdom-authored": "8e505571abdcbed8a5470e81"
+        }
+      },
+      {
+        "pairId": "3d085bd8eb6af12fcd95ffec",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f732e3356ad031a9625571cc",
+          "snapdom-authored": "21105b756cb83ce70d77bb71"
+        }
+      },
+      {
+        "pairId": "817d68ccd795823634acd114",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "64b3aa2ff304bf8b8cb751cb",
+          "snapdom-authored": "54d2501ebe67d1759c8cc8f5"
+        }
+      },
+      {
+        "pairId": "ed41ba1526b05ee2c8cca5c2",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e7988e89172d367c04fbb0b3",
+          "snapdom-authored": "385d73158e633d7d83082cc6"
+        }
+      },
+      {
+        "pairId": "30d1e169e6d559ef91207c11",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "820ee5cb7db7c40f300fec32",
+          "snapdom-authored": "c1f4ff1cb6521daa75ae3321"
+        }
+      },
+      {
+        "pairId": "2dc9785c5a170cd3cb3540e7",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a29d119f0a244ee3f3638ad1",
+          "snapdom-authored": "545b88a00be95fe744e4ee62"
+        }
+      },
+      {
+        "pairId": "777b9e79767041b4767d79fd",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4dcc9e38857a0ad3026975df",
+          "snapdom-authored": "19173372bc781161df735d89"
+        }
+      },
+      {
+        "pairId": "f7ad77826363689741aaf314",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "22cd2d07139ef68c3f34c8e0",
+          "snapdom-authored": "5db98a79753487c15dd6f18f"
+        }
+      },
+      {
+        "pairId": "f8a92b0675d8168726f92b2a",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1bd311dcb5005e8bff2dc61e",
+          "snapdom-authored": "ff5a952542ccef3501428fe4"
+        }
+      },
+      {
+        "pairId": "2804ff4b206ecf528bcb5389",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2f48e847117602a9a5b860df",
+          "snapdom-authored": "68716038427939978a10d7d1"
+        }
+      },
+      {
+        "pairId": "7efd8488dc132da895ffa2c2",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4c6c7bdb9a7f72ed1460dba6",
+          "snapdom-authored": "e430345597e191faed9d03f9"
+        }
+      },
+      {
+        "pairId": "3c2c33e0285a3a1abc20bc74",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f96cca8245b2f30f588919b8",
+          "snapdom-authored": "df208040cbf13ed8e37d53ac"
+        }
+      },
+      {
+        "pairId": "e64e4b8b711c527917f3843b",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "351b6e2051d7da3768165fd2",
+          "snapdom-authored": "2ef763456e86d1275dad0fe9"
+        }
+      },
+      {
+        "pairId": "e5fa331346758fa9ef73080a",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c9d6ccbed413977f32c94176",
+          "snapdom-authored": "16ab67ed74164a84aa13193c"
+        }
+      },
+      {
+        "pairId": "ca7e35abba09ab98a6377e6e",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1264df1b34559d37844702e0",
+          "snapdom-authored": "9fd9c57897d1d1180afd2bb1"
+        }
+      },
+      {
+        "pairId": "b79dc7112bda7712eaa6729a",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "89f64dc36db5e3e9923fdf39",
+          "snapdom-authored": "7a31be52d9e28e5ba40edeb8"
+        }
+      },
+      {
+        "pairId": "8348a2f48206145141e44a52",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ea648ee6b4c241e57cefb554",
+          "snapdom-authored": "d57d119b2603694360b16c40"
+        }
+      },
+      {
+        "pairId": "538ba76bb61fde0c30acb204",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2aa3741c54afd8ae5f0e2926",
+          "snapdom-authored": "3cb8e138d0e95bae8a603b41"
+        }
+      },
+      {
+        "pairId": "194e88fb2ba16ff68d8afb64",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f6437caab17ad51ca8575216",
+          "snapdom-authored": "2041f7b75aebcd9b518d2e68"
+        }
+      },
+      {
+        "pairId": "3e1df5b2d6402711e7cd185e",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a9866d9b973d8cf6c47996dd",
+          "snapdom-authored": "413039d2f28b64aa00ba90aa"
+        }
+      },
+      {
+        "pairId": "1559267b45aa69f9c1895532",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "cff3694cade3867a8671ba5c",
+          "snapdom-authored": "e711a9854d3eba3c43d4db99"
+        }
+      },
+      {
+        "pairId": "f57249477574ea49db9a6efb",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "95b861345dbe51a436ea5d99",
+          "snapdom-authored": "e726b2595c1a34cd5c30b2bd"
+        }
+      },
+      {
+        "pairId": "dce94b053d733b6a75df9d90",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4a682815bed0d73ee78b7adf",
+          "snapdom-authored": "e7c7d6158eb5fe8a80a98699"
+        }
+      },
+      {
+        "pairId": "764ed5a6d32b3cb0bea565af",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "7b1b1d0340950a725e2a0336",
+          "snapdom-authored": "261885d71985aa698b66491f"
+        }
+      },
+      {
+        "pairId": "698806d9ddf0d13d6fe0757b",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "06f825351bff858e2af30ae4",
+          "snapdom-authored": "8297a1cbc22b2ca29896c04a"
+        }
+      },
+      {
+        "pairId": "4d2190dd3a9e7e961f893563",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "b14f75cc65c950f2ab11a282",
+          "snapdom-authored": "e8bff769575d0bc055290b56"
+        }
+      },
+      {
+        "pairId": "aa95e079ffe5bcea289fb812",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "08504f2878f9030a4190bbef",
+          "snapdom-authored": "23b9637059d0fcde0870705f"
+        }
+      },
+      {
+        "pairId": "ed439c42aa9a08671565e628",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "88c998c7855d2277c26c6b9d",
+          "snapdom-authored": "7e448f9d60a154e4e6402ca2"
+        }
+      },
+      {
+        "pairId": "89d770cbdf588fcaeb77711d",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "206fdb89620efd71e41e3b51",
+          "snapdom-authored": "67308def51d45a31f6af4f49"
+        }
+      },
+      {
+        "pairId": "8ea293813adf142946782849",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "26b04466f2ff29d952a85df2",
+          "snapdom-authored": "7dbb7c5e06e5b52f04845ed5"
+        }
+      },
+      {
+        "pairId": "3a90891364e73ae1a7933684",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "12bcb506cbcd2a44608d1ac2",
+          "snapdom-authored": "13cfcb58c0988c73d6364ee9"
+        }
+      },
+      {
+        "pairId": "dbade58b9710a18360c155e8",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "67649311b8ba0c8c8a494090",
+          "snapdom-authored": "00fd28de6af2770e9f5da9a8"
+        }
+      },
+      {
+        "pairId": "a7189085241f8485129883d3",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a6b344c7d1d129d18635c5cc",
+          "snapdom-authored": "10d84fec3146b5294021d6da"
+        }
+      },
+      {
+        "pairId": "de4305b47be3b4427ee0d865",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d7d4cb810f50473790e335d4",
+          "snapdom-authored": "e01cc9042f57b135934b0583"
+        }
+      },
+      {
+        "pairId": "af190f4130d7e5926c76e282",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "72d8f0f8722be74a6c7f851f",
+          "snapdom-authored": "9f3ae9cceb9ef3a612fd093a"
+        }
+      },
+      {
+        "pairId": "f46f87f3f13d6f54fb933cdc",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0d4c03b40fbfee94885e0e6a",
+          "snapdom-authored": "ec6e35ccafb9103bfcc8a35a"
+        }
+      },
+      {
+        "pairId": "d6ef6451374f47d9d204e8c8",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1bdbfa854a40b2615b0f62a9",
+          "snapdom-authored": "14c4a4ec475f9f000129119e"
+        }
+      },
+      {
+        "pairId": "33d2a84e986ae1ec3ed9a2d3",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0fa54dddc0ef5cf1d53d6846",
+          "snapdom-authored": "307d761d37e35c05cb2bf98a"
+        }
+      },
+      {
+        "pairId": "ac3c2368c81faab68269a9ff",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e42c66e0cbc9daca4424bfea",
+          "snapdom-authored": "be04d409db73299a1e9f3a4e"
+        }
+      },
+      {
+        "pairId": "e1079120ff9f04f89c84585a",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e8184f41be1f14aca97d93cb",
+          "snapdom-authored": "485ee1c783f0e059e6840f8a"
+        }
+      },
+      {
+        "pairId": "b8875092f2365b1aaff8b24b",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8bcf6744d3f6647f893c3ea4",
+          "snapdom-authored": "57ad8d95e033b0979041399e"
+        }
+      },
+      {
+        "pairId": "2bf6bd8fbfc9946a099ab6c4",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "71c10f6b8935de5496698362",
+          "snapdom-authored": "01a96d930d9ac5cc73717161"
+        }
+      },
+      {
+        "pairId": "6342ee7a83bca4edfd0eaf91",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "45d983bd8c90cae8a88499e1",
+          "snapdom-authored": "7bb55048de9c26fbf42c678c"
+        }
+      },
+      {
+        "pairId": "9ea7c5f4293bc27845f521c2",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0c4316b9d809caf5327d6a6d",
+          "snapdom-authored": "065a1b35a6f6759976460cf8"
+        }
+      },
+      {
+        "pairId": "f336d4b4ad104416449b4f88",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ecbba87c311f54734dc6d2ef",
+          "snapdom-authored": "6b74aafc4a5ee0f35d112475"
+        }
+      },
+      {
+        "pairId": "2ef75cb0a95d4f304f704be9",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c84c90dcba344c649e3cfcd3",
+          "snapdom-authored": "3a7ee7219f54a0c81d01ac8b"
+        }
+      },
+      {
+        "pairId": "6d03b17c014457ed0479a5e4",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ce86bfbff54f280d91e367c5",
+          "snapdom-authored": "d8f31c2174acf0019989964c"
+        }
+      },
+      {
+        "pairId": "aeca573dc07bd86cc7d44223",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "fa554d06d2461673efd41d12",
+          "snapdom-authored": "c097a44e30f958d55855c8d3"
+        }
+      },
+      {
+        "pairId": "cf4b134f51ff162a2c29713d",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a3492657ee5efb142fcf0ce5",
+          "snapdom-authored": "a734b27584dbf2b2e1aab76b"
+        }
+      },
+      {
+        "pairId": "132ee8b084b332d144b047de",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "151710e06c7273decd15d206",
+          "snapdom-authored": "431f4fcd9755bc85eae934b6"
+        }
+      },
+      {
+        "pairId": "1b362eac906d62ff0ec866f6",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8754a09fa067f3849b3e02d3",
+          "snapdom-authored": "5a39d0f86a1ff46339434ffd"
+        }
+      },
+      {
+        "pairId": "4b179ac09ef2ddef3be2f754",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e22be275ad7deafdb0c902e5",
+          "snapdom-authored": "2f4a33305d8bb7b0627b5289"
+        }
+      },
+      {
+        "pairId": "3e98d95f2f170d9a05e70936",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ccac6d93f3f3b80070d01126",
+          "snapdom-authored": "27198224f764217fdf5933d8"
+        }
+      },
+      {
+        "pairId": "3f25da80c7b5fa0e3108fce4",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c20e8c8895fde93045e251f8",
+          "snapdom-authored": "b404f4b27f3bc44b6ea9082a"
+        }
+      },
+      {
+        "pairId": "15adb78baf400c64289c0783",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "eda4c407a74cbd701171b43c",
+          "snapdom-authored": "62a58d20792636e1d207c379"
+        }
+      },
+      {
+        "pairId": "c397bc6c980140b216d5b9f5",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4645accfbba899911dba6bc3",
+          "snapdom-authored": "0c032b63b9fe064ba792bb2b"
+        }
+      },
+      {
+        "pairId": "dbfd3212f6cc820611f02b46",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e84653052fd5081f536dc476",
+          "snapdom-authored": "652fd6e08c9e13d85409e8f6"
+        }
+      },
+      {
+        "pairId": "4e3cc7a7b643717cde6b4637",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "7b04e5463e17d27ef454dca0",
+          "snapdom-authored": "207891dfd1d159bbe0407a6e"
+        }
+      },
+      {
+        "pairId": "ac2b0072edeaa74ca8300c2c",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8cbb3d2db0b5e1d8cc4ff949",
+          "snapdom-authored": "635aa31339d978a1d5b8389b"
+        }
+      },
+      {
+        "pairId": "676c5d09d3bf58dcc85fc3b9",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "6d6a06be9651b1f2e52e6f19",
+          "snapdom-authored": "7b2490a81a0b33c15aa991df"
+        }
+      },
+      {
+        "pairId": "61d5e612f9bd4609d6b4936b",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "665e305b50249ca3571f1815",
+          "snapdom-authored": "b161c57d825902c15f68cea4"
+        }
+      },
+      {
+        "pairId": "8323cc9ade041b3df99aaa86",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4e0f812464024140ebf11ec3",
+          "snapdom-authored": "18339666b9fe5f46df86a022"
+        }
+      },
+      {
+        "pairId": "8f3c3be4a8443d9b5bc1addb",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8d9c64e0d7ca953b11bf071e",
+          "snapdom-authored": "a70a9f36b772c1981d22bb9f"
+        }
+      },
+      {
+        "pairId": "130b9944b9d9e4dde53bbb82",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1f51f2458bb9cffbf2834746",
+          "snapdom-authored": "00bf8fd28adefbae93a55865"
+        }
+      },
+      {
+        "pairId": "b898bc71a1bf8f00fc8e6913",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e98785d471e0fd153c499c78",
+          "snapdom-authored": "4a7ec23e46c64fc1e60c29db"
+        }
+      },
+      {
+        "pairId": "71058e1b8a353e2342ddb81a",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "71bb51e7cc6c9d53978edb8f",
+          "snapdom-authored": "09f5528af6dcf2eabaa5d280"
+        }
+      },
+      {
+        "pairId": "d5aa4c8102ed0fb10b042d23",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "de1af7348c54dc2c186ce60c",
+          "snapdom-authored": "33d569c69f178c6c1539903e"
+        }
+      },
+      {
+        "pairId": "0570fa47860b1e31d59daccb",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "3711e2170ae2696ca86cad0e",
+          "snapdom-authored": "71d9025bc0477c9e40b49d45"
+        }
+      },
+      {
+        "pairId": "46e0e6808835b4f64b216c7c",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8ed1fbacb588aa92f7721fb5",
+          "snapdom-authored": "7efaadef8cfebab0cfe4b267"
+        }
+      },
+      {
+        "pairId": "a9671ee4bdfe7fa60b47ea5a",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2f1f86c46e6472b649400e67",
+          "snapdom-authored": "8831e7717c3bdfe02e1a8556"
+        }
+      },
+      {
+        "pairId": "55ae24043073d9f5a0705998",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ba66b5d6c7bf3d9ffd6e0290",
+          "snapdom-authored": "98eb0edc797d691a465655eb"
+        }
+      },
+      {
+        "pairId": "169029d5c725fcfb60d320ed",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a2e4998ed588a2cb0eb25e5a",
+          "snapdom-authored": "9f6ade649b3387ee88bd1ed0"
+        }
+      },
+      {
+        "pairId": "297bea13812a19f3f40807d2",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "50f4503fa9eac67aab5f1bcf",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ce9dda4d462a19b4a8a294b4",
+          "snapdom-authored": "a7a368849072aafe69494a8e"
+        }
+      },
+      {
+        "pairId": "9bac3aa7f256b3474166de31",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "b0afb4eb3a90282ba4432cb7",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "8a21a6873a5cc9cc4aa3a5ea",
+          "snapdom-authored": "738fee7677dd2f104f8352cf"
+        }
+      },
+      {
+        "pairId": "a3a602c07e1b63f8a6f9a135",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0e77919f708d31af3c178cc0",
+          "snapdom-authored": "d57c9b63894c9e65057a27c0"
+        }
+      },
+      {
+        "pairId": "aa434ec2f1620b0aedb0fa9f",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "cf8bcd80928662e0873dc7cb",
+          "snapdom-authored": "efaba336d3e2a39c591ad62d"
+        }
+      },
+      {
+        "pairId": "a2fee031bbf90f7d3c29b047",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 8,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "022020cc9603b2287e763a1c",
+          "snapdom-authored": "9b6e64bd2116d20b882dcd2b"
+        }
+      },
+      {
+        "pairId": "4314c16990828c7fa60addb8",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "77ab2523c81815cea5253b3c",
+          "snapdom-authored": "a99b4d677ad45351a319f054"
+        }
+      },
+      {
+        "pairId": "8ee42509fabd499e9dc2dea3",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0d340a8eeddfc2d0d5190220",
+          "snapdom-authored": "fc825b2f590a687f96b80f95"
+        }
+      },
+      {
+        "pairId": "49ef0d80b4e3f2890de5d797",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "622b6bdefebb1d9c41bcdac2",
+          "snapdom-authored": "7780f7193be0ff2ad04cc196"
+        }
+      },
+      {
+        "pairId": "99a5405c4daa086031c6a314",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 6,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2acb09223f0763cf0b30656f",
+          "snapdom-authored": "ca1302030f665c7a8cadd44b"
+        }
+      },
+      {
+        "pairId": "8ef4ebbcc8776bd29ae2fb46",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2ec2caa3656b07c0744b21cf",
+          "snapdom-authored": "a50a9d55d5bd070d7ae66f8e"
+        }
+      },
+      {
+        "pairId": "f99c2cc680a7b22c2ff9ba58",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4e3079c6a4a43f6e0e62cc8e",
+          "snapdom-authored": "2dc0d5f550e9975d718e88f9"
+        }
+      },
+      {
+        "pairId": "ec43285c2260ca061fa01281",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "fbfea7932ac0d7669c36e435",
+          "snapdom-authored": "e27552d7a95345a734a60175"
+        }
+      },
+      {
+        "pairId": "bc6d0458b352350fbf25d065",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "7b3ae7ca87bea9d65c1fdb6a",
+          "snapdom-authored": "a306348552136485230dd240"
+        }
+      },
+      {
+        "pairId": "a46a89b2888c0b9e21d3f326",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c087bae2a99bd3b8fcb7ba69",
+          "snapdom-authored": "218e956b6480e2027c5f13a9"
+        }
+      },
+      {
+        "pairId": "f35127c3f4f71c2f245dfd35",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "20ae9cffd87b4848efcb89f0",
+          "snapdom-authored": "d2f4eaa1b1b5014ace8f6d65"
+        }
+      },
+      {
+        "pairId": "5ccac969dc8effc6f2971d2e",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "42ece5799b9723cbb3b2ede6",
+          "snapdom-authored": "13b388183939a49826b27d46"
+        }
+      },
+      {
+        "pairId": "5dc49ac5c8ae7c30c41ad754",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "260aac0c4dfa3ebf8aa65edd",
+          "snapdom-authored": "e05eaae9636be3d08dd404d9"
+        }
+      },
+      {
+        "pairId": "b75e7377b02007b6ac7fad5f",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "1d86dcbbfac18912ed980290",
+          "snapdom-authored": "67ef9fcdfcdd7a69862c0343"
+        }
+      },
+      {
+        "pairId": "bb316c4af3c32c40a4f56afa",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "31a8ff79454440bbe728dfb1",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0e3bcc220a70ac9628977fa8",
+          "snapdom-authored": "2bc4c66f25a53429c52deb0e"
+        }
+      },
+      {
+        "pairId": "d65f43ae11267d3a4cb26689",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2196d82e93e7e569daada5bd",
+          "snapdom-authored": "484dd31e169017cb6df5aee9"
+        }
+      },
+      {
+        "pairId": "9a23ba7c0bfbf49948bbdd51",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 1,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "dc57451e7df207d36d3d6a46",
+          "snapdom-authored": "97df96bf78fb9b81d9c81865"
+        }
+      },
+      {
+        "pairId": "04f4e669069b50af87f9bd6d",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "5a7a4124c9c468733741fe51",
+          "snapdom-authored": "d411f7c5c1a055b3b33cdf9c"
+        }
+      },
+      {
+        "pairId": "ec4ee8e482872e0fde4d9f69",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d5bc920ff318a1d3b5a52263",
+          "snapdom-authored": "fb3fbed82d3206bf3c63cbb5"
+        }
+      },
+      {
+        "pairId": "506897f9c7b0c864f165a24f",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "be21fdbb6338f32c983200ee",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "bdc0929983dcccaeb7c00a3b",
+          "snapdom-authored": "c7c4f4d823a7720d9604b86f"
+        }
+      },
+      {
+        "pairId": "f314b303f8548f4b4b0bd823",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "58e6a700ca3ee00e92cccc1a",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "48c355cdb685450ecf8f5dfd",
+          "snapdom-authored": "ab0f34c99829bda81797ea5c"
+        }
+      },
+      {
+        "pairId": "55a92873fda6ae1adec9eb0c",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c3e863fc758f963123581634",
+          "snapdom-authored": "76d2623faa94ffdace8fddb0"
+        }
+      },
+      {
+        "pairId": "70f26aeb8179a2a6a555d33d",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "9af1c2e2c9fe1a5791322924",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c1c93026a35267a276dd1b27",
+          "snapdom-authored": "6703d20006e166085166d5cc"
+        }
+      },
+      {
+        "pairId": "9f5c3532064ca7b87e874552",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "471dfa07286dd19fa8633b3f",
+        "repetition": 5,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "010ea1adf5770cac84ec4c77",
+          "snapdom-authored": "a97fa7d3d990b5b389d713cd"
+        }
+      },
+      {
+        "pairId": "188fea4a38dbfd4a42dd18d2",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ee0125194067552a6161f7b1",
+          "snapdom-authored": "67403250fe11a82448cd76f5"
+        }
+      },
+      {
+        "pairId": "e6840691f79d2f004c543284",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "df36080ba51dd5bda39ff74c",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "cf581c31a75745ea8347c164",
+          "snapdom-authored": "1a4ffa0b724628b2fb9a2e77"
+        }
+      },
+      {
+        "pairId": "e9eee75c442951a77100c43d",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 5,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2e2e9132ba8e81aace61b73b",
+          "snapdom-authored": "611fe7641f7a74f12eec9ed7"
+        }
+      },
+      {
+        "pairId": "27f0608a730ab40c2a6ac52f",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "549ac8b1c5d29731dbe7f1f2",
+          "snapdom-authored": "492e384570aad2179d962954"
+        }
+      },
+      {
+        "pairId": "a4062695f17a309bac6a3427",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "163b7e326ce2b176022c042e",
+          "snapdom-authored": "85f5181585d94388c3dd8e5b"
+        }
+      },
+      {
+        "pairId": "0eed6f26494f8206bec7519c",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "36f84ccf4847db5c67f2d167",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "edb084ef2d3e25b0a458afce",
+          "snapdom-authored": "cfe4e7c6ffa881c796c6df0b"
+        }
+      },
+      {
+        "pairId": "bbeaee0b4b5dd21b6eb1b849",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "b8509e4fcaed6d058deab6ed",
+          "snapdom-authored": "ae6dbe3f3ca547ce1fe56ade"
+        }
+      },
+      {
+        "pairId": "49df5e21a851628c827095a5",
+        "caseId": "S1",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "3c065decee897c2eeac9fd3c",
+        "repetition": 2,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "2929e19cf9a356b92c1454a4",
+          "snapdom-authored": "2db0efab2897129675fab547"
+        }
+      },
+      {
+        "pairId": "453ff8338d38082ce8dc68ec",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 9,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "32e8a8ee82378d5902657fba",
+          "snapdom-authored": "e18f6e638236e8c4252b7091"
+        }
+      },
+      {
+        "pairId": "1fdea57d43fc3f86ed48787d",
+        "caseId": "S3",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "f940f171df8f824807f80ec7",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "6dbb3bccd988fa5fcdf3cbf1",
+          "snapdom-authored": "dd1438c79c3ce528997b73af"
+        }
+      },
+      {
+        "pairId": "66142859fe946f3b37fa7a5b",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ea9fd14068e4aa274c31d45d",
+          "snapdom-authored": "9ef7aa2ef3571b5f364943e3"
+        }
+      },
+      {
+        "pairId": "4b1a6fc2aa445ffcdebf6a4d",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "a9bdaa1909957fd00facca04",
+          "snapdom-authored": "1fcf81caa4659258bd3d676d"
+        }
+      },
+      {
+        "pairId": "36f414b2f0e220af3bff0fb1",
+        "caseId": "T4",
+        "siteId": "todomvc",
+        "opaqueVariantId": "37de62d5779ed5737c21d278",
+        "repetition": 1,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ff55ddcf875ae2b8cd2efa43",
+          "snapdom-authored": "ceab9876f7dc6485ebe81d86"
+        }
+      },
+      {
+        "pairId": "8f514ff4930d0a873ddb2234",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "c74a442e137ff9226efa561e",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f57517e0cfdf77ee27b5564d",
+          "snapdom-authored": "dc3d35c40bf135e90e1044e2"
+        }
+      },
+      {
+        "pairId": "3d93fd183db7560dd2519393",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 0,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "dd8c57ebbb52e75d207493c2",
+          "snapdom-authored": "3503df14ff243e821a1a93fe"
+        }
+      },
+      {
+        "pairId": "5324bc25a5c8562e7f3c10e9",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 4,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "d3cdbdfd09dd3ae1b3a39439",
+          "snapdom-authored": "881eec24f3bdda17860ad526"
+        }
+      },
+      {
+        "pairId": "6e2286fcd6e02cf67e327657",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e6a94d1b0049798bc1789b03",
+          "snapdom-authored": "27084ed467c2014a2601a999"
+        }
+      },
+      {
+        "pairId": "b7c426a6a31353f4d98c74e6",
+        "caseId": "T1",
+        "siteId": "todomvc",
+        "opaqueVariantId": "afebab3918577ae97e18d879",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "5b09b1af5d8768a308116593",
+          "snapdom-authored": "983b54c10387c47d5a33afb4"
+        }
+      },
+      {
+        "pairId": "5e59c12f055137f03492a642",
+        "caseId": "T3",
+        "siteId": "todomvc",
+        "opaqueVariantId": "9caddad195600f95c2b3c32d",
+        "repetition": 3,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "c00b3478b001356991b4d5ad",
+          "snapdom-authored": "ab2d30b174243dde9699dd57"
+        }
+      },
+      {
+        "pairId": "b7a122dc497c4025be3e45a9",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "fdbb7be31699c4c4d7b5307a",
+        "repetition": 7,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "f670935eabc19397daaef403",
+          "snapdom-authored": "e81733a8a9f486aaf65fecc9"
+        }
+      },
+      {
+        "pairId": "f3b6c96f25b525504b60a7a4",
+        "caseId": "I3",
+        "siteId": "the-internet",
+        "opaqueVariantId": "cf868ee37a2e4376fe1f2b08",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "82abdf959767f451992a543d",
+          "snapdom-authored": "7a58a74954853861fe177a67"
+        }
+      },
+      {
+        "pairId": "80a42c7d92d635fe318d3b76",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "a9a066dfbf9388e854baee78",
+        "repetition": 0,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "e169d41b9a41485260bc0dcc",
+          "snapdom-authored": "493e6a6b0e5ee060a337e966"
+        }
+      },
+      {
+        "pairId": "f7a2f88b51fc49d6127fe28d",
+        "caseId": "I1",
+        "siteId": "the-internet",
+        "opaqueVariantId": "061f9e8658bd0f5e3d818513",
+        "repetition": 3,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "ff971fb00e8d8f7cb5b47495",
+          "snapdom-authored": "a6637273acb2bb1186a0fd02"
+        }
+      },
+      {
+        "pairId": "445a852a4558b135ea11f3ac",
+        "caseId": "I2",
+        "siteId": "the-internet",
+        "opaqueVariantId": "acde3b9ca5e594c7dddd55d4",
+        "repetition": 4,
+        "order": [
+          "playwright-authored",
+          "snapdom-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "7ebacea79f0109fd596282ea",
+          "snapdom-authored": "59416fa5b650b3a30191507c"
+        }
+      },
+      {
+        "pairId": "606c8378bfc1b890211c2153",
+        "caseId": "B2",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "e085bc878e087cec81cf660c",
+        "repetition": 9,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "84be45669a30714ad1d8a35e",
+          "snapdom-authored": "c2e5b5222e55a07fdaf2e484"
+        }
+      },
+      {
+        "pairId": "5ef99517655c01bd2cb10e66",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 2,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "4bfcf36629dfbf011d329686",
+          "snapdom-authored": "92677afd50cb1970c4694cec"
+        }
+      },
+      {
+        "pairId": "fd384c0daf24f4c6395fecc1",
+        "caseId": "S2",
+        "siteId": "saucedemo",
+        "opaqueVariantId": "33dbc676effb13a3325cb2ca",
+        "repetition": 8,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "15e99026735642a337fffd69",
+          "snapdom-authored": "440d613cdbe4ee546ecd818a"
+        }
+      },
+      {
+        "pairId": "a925c7572a21f6cb964cbbc9",
+        "caseId": "T2",
+        "siteId": "todomvc",
+        "opaqueVariantId": "626b46036b4500ada5f747e1",
+        "repetition": 6,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "0bcaebad6f2a82eb6eb0ac43",
+          "snapdom-authored": "2cb249ec682293dea2fad443"
+        }
+      },
+      {
+        "pairId": "22d3b4c425136e4a383070da",
+        "caseId": "B1",
+        "siteId": "bootstrap",
+        "opaqueVariantId": "ddbb1744bd34bbeba04f347d",
+        "repetition": 7,
+        "order": [
+          "snapdom-authored",
+          "playwright-authored"
+        ],
+        "runIds": {
+          "playwright-authored": "6cbb5200ef922711559ba4b6",
+          "snapdom-authored": "b7ebae9219f0228f98408ccb"
+        }
+      }
+    ],
+    "scoring": {
+      "verdicts": [
+        "PASS",
+        "FAIL",
+        "UNKNOWN",
+        "OP_ERROR"
+      ],
+      "falseGreen": "verifier PASS when sealed oracle FAIL",
+      "falseNegative": "verifier FAIL when sealed oracle PASS",
+      "unknownIsCorrect": false,
+      "primaryDenominator": "all scheduled ordinary determinate trials, including UNKNOWN and OP_ERROR"
+    },
+    "decisionRules": {
+      "integrity": "truth leak, oracle disagreement, source mutation, external request, incomplete schedule, or failed cleanup invalidates the run",
+      "safety": "any SnapDOM PASS on an oracle FAIL is a safety alarm and requires repair before further value claims",
+      "directionUnit": "case-level paired direction; repetitions assess stability and never count as independent cases",
+      "confirmatoryBoundary": "this pilot never establishes superiority or non-inferiority; independent cases and a powered preregistration are required",
+      "helperDefault": "without a material diagnostic or case-level detection gain, retain SnapDOM only as an optional Playwright helper"
+    },
+    "diagnosticReview": {
+      "selection": "repetitions 0 and 1 for every case and truth after results close",
+      "packetIdentity": "tool and arm names redacted; structural arm inference remains possible and arm guess must be recorded",
+      "pairedExposure": "one reviewer must not receive both arms of the same pair",
+      "rubric": [
+        "verdict",
+        "violatedConjuncts",
+        "targetIdentified",
+        "wrongTargetIdentified",
+        "coverageDiagnosed",
+        "uncertaintyDiagnosed",
+        "confidence",
+        "armGuess"
+      ]
+    },
+    "caveats": [
+      "versioned local replicas of four site families, not live-site population evidence",
+      "self-authored cases and intentionally balanced truth variants",
+      "repetitions measure flake and are not independent sites or cases",
+      "Playwright failure assertions use bounded retry time; latency is descriptive and not a speed comparison",
+      "evidence size means UTF-8 bytes of JSON serialization, not tokens or information quality",
+      "the verifier translations were tuned on these same fixtures during smoke development; the 10x run is stability validation, not holdout accuracy",
+      "some neutral conjuncts use authored fixture-specific selectors or scoped semantic proxies and are not general web predicates",
+      "pilot describes local direction and event diversity; it cannot validate confirmatory power or establish superiority"
+    ]
+  }
+}

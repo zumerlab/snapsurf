@@ -1,0 +1,4173 @@
+{
+  "schema": 1,
+  "classification": "single-machine synthetic descriptive local-cost and candidate-boundary-byte probe; not a token, model-quality, production-site, or commercial-demand claim",
+  "completedAt": "2026-08-12T20:31:15.300Z",
+  "runHistory": [
+    {
+      "attempt": 1,
+      "status": "RUN_DISCARDED_HARNESS_EXPECTATION",
+      "outputsWritten": false,
+      "reason": "The no-op probe contained a synthetic password. Sensor correctly returned zero semantic/actionability delta while retaining INDETERMINATE because a sensitive-input blind spot remained; the harness had incorrectly required NO_SUPPORTED_DELTA_DETECTED."
+    },
+    {
+      "attempt": 2,
+      "status": "REPORTED",
+      "correction": "The frozen gate is applied literally: zero semantic and actionability delta. INDETERMINATE remains visible and is not converted to PASS."
+    }
+  ],
+  "question": "When SnapDOM already runs in the client, what local work and candidate agent-boundary bytes are observed for raw SnapDOM, agent-map, Sensor, and their composition?",
+  "provenance": {
+    "runner": {
+      "path": "experiment/sensor-agent-cost.mjs",
+      "bytes": 40510,
+      "sha256": "4f73c4aa65d8ba41a125e2014c09a8d54a2dae2b5adf5262c2f012ea6b668250"
+    },
+    "preregistration": {
+      "path": "experiment/results/sensor-agent-cost-v1.preregistration.json",
+      "bytes": 3705,
+      "sha256": "9c98886017747018f6c4068d7e3e0a923e16ede3d4f8086672c0106567e62422"
+    },
+    "snapdom3": {
+      "path": "/Users/martin/GitHub/zumerlab/snapdom-agent/vendor/snapdom/dist/snapdom.mjs",
+      "bytes": 177150,
+      "sha256": "7db55c84f25bd50cbd0c417fee7b76158aad84688fd3cb1851bcc4b6a125a6fa"
+    },
+    "sensor": {
+      "path": "/Users/martin/GitHub/zumerlab/snapdom-agent/packages/sensor/dist/snapdom-sensor.js",
+      "bytes": 35725,
+      "sha256": "709fa649ce329dcfd67e3d6155d2937fb4f7bf970865ed6fa69e3c6b66106c1b",
+      "manifest": {
+        "schemaVersion": 1,
+        "package": "@zumer/snapdom-sensor",
+        "artifact": "dist/snapdom-sensor.js",
+        "format": "esm",
+        "platform": "browser",
+        "exports": [
+          "SENSOR_PLUGIN_NAME",
+          "SENSOR_REPORT_CONTRACT",
+          "sensor"
+        ],
+        "bytes": 35725,
+        "gzipBytes": 13404,
+        "brotliBytes": 12036,
+        "sha256": "709fa649ce329dcfd67e3d6155d2937fb4f7bf970865ed6fa69e3c6b66106c1b",
+        "peerDependencies": {
+          "@zumer/snapdom": ">=3.0.0-beta.0 <4"
+        },
+        "externalImports": [],
+        "buildInputs": {
+          "semanticKernel": "../../src/",
+          "interpretation": "The browser artifact bundles the semantic projection used by the plugin. It runs only from SnapDOM standard afterClone/defineExports hooks. The host supplies the @zumer/snapdom peer; Playwright, MCP and a browser controller are not imported."
+        },
+        "staticEvidence": {
+          "scope": "generated sensor bundle only",
+          "checkedPatterns": [
+            "fetch(",
+            "XMLHttpRequest",
+            "WebSocket",
+            "sendBeacon",
+            "node: import",
+            "Playwright"
+          ],
+          "matches": [],
+          "interpretation": "No references to the enumerated egress primitives or Node/Playwright imports were found. This is not an exhaustive network-capability audit and does not constrain the host page."
+        }
+      }
+    },
+    "snapdom224": {
+      "path": "/Users/martin/GitHub/zumerlab/snapdom/dist/snapdom.mjs",
+      "bytes": 155474,
+      "sha256": "45e3af4127a79e56010ea5282e459a8ce01565d8e26e97a77a5b6070eb8bb7a1",
+      "packageVersion": "2.24.1"
+    },
+    "agentMap": {
+      "path": "/Users/martin/GitHub/zumerlab/snapdom/packages/plugins/agent-map.js",
+      "bytes": 13902,
+      "sha256": "e645ff7f54bedcc66607f0538b081ff5890f63e029e6905b199a911f3df2a0a0",
+      "package": "@zumer/snapdom-plugins",
+      "packageVersion": "2.2.1"
+    }
+  },
+  "environment": {
+    "browser": "Playwright Chromium used only as an isolated harness",
+    "browserVersion": "140.0.7339.186",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "deviceScaleFactor": 1
+    },
+    "persistentProfile": false,
+    "personalChromeAccessed": false,
+    "externalFixtureResources": 0,
+    "observedHttpRequests": [],
+    "actualCloudOrModelCalls": 0
+  },
+  "fixture": {
+    "unrelatedRows": 120,
+    "actionablesPerUnrelatedRow": 3,
+    "targetAction": "aria-pressed false to true; status Idle to Saved; add link View receipt",
+    "scopes": [
+      "target",
+      "page"
+    ],
+    "authoredActionExcludedFromTiming": true
+  },
+  "measurement": {
+    "localCycleMs": "pre capture/export plus post capture/export; action excluded",
+    "candidateBoundaryBytes": "UTF-8 bytes of the exact data URL or JSON.stringify body; these bytes were measured locally and not transmitted",
+    "svgDecodedBytes": "UTF-8 bytes after decoding the data URL payload",
+    "visualBytes": "UTF-8 bytes of the PNG/WebP data URL",
+    "repetitions": 7,
+    "warmupsPerCell": 1,
+    "visualRepetitions": 3
+  },
+  "quality": {
+    "composition": {
+      "baselineStatus": "BASELINE_ESTABLISHED",
+      "quietStatus": "INDETERMINATE",
+      "quietSemanticTotal": 0,
+      "quietActionabilityLost": 0,
+      "quietActionabilityGained": 0,
+      "firstResultHasAgentMap": true,
+      "firstResultHasSensor": true,
+      "firstMapEntries": 2
+    },
+    "privacy": {
+      "syntheticSecret": "synthetic-secret-7f31-not-user-data",
+      "agentMapContainsSyntheticSecret": true,
+      "sensorReportContainsSyntheticSecret": false,
+      "snapdomSvgContainsSyntheticSecret": false
+    },
+    "attachedAgentMap224": {
+      "nativeRuntimeWorked": true,
+      "interactiveRootMapEntries": 0,
+      "interactiveRootDimensions": {
+        "width": 0,
+        "height": 0
+      },
+      "finding": "ROOT_ELEMENT_OMITTED_BY_QUERY_SELECTOR_ALL"
+    }
+  },
+  "primary": {
+    "arms": [
+      "raw",
+      "agent-map",
+      "sensor",
+      "combined"
+    ],
+    "scopes": [
+      "target",
+      "page"
+    ],
+    "summary": {
+      "target": {
+        "raw": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 4.2,
+            "p50": 4.4,
+            "p95": 4.67,
+            "max": 4.7
+          },
+          "captureCycleMs": {
+            "min": 4.2,
+            "p50": 4.4,
+            "p95": 4.67,
+            "max": 4.7
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "postSvgUrlBytes": {
+            "min": 26923,
+            "p50": 26923,
+            "p95": 26923,
+            "max": 26923
+          },
+          "postSvgDecodedBytes": {
+            "min": 20872,
+            "p50": 20872,
+            "p95": 20872,
+            "max": 20872
+          },
+          "postMapBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapPairBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "postSensorReportBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapEntries": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          }
+        },
+        "agent-map": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 4.3,
+            "p50": 4.8,
+            "p95": 5.32,
+            "max": 5.5
+          },
+          "captureCycleMs": {
+            "min": 4.3,
+            "p50": 4.8,
+            "p95": 5.32,
+            "max": 5.5
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "postSvgUrlBytes": {
+            "min": 26923,
+            "p50": 26923,
+            "p95": 26923,
+            "max": 26923
+          },
+          "postSvgDecodedBytes": {
+            "min": 20872,
+            "p50": 20872,
+            "p95": 20872,
+            "max": 20872
+          },
+          "postMapBytes": {
+            "min": 184,
+            "p50": 184,
+            "p95": 184,
+            "max": 184
+          },
+          "mapPairBytes": {
+            "min": 312,
+            "p50": 312,
+            "p95": 312,
+            "max": 312
+          },
+          "postSensorReportBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapEntries": {
+            "min": 2,
+            "p50": 2,
+            "p95": 2,
+            "max": 2
+          }
+        },
+        "sensor": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 4.9,
+            "p50": 5.3,
+            "p95": 6.62,
+            "max": 7.1
+          },
+          "captureCycleMs": {
+            "min": 4.8,
+            "p50": 5.3,
+            "p95": 6.55,
+            "max": 7
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0.17,
+            "max": 0.2
+          },
+          "postSvgUrlBytes": {
+            "min": 26923,
+            "p50": 26923,
+            "p95": 26923,
+            "max": 26923
+          },
+          "postSvgDecodedBytes": {
+            "min": 20872,
+            "p50": 20872,
+            "p95": 20872,
+            "max": 20872
+          },
+          "postMapBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapPairBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "postSensorReportBytes": {
+            "min": 2613,
+            "p50": 2613,
+            "p95": 2613,
+            "max": 2613
+          },
+          "mapEntries": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          }
+        },
+        "combined": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 5,
+            "p50": 5.5,
+            "p95": 5.84,
+            "max": 5.9
+          },
+          "captureCycleMs": {
+            "min": 5,
+            "p50": 5.5,
+            "p95": 5.77,
+            "max": 5.8
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0.1,
+            "max": 0.1
+          },
+          "postSvgUrlBytes": {
+            "min": 26923,
+            "p50": 26923,
+            "p95": 26923,
+            "max": 26923
+          },
+          "postSvgDecodedBytes": {
+            "min": 20872,
+            "p50": 20872,
+            "p95": 20872,
+            "max": 20872
+          },
+          "postMapBytes": {
+            "min": 184,
+            "p50": 184,
+            "p95": 184,
+            "max": 184
+          },
+          "mapPairBytes": {
+            "min": 312,
+            "p50": 312,
+            "p95": 312,
+            "max": 312
+          },
+          "postSensorReportBytes": {
+            "min": 2613,
+            "p50": 2613,
+            "p95": 2613,
+            "max": 2613
+          },
+          "mapEntries": {
+            "min": 2,
+            "p50": 2,
+            "p95": 2,
+            "max": 2
+          }
+        }
+      },
+      "page": {
+        "raw": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 104.3,
+            "p50": 107.5,
+            "p95": 110.52,
+            "max": 110.7
+          },
+          "captureCycleMs": {
+            "min": 104.3,
+            "p50": 107.5,
+            "p95": 110.52,
+            "max": 110.7
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "postSvgUrlBytes": {
+            "min": 180006,
+            "p50": 180006,
+            "p95": 180006,
+            "max": 180006
+          },
+          "postSvgDecodedBytes": {
+            "min": 114277,
+            "p50": 114277,
+            "p95": 114277,
+            "max": 114277
+          },
+          "postMapBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapPairBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "postSensorReportBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapEntries": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          }
+        },
+        "agent-map": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 110.5,
+            "p50": 112.2,
+            "p95": 115.92,
+            "max": 116.1
+          },
+          "captureCycleMs": {
+            "min": 110.4,
+            "p50": 112.2,
+            "p95": 115.92,
+            "max": 116.1
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0.1,
+            "max": 0.1
+          },
+          "postSvgUrlBytes": {
+            "min": 180006,
+            "p50": 180006,
+            "p95": 180006,
+            "max": 180006
+          },
+          "postSvgDecodedBytes": {
+            "min": 114277,
+            "p50": 114277,
+            "p95": 114277,
+            "max": 114277
+          },
+          "postMapBytes": {
+            "min": 23807,
+            "p50": 23807,
+            "p95": 23807,
+            "max": 23807
+          },
+          "mapPairBytes": {
+            "min": 47556,
+            "p50": 47556,
+            "p95": 47556,
+            "max": 47556
+          },
+          "postSensorReportBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapEntries": {
+            "min": 362,
+            "p50": 362,
+            "p95": 362,
+            "max": 362
+          }
+        },
+        "sensor": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 130.3,
+            "p50": 133.9,
+            "p95": 143.49,
+            "max": 145.8
+          },
+          "captureCycleMs": {
+            "min": 130.3,
+            "p50": 133.9,
+            "p95": 143.42,
+            "max": 145.7
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0.1,
+            "max": 0.1
+          },
+          "postSvgUrlBytes": {
+            "min": 180006,
+            "p50": 180006,
+            "p95": 180006,
+            "max": 180006
+          },
+          "postSvgDecodedBytes": {
+            "min": 114277,
+            "p50": 114277,
+            "p95": 114277,
+            "max": 114277
+          },
+          "postMapBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mapPairBytes": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "postSensorReportBytes": {
+            "min": 2617,
+            "p50": 2617,
+            "p95": 2617,
+            "max": 2617
+          },
+          "mapEntries": {
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          }
+        },
+        "combined": {
+          "trials": 7,
+          "localCycleMs": {
+            "min": 133.1,
+            "p50": 137.2,
+            "p95": 150.96,
+            "max": 153
+          },
+          "captureCycleMs": {
+            "min": 133.1,
+            "p50": 137.1,
+            "p95": 150.86,
+            "max": 152.9
+          },
+          "exportCycleMs": {
+            "min": 0,
+            "p50": 0.1,
+            "p95": 0.1,
+            "max": 0.1
+          },
+          "postSvgUrlBytes": {
+            "min": 180006,
+            "p50": 180006,
+            "p95": 180006,
+            "max": 180006
+          },
+          "postSvgDecodedBytes": {
+            "min": 114277,
+            "p50": 114277,
+            "p95": 114277,
+            "max": 114277
+          },
+          "postMapBytes": {
+            "min": 23807,
+            "p50": 23807,
+            "p95": 23807,
+            "max": 23807
+          },
+          "mapPairBytes": {
+            "min": 47556,
+            "p50": 47556,
+            "p95": 47556,
+            "max": 47556
+          },
+          "postSensorReportBytes": {
+            "min": 2617,
+            "p50": 2617,
+            "p95": 2617,
+            "max": 2617
+          },
+          "mapEntries": {
+            "min": 362,
+            "p50": 362,
+            "p95": 362,
+            "max": 362
+          }
+        }
+      }
+    },
+    "trials": [
+      {
+        "repetition": 0,
+        "order": 0,
+        "arm": "agent-map",
+        "scope": "target",
+        "localCycleMs": 5.5,
+        "captureCycleMs": 5.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.5,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 0,
+        "order": 1,
+        "arm": "sensor",
+        "scope": "target",
+        "localCycleMs": 5.500000238418579,
+        "captureCycleMs": 5.500000238418579,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.4000000953674316,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2.1000001430511475,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 0,
+        "order": 2,
+        "arm": "combined",
+        "scope": "target",
+        "localCycleMs": 5.700000047683716,
+        "captureCycleMs": 5.700000047683716,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.5999999046325684,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2.1000001430511475,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 0,
+        "order": 3,
+        "arm": "raw",
+        "scope": "target",
+        "localCycleMs": 4.599999904632568,
+        "captureCycleMs": 4.599999904632568,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.8999998569488525,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.7000000476837158,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 0,
+        "arm": "sensor",
+        "scope": "target",
+        "localCycleMs": 5.5,
+        "captureCycleMs": 5.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.5,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 1,
+        "arm": "combined",
+        "scope": "target",
+        "localCycleMs": 5.900000095367432,
+        "captureCycleMs": 5.800000190734863,
+        "exportCycleMs": 0.09999990463256836,
+        "before": {
+          "captureMs": 3.6000001430511475,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2.200000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 2,
+        "arm": "raw",
+        "scope": "target",
+        "localCycleMs": 4.3999998569488525,
+        "captureCycleMs": 4.3999998569488525,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.799999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.5999999046325684,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 3,
+        "arm": "agent-map",
+        "scope": "target",
+        "localCycleMs": 4.900000095367432,
+        "captureCycleMs": 4.900000095367432,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.9000000953674316,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 0,
+        "arm": "combined",
+        "scope": "target",
+        "localCycleMs": 5.5,
+        "captureCycleMs": 5.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.299999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2.200000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 1,
+        "arm": "raw",
+        "scope": "target",
+        "localCycleMs": 4.700000047683716,
+        "captureCycleMs": 4.700000047683716,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.9000000953674316,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.7999999523162842,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 2,
+        "arm": "agent-map",
+        "scope": "target",
+        "localCycleMs": 4.900000095367432,
+        "captureCycleMs": 4.900000095367432,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.200000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.7000000476837158,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 3,
+        "arm": "sensor",
+        "scope": "target",
+        "localCycleMs": 5.299999952316284,
+        "captureCycleMs": 5.299999952316284,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.200000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2.0999999046325684,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 0,
+        "arm": "raw",
+        "scope": "target",
+        "localCycleMs": 4.5,
+        "captureCycleMs": 4.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.8999998569488525,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.6000001430511475,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 1,
+        "arm": "agent-map",
+        "scope": "target",
+        "localCycleMs": 4.799999952316284,
+        "captureCycleMs": 4.799999952316284,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.7999999523162842,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 2,
+        "arm": "sensor",
+        "scope": "target",
+        "localCycleMs": 7.099999904632568,
+        "captureCycleMs": 7,
+        "exportCycleMs": 0.09999990463256836,
+        "before": {
+          "captureMs": 5,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 3,
+        "arm": "combined",
+        "scope": "target",
+        "localCycleMs": 5.5,
+        "captureCycleMs": 5.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.200000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2.299999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 0,
+        "arm": "agent-map",
+        "scope": "target",
+        "localCycleMs": 4.3999998569488525,
+        "captureCycleMs": 4.3999998569488525,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.799999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.5999999046325684,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 1,
+        "arm": "sensor",
+        "scope": "target",
+        "localCycleMs": 5,
+        "captureCycleMs": 4.799999952316284,
+        "exportCycleMs": 0.20000004768371582,
+        "before": {
+          "captureMs": 3.0999999046325684,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.7000000476837158,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 2,
+        "arm": "combined",
+        "scope": "target",
+        "localCycleMs": 5.200000047683716,
+        "captureCycleMs": 5.099999904632568,
+        "exportCycleMs": 0.10000014305114746,
+        "before": {
+          "captureMs": 3,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 2.0999999046325684,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 3,
+        "arm": "raw",
+        "scope": "target",
+        "localCycleMs": 4.200000047683716,
+        "captureCycleMs": 4.200000047683716,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.700000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.5,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 0,
+        "arm": "sensor",
+        "scope": "target",
+        "localCycleMs": 4.999999761581421,
+        "captureCycleMs": 4.999999761581421,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.0999999046325684,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.8999998569488525,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 1,
+        "arm": "combined",
+        "scope": "target",
+        "localCycleMs": 5.000000238418579,
+        "captureCycleMs": 5.000000238418579,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.1000001430511475,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.9000000953674316,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 2,
+        "arm": "raw",
+        "scope": "target",
+        "localCycleMs": 4.400000095367432,
+        "captureCycleMs": 4.400000095367432,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.799999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.6000001430511475,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 3,
+        "arm": "agent-map",
+        "scope": "target",
+        "localCycleMs": 4.299999952316284,
+        "captureCycleMs": 4.299999952316284,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.799999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.5,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 0,
+        "arm": "combined",
+        "scope": "target",
+        "localCycleMs": 5,
+        "captureCycleMs": 5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.1000001430511475,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.8999998569488525,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 1,
+        "arm": "raw",
+        "scope": "target",
+        "localCycleMs": 4.3999998569488525,
+        "captureCycleMs": 4.3999998569488525,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 2.8999998569488525,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.5,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 2,
+        "arm": "agent-map",
+        "scope": "target",
+        "localCycleMs": 4.799999952316284,
+        "captureCycleMs": 4.799999952316284,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 3.0999999046325684,
+          "exportMs": 0,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 128,
+          "mapEntries": 1,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.7000000476837158,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 184,
+          "mapEntries": 2,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 312,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 2,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 3,
+        "arm": "sensor",
+        "scope": "target",
+        "localCycleMs": 4.900000095367432,
+        "captureCycleMs": 4.800000190734863,
+        "exportCycleMs": 0.09999990463256836,
+        "before": {
+          "captureMs": 3,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 26079,
+          "svgDecodedBytes": 20208,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1087,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 1.8000001907348633,
+          "exportMs": 0,
+          "svgUrlBytes": 26923,
+          "svgDecodedBytes": 20872,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2613,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 53002,
+          "mapPair": 0,
+          "sensorDelta": 2613
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 0,
+        "order": 0,
+        "arm": "combined",
+        "scope": "page",
+        "localCycleMs": 138.09999990463257,
+        "captureCycleMs": 138.09999990463257,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 68.09999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 70,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 0,
+        "order": 1,
+        "arm": "raw",
+        "scope": "page",
+        "localCycleMs": 110.09999990463257,
+        "captureCycleMs": 110.09999990463257,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 56.09999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 54,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 0,
+        "order": 2,
+        "arm": "agent-map",
+        "scope": "page",
+        "localCycleMs": 112.79999995231628,
+        "captureCycleMs": 112.79999995231628,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 57.09999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 55.700000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 0,
+        "order": 3,
+        "arm": "sensor",
+        "scope": "page",
+        "localCycleMs": 136.09999990463257,
+        "captureCycleMs": 136,
+        "exportCycleMs": 0.09999990463256836,
+        "before": {
+          "captureMs": 67.79999995231628,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 68.20000004768372,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 0,
+        "arm": "raw",
+        "scope": "page",
+        "localCycleMs": 110.69999980926514,
+        "captureCycleMs": 110.69999980926514,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 57.299999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 53.39999985694885,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 1,
+        "arm": "agent-map",
+        "scope": "page",
+        "localCycleMs": 115.5,
+        "captureCycleMs": 115.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 58.200000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 57.299999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 2,
+        "arm": "sensor",
+        "scope": "page",
+        "localCycleMs": 138.09999990463257,
+        "captureCycleMs": 138.09999990463257,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 69.79999995231628,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 68.29999995231628,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 1,
+        "order": 3,
+        "arm": "combined",
+        "scope": "page",
+        "localCycleMs": 153,
+        "captureCycleMs": 152.89999985694885,
+        "exportCycleMs": 0.10000014305114746,
+        "before": {
+          "captureMs": 85.5,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 67.39999985694885,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 0,
+        "arm": "agent-map",
+        "scope": "page",
+        "localCycleMs": 110.5,
+        "captureCycleMs": 110.39999985694885,
+        "exportCycleMs": 0.10000014305114746,
+        "before": {
+          "captureMs": 56.5,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 53.89999985694885,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 1,
+        "arm": "sensor",
+        "scope": "page",
+        "localCycleMs": 130.2999997138977,
+        "captureCycleMs": 130.2999997138977,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 65.09999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 65.19999980926514,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 2,
+        "arm": "combined",
+        "scope": "page",
+        "localCycleMs": 133.09999990463257,
+        "captureCycleMs": 133.09999990463257,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 66.70000004768372,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 66.39999985694885,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 2,
+        "order": 3,
+        "arm": "raw",
+        "scope": "page",
+        "localCycleMs": 106.60000014305115,
+        "captureCycleMs": 106.60000014305115,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 54,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 52.60000014305115,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 0,
+        "arm": "sensor",
+        "scope": "page",
+        "localCycleMs": 132.10000014305115,
+        "captureCycleMs": 132.10000014305115,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 66.70000004768372,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 65.40000009536743,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 1,
+        "arm": "combined",
+        "scope": "page",
+        "localCycleMs": 136.09999990463257,
+        "captureCycleMs": 136,
+        "exportCycleMs": 0.09999990463256836,
+        "before": {
+          "captureMs": 67.29999995231628,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 68.70000004768372,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 2,
+        "arm": "raw",
+        "scope": "page",
+        "localCycleMs": 107.5,
+        "captureCycleMs": 107.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 54.40000009536743,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 53.09999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 3,
+        "order": 3,
+        "arm": "agent-map",
+        "scope": "page",
+        "localCycleMs": 111.10000014305115,
+        "captureCycleMs": 111,
+        "exportCycleMs": 0.10000014305114746,
+        "before": {
+          "captureMs": 55.60000014305115,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 55.39999985694885,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 0,
+        "arm": "combined",
+        "scope": "page",
+        "localCycleMs": 146.19999980926514,
+        "captureCycleMs": 146.099999666214,
+        "exportCycleMs": 0.10000014305114746,
+        "before": {
+          "captureMs": 78.39999985694885,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 67.69999980926514,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 1,
+        "arm": "raw",
+        "scope": "page",
+        "localCycleMs": 107.5,
+        "captureCycleMs": 107.5,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 54.5,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 53,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 2,
+        "arm": "agent-map",
+        "scope": "page",
+        "localCycleMs": 112.19999980926514,
+        "captureCycleMs": 112.19999980926514,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 56.299999952316284,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 55.89999985694885,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 4,
+        "order": 3,
+        "arm": "sensor",
+        "scope": "page",
+        "localCycleMs": 133.90000009536743,
+        "captureCycleMs": 133.90000009536743,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 68,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 65.90000009536743,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 0,
+        "arm": "raw",
+        "scope": "page",
+        "localCycleMs": 108.60000014305115,
+        "captureCycleMs": 108.60000014305115,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 54.90000009536743,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 53.700000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 1,
+        "arm": "agent-map",
+        "scope": "page",
+        "localCycleMs": 112,
+        "captureCycleMs": 111.89999985694885,
+        "exportCycleMs": 0.10000014305114746,
+        "before": {
+          "captureMs": 56.59999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 55.299999952316284,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 2,
+        "arm": "sensor",
+        "scope": "page",
+        "localCycleMs": 133.59999990463257,
+        "captureCycleMs": 133.59999990463257,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 66.29999995231628,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 67.29999995231628,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 5,
+        "order": 3,
+        "arm": "combined",
+        "scope": "page",
+        "localCycleMs": 136,
+        "captureCycleMs": 135.90000009536743,
+        "exportCycleMs": 0.09999990463256836,
+        "before": {
+          "captureMs": 68.10000014305115,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 67.79999995231628,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 0,
+        "arm": "agent-map",
+        "scope": "page",
+        "localCycleMs": 116.09999990463257,
+        "captureCycleMs": 116.09999990463257,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 58,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 58.09999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 1,
+        "arm": "sensor",
+        "scope": "page",
+        "localCycleMs": 145.80000019073486,
+        "captureCycleMs": 145.70000004768372,
+        "exportCycleMs": 0.10000014305114746,
+        "before": {
+          "captureMs": 78,
+          "exportMs": 0.10000014305114746,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 67.70000004768372,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 2,
+        "arm": "combined",
+        "scope": "page",
+        "localCycleMs": 137.19999980926514,
+        "captureCycleMs": 137.09999990463257,
+        "exportCycleMs": 0.09999990463256836,
+        "before": {
+          "captureMs": 69,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 23749,
+          "mapEntries": 361,
+          "reportBytes": 1089,
+          "reportStatus": "BASELINE_ESTABLISHED",
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 68.09999990463257,
+          "exportMs": 0.09999990463256836,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 23807,
+          "mapEntries": 362,
+          "reportBytes": 2617,
+          "reportStatus": "DELTA_DETECTED",
+          "semanticChanges": 3
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 47556,
+          "sensorDelta": 2617
+        },
+        "quality": {
+          "sensorExact": true,
+          "sensorFacts": {
+            "exactState": true,
+            "exactStatus": true,
+            "exactAdded": true
+          },
+          "mapExact": true,
+          "mapEntries": 362,
+          "combinedExports": true
+        }
+      },
+      {
+        "repetition": 6,
+        "order": 3,
+        "arm": "raw",
+        "scope": "page",
+        "localCycleMs": 104.29999995231628,
+        "captureCycleMs": 104.29999995231628,
+        "exportCycleMs": 0,
+        "before": {
+          "captureMs": 52.200000047683716,
+          "exportMs": 0,
+          "svgUrlBytes": 179164,
+          "svgDecodedBytes": 113613,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "after": {
+          "captureMs": 52.09999990463257,
+          "exportMs": 0,
+          "svgUrlBytes": 180006,
+          "svgDecodedBytes": 114277,
+          "mapBytes": 0,
+          "mapEntries": 0,
+          "reportBytes": 0,
+          "reportStatus": null,
+          "semanticChanges": 0
+        },
+        "transitionStateBytes": {
+          "svgPair": 359170,
+          "mapPair": 0,
+          "sensorDelta": 0
+        },
+        "quality": {
+          "sensorExact": null,
+          "sensorFacts": null,
+          "mapExact": null,
+          "mapEntries": 0,
+          "combinedExports": null
+        }
+      }
+    ]
+  },
+  "visualScaleDpr": {
+    "profiles": [
+      {
+        "name": "low",
+        "scale": 0.5,
+        "dpr": 1
+      },
+      {
+        "name": "standard",
+        "scale": 1,
+        "dpr": 1
+      },
+      {
+        "name": "equal-effective",
+        "scale": 0.5,
+        "dpr": 2
+      },
+      {
+        "name": "retina",
+        "scale": 1,
+        "dpr": 2
+      }
+    ],
+    "summary": {
+      "snapdom224": {
+        "low": {
+          "scale": 0.5,
+          "dpr": 1,
+          "effectiveRasterScale": 0.5,
+          "captureMs": {
+            "min": 2.5,
+            "p50": 2.5,
+            "p95": 3.67,
+            "max": 3.8
+          },
+          "exportMs": {
+            "min": 11.6,
+            "p50": 13.2,
+            "p95": 18.24,
+            "max": 18.8
+          },
+          "svgDecodedBytes": {
+            "min": 30418,
+            "p50": 30418,
+            "p95": 30418,
+            "max": 30418
+          },
+          "pngDataUrlBytes": {
+            "min": 218418,
+            "p50": 218418,
+            "p95": 218418,
+            "max": 218418
+          },
+          "pngNaturalWidth": {
+            "min": 482,
+            "p50": 482,
+            "p95": 482,
+            "max": 482
+          },
+          "pngNaturalHeight": {
+            "min": 292,
+            "p50": 292,
+            "p95": 292,
+            "max": 292
+          }
+        },
+        "standard": {
+          "scale": 1,
+          "dpr": 1,
+          "effectiveRasterScale": 1,
+          "captureMs": {
+            "min": 2.5,
+            "p50": 2.5,
+            "p95": 2.59,
+            "max": 2.6
+          },
+          "exportMs": {
+            "min": 12,
+            "p50": 23.4,
+            "p95": 25.92,
+            "max": 26.2
+          },
+          "svgDecodedBytes": {
+            "min": 30418,
+            "p50": 30418,
+            "p95": 30418,
+            "max": 30418
+          },
+          "pngDataUrlBytes": {
+            "min": 812878,
+            "p50": 812878,
+            "p95": 812878,
+            "max": 812878
+          },
+          "pngNaturalWidth": {
+            "min": 964,
+            "p50": 964,
+            "p95": 964,
+            "max": 964
+          },
+          "pngNaturalHeight": {
+            "min": 584,
+            "p50": 584,
+            "p95": 584,
+            "max": 584
+          }
+        },
+        "equal-effective": {
+          "scale": 0.5,
+          "dpr": 2,
+          "effectiveRasterScale": 1,
+          "captureMs": {
+            "min": 2.1,
+            "p50": 2.3,
+            "p95": 2.48,
+            "max": 2.5
+          },
+          "exportMs": {
+            "min": 11.9,
+            "p50": 12.3,
+            "p95": 13.02,
+            "max": 13.1
+          },
+          "svgDecodedBytes": {
+            "min": 30418,
+            "p50": 30418,
+            "p95": 30418,
+            "max": 30418
+          },
+          "pngDataUrlBytes": {
+            "min": 812878,
+            "p50": 812878,
+            "p95": 812878,
+            "max": 812878
+          },
+          "pngNaturalWidth": {
+            "min": 964,
+            "p50": 964,
+            "p95": 964,
+            "max": 964
+          },
+          "pngNaturalHeight": {
+            "min": 584,
+            "p50": 584,
+            "p95": 584,
+            "max": 584
+          }
+        },
+        "retina": {
+          "scale": 1,
+          "dpr": 2,
+          "effectiveRasterScale": 2,
+          "captureMs": {
+            "min": 2.4,
+            "p50": 2.4,
+            "p95": 2.58,
+            "max": 2.6
+          },
+          "exportMs": {
+            "min": 44.4,
+            "p50": 50.4,
+            "p95": 61.83,
+            "max": 63.1
+          },
+          "svgDecodedBytes": {
+            "min": 30418,
+            "p50": 30418,
+            "p95": 30418,
+            "max": 30418
+          },
+          "pngDataUrlBytes": {
+            "min": 2862790,
+            "p50": 2862790,
+            "p95": 2862790,
+            "max": 2862790
+          },
+          "pngNaturalWidth": {
+            "min": 1928,
+            "p50": 1928,
+            "p95": 1928,
+            "max": 1928
+          },
+          "pngNaturalHeight": {
+            "min": 1168,
+            "p50": 1168,
+            "p95": 1168,
+            "max": 1168
+          }
+        }
+      },
+      "snapdom3": {
+        "low": {
+          "scale": 0.5,
+          "dpr": 1,
+          "effectiveRasterScale": 0.5,
+          "captureMs": {
+            "min": 1.6,
+            "p50": 1.8,
+            "p95": 2.07,
+            "max": 2.1
+          },
+          "exportMs": {
+            "min": 10,
+            "p50": 14.1,
+            "p95": 14.1,
+            "max": 14.1
+          },
+          "svgDecodedBytes": {
+            "min": 17987,
+            "p50": 17987,
+            "p95": 17987,
+            "max": 17987
+          },
+          "pngDataUrlBytes": {
+            "min": 218418,
+            "p50": 218418,
+            "p95": 218418,
+            "max": 218418
+          },
+          "pngNaturalWidth": {
+            "min": 482,
+            "p50": 482,
+            "p95": 482,
+            "max": 482
+          },
+          "pngNaturalHeight": {
+            "min": 292,
+            "p50": 292,
+            "p95": 292,
+            "max": 292
+          }
+        },
+        "standard": {
+          "scale": 1,
+          "dpr": 1,
+          "effectiveRasterScale": 1,
+          "captureMs": {
+            "min": 1.8,
+            "p50": 2,
+            "p95": 2.09,
+            "max": 2.1
+          },
+          "exportMs": {
+            "min": 13,
+            "p50": 19.9,
+            "p95": 29.17,
+            "max": 30.2
+          },
+          "svgDecodedBytes": {
+            "min": 17987,
+            "p50": 17987,
+            "p95": 17987,
+            "max": 17987
+          },
+          "pngDataUrlBytes": {
+            "min": 812878,
+            "p50": 812878,
+            "p95": 812878,
+            "max": 812878
+          },
+          "pngNaturalWidth": {
+            "min": 964,
+            "p50": 964,
+            "p95": 964,
+            "max": 964
+          },
+          "pngNaturalHeight": {
+            "min": 584,
+            "p50": 584,
+            "p95": 584,
+            "max": 584
+          }
+        },
+        "equal-effective": {
+          "scale": 0.5,
+          "dpr": 2,
+          "effectiveRasterScale": 1,
+          "captureMs": {
+            "min": 1.8,
+            "p50": 1.9,
+            "p95": 1.99,
+            "max": 2
+          },
+          "exportMs": {
+            "min": 13,
+            "p50": 13.2,
+            "p95": 13.2,
+            "max": 13.2
+          },
+          "svgDecodedBytes": {
+            "min": 17987,
+            "p50": 17987,
+            "p95": 17987,
+            "max": 17987
+          },
+          "pngDataUrlBytes": {
+            "min": 812878,
+            "p50": 812878,
+            "p95": 812878,
+            "max": 812878
+          },
+          "pngNaturalWidth": {
+            "min": 964,
+            "p50": 964,
+            "p95": 964,
+            "max": 964
+          },
+          "pngNaturalHeight": {
+            "min": 584,
+            "p50": 584,
+            "p95": 584,
+            "max": 584
+          }
+        },
+        "retina": {
+          "scale": 1,
+          "dpr": 2,
+          "effectiveRasterScale": 2,
+          "captureMs": {
+            "min": 1.8,
+            "p50": 1.8,
+            "p95": 1.8,
+            "max": 1.8
+          },
+          "exportMs": {
+            "min": 41.6,
+            "p50": 43.2,
+            "p95": 59.13,
+            "max": 60.9
+          },
+          "svgDecodedBytes": {
+            "min": 17987,
+            "p50": 17987,
+            "p95": 17987,
+            "max": 17987
+          },
+          "pngDataUrlBytes": {
+            "min": 2862790,
+            "p50": 2862790,
+            "p95": 2862790,
+            "max": 2862790
+          },
+          "pngNaturalWidth": {
+            "min": 1928,
+            "p50": 1928,
+            "p95": 1928,
+            "max": 1928
+          },
+          "pngNaturalHeight": {
+            "min": 1168,
+            "p50": 1168,
+            "p95": 1168,
+            "max": 1168
+          }
+        }
+      }
+    },
+    "trials": [
+      {
+        "runtime": "snapdom224",
+        "profile": "low",
+        "scale": 0.5,
+        "dpr": 1,
+        "effectiveRasterScale": 0.5,
+        "repetition": 0,
+        "captureMs": 3.799999952316284,
+        "exportMs": 18.800000190734863,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 218418,
+        "pngNaturalWidth": 482,
+        "pngNaturalHeight": 292
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "low",
+        "scale": 0.5,
+        "dpr": 1,
+        "effectiveRasterScale": 0.5,
+        "repetition": 1,
+        "captureMs": 2.5,
+        "exportMs": 11.599999904632568,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 218418,
+        "pngNaturalWidth": 482,
+        "pngNaturalHeight": 292
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "low",
+        "scale": 0.5,
+        "dpr": 1,
+        "effectiveRasterScale": 0.5,
+        "repetition": 2,
+        "captureMs": 2.5,
+        "exportMs": 13.199999809265137,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 218418,
+        "pngNaturalWidth": 482,
+        "pngNaturalHeight": 292
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "standard",
+        "scale": 1,
+        "dpr": 1,
+        "effectiveRasterScale": 1,
+        "repetition": 0,
+        "captureMs": 2.5,
+        "exportMs": 26.200000047683716,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "standard",
+        "scale": 1,
+        "dpr": 1,
+        "effectiveRasterScale": 1,
+        "repetition": 1,
+        "captureMs": 2.6000001430511475,
+        "exportMs": 23.399999856948853,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "standard",
+        "scale": 1,
+        "dpr": 1,
+        "effectiveRasterScale": 1,
+        "repetition": 2,
+        "captureMs": 2.5,
+        "exportMs": 12,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "equal-effective",
+        "scale": 0.5,
+        "dpr": 2,
+        "effectiveRasterScale": 1,
+        "repetition": 0,
+        "captureMs": 2.299999952316284,
+        "exportMs": 11.900000095367432,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "equal-effective",
+        "scale": 0.5,
+        "dpr": 2,
+        "effectiveRasterScale": 1,
+        "repetition": 1,
+        "captureMs": 2.1000001430511475,
+        "exportMs": 13.099999904632568,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "equal-effective",
+        "scale": 0.5,
+        "dpr": 2,
+        "effectiveRasterScale": 1,
+        "repetition": 2,
+        "captureMs": 2.5,
+        "exportMs": 12.299999952316284,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "retina",
+        "scale": 1,
+        "dpr": 2,
+        "effectiveRasterScale": 2,
+        "repetition": 0,
+        "captureMs": 2.4000000953674316,
+        "exportMs": 63.09999990463257,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 2862790,
+        "pngNaturalWidth": 1928,
+        "pngNaturalHeight": 1168
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "retina",
+        "scale": 1,
+        "dpr": 2,
+        "effectiveRasterScale": 2,
+        "repetition": 1,
+        "captureMs": 2.6000001430511475,
+        "exportMs": 44.39999985694885,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 2862790,
+        "pngNaturalWidth": 1928,
+        "pngNaturalHeight": 1168
+      },
+      {
+        "runtime": "snapdom224",
+        "profile": "retina",
+        "scale": 1,
+        "dpr": 2,
+        "effectiveRasterScale": 2,
+        "repetition": 2,
+        "captureMs": 2.4000000953674316,
+        "exportMs": 50.40000009536743,
+        "svgUrlBytes": 38483,
+        "svgDecodedBytes": 30418,
+        "pngDataUrlBytes": 2862790,
+        "pngNaturalWidth": 1928,
+        "pngNaturalHeight": 1168
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "low",
+        "scale": 0.5,
+        "dpr": 1,
+        "effectiveRasterScale": 0.5,
+        "repetition": 0,
+        "captureMs": 2.0999999046325684,
+        "exportMs": 10,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 218418,
+        "pngNaturalWidth": 482,
+        "pngNaturalHeight": 292
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "low",
+        "scale": 0.5,
+        "dpr": 1,
+        "effectiveRasterScale": 0.5,
+        "repetition": 1,
+        "captureMs": 1.7999999523162842,
+        "exportMs": 14.100000143051147,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 218418,
+        "pngNaturalWidth": 482,
+        "pngNaturalHeight": 292
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "low",
+        "scale": 0.5,
+        "dpr": 1,
+        "effectiveRasterScale": 0.5,
+        "repetition": 2,
+        "captureMs": 1.5999999046325684,
+        "exportMs": 14.099999904632568,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 218418,
+        "pngNaturalWidth": 482,
+        "pngNaturalHeight": 292
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "standard",
+        "scale": 1,
+        "dpr": 1,
+        "effectiveRasterScale": 1,
+        "repetition": 0,
+        "captureMs": 2,
+        "exportMs": 30.200000047683716,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "standard",
+        "scale": 1,
+        "dpr": 1,
+        "effectiveRasterScale": 1,
+        "repetition": 1,
+        "captureMs": 2.0999999046325684,
+        "exportMs": 19.90000009536743,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "standard",
+        "scale": 1,
+        "dpr": 1,
+        "effectiveRasterScale": 1,
+        "repetition": 2,
+        "captureMs": 1.8000001907348633,
+        "exportMs": 13,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "equal-effective",
+        "scale": 0.5,
+        "dpr": 2,
+        "effectiveRasterScale": 1,
+        "repetition": 0,
+        "captureMs": 2,
+        "exportMs": 13.200000047683716,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "equal-effective",
+        "scale": 0.5,
+        "dpr": 2,
+        "effectiveRasterScale": 1,
+        "repetition": 1,
+        "captureMs": 1.9000000953674316,
+        "exportMs": 13,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "equal-effective",
+        "scale": 0.5,
+        "dpr": 2,
+        "effectiveRasterScale": 1,
+        "repetition": 2,
+        "captureMs": 1.8000001907348633,
+        "exportMs": 13.199999809265137,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 812878,
+        "pngNaturalWidth": 964,
+        "pngNaturalHeight": 584
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "retina",
+        "scale": 1,
+        "dpr": 2,
+        "effectiveRasterScale": 2,
+        "repetition": 0,
+        "captureMs": 1.7999999523162842,
+        "exportMs": 60.90000009536743,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 2862790,
+        "pngNaturalWidth": 1928,
+        "pngNaturalHeight": 1168
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "retina",
+        "scale": 1,
+        "dpr": 2,
+        "effectiveRasterScale": 2,
+        "repetition": 1,
+        "captureMs": 1.8000001907348633,
+        "exportMs": 43.19999980926514,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 2862790,
+        "pngNaturalWidth": 1928,
+        "pngNaturalHeight": 1168
+      },
+      {
+        "runtime": "snapdom3",
+        "profile": "retina",
+        "scale": 1,
+        "dpr": 2,
+        "effectiveRasterScale": 2,
+        "repetition": 2,
+        "captureMs": 1.7999999523162842,
+        "exportMs": 41.59999990463257,
+        "svgUrlBytes": 23462,
+        "svgDecodedBytes": 17987,
+        "pngDataUrlBytes": 2862790,
+        "pngNaturalWidth": 1928,
+        "pngNaturalHeight": 1168
+      }
+    ]
+  },
+  "agentMapImageWidth": {
+    "widths": [
+      320,
+      640,
+      1024
+    ],
+    "summary": {
+      "320": {
+        "captureMs": {
+          "min": 1.8,
+          "p50": 2.2,
+          "p95": 2.38,
+          "max": 2.4
+        },
+        "exportMs": {
+          "min": 2,
+          "p50": 2.1,
+          "p95": 3.27,
+          "max": 3.4
+        },
+        "imageBytes": {
+          "min": 2219,
+          "p50": 2219,
+          "p95": 2219,
+          "max": 2219
+        },
+        "mapBytes": {
+          "min": 150,
+          "p50": 150,
+          "p95": 150,
+          "max": 150
+        },
+        "outputWidth": {
+          "min": 320,
+          "p50": 320,
+          "p95": 320,
+          "max": 320
+        },
+        "outputHeight": {
+          "min": 193,
+          "p50": 193,
+          "p95": 193,
+          "max": 193
+        },
+        "entries": {
+          "min": 2,
+          "p50": 2,
+          "p95": 2,
+          "max": 2
+        }
+      },
+      "640": {
+        "captureMs": {
+          "min": 1.8,
+          "p50": 2,
+          "p95": 2,
+          "max": 2
+        },
+        "exportMs": {
+          "min": 6.8,
+          "p50": 6.8,
+          "p95": 6.98,
+          "max": 7
+        },
+        "imageBytes": {
+          "min": 4495,
+          "p50": 4495,
+          "p95": 4495,
+          "max": 4495
+        },
+        "mapBytes": {
+          "min": 150,
+          "p50": 150,
+          "p95": 150,
+          "max": 150
+        },
+        "outputWidth": {
+          "min": 640,
+          "p50": 640,
+          "p95": 640,
+          "max": 640
+        },
+        "outputHeight": {
+          "min": 386,
+          "p50": 386,
+          "p95": 386,
+          "max": 386
+        },
+        "entries": {
+          "min": 2,
+          "p50": 2,
+          "p95": 2,
+          "max": 2
+        }
+      },
+      "1024": {
+        "captureMs": {
+          "min": 1.7,
+          "p50": 1.8,
+          "p95": 1.98,
+          "max": 2
+        },
+        "exportMs": {
+          "min": 15.3,
+          "p50": 15.4,
+          "p95": 15.49,
+          "max": 15.5
+        },
+        "imageBytes": {
+          "min": 7095,
+          "p50": 7095,
+          "p95": 7095,
+          "max": 7095
+        },
+        "mapBytes": {
+          "min": 153,
+          "p50": 153,
+          "p95": 153,
+          "max": 153
+        },
+        "outputWidth": {
+          "min": 956,
+          "p50": 956,
+          "p95": 956,
+          "max": 956
+        },
+        "outputHeight": {
+          "min": 576,
+          "p50": 576,
+          "p95": 576,
+          "max": 576
+        },
+        "entries": {
+          "min": 2,
+          "p50": 2,
+          "p95": 2,
+          "max": 2
+        }
+      }
+    },
+    "trials": [
+      {
+        "maxImageWidth": 320,
+        "repetition": 0,
+        "captureMs": 2.3999998569488525,
+        "exportMs": 3.4000000953674316,
+        "imageBytes": 2219,
+        "mapBytes": 150,
+        "width": 320,
+        "height": 193,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 320,
+        "repetition": 1,
+        "captureMs": 2.1999998092651367,
+        "exportMs": 2.1000001430511475,
+        "imageBytes": 2219,
+        "mapBytes": 150,
+        "width": 320,
+        "height": 193,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 320,
+        "repetition": 2,
+        "captureMs": 1.8000001907348633,
+        "exportMs": 2,
+        "imageBytes": 2219,
+        "mapBytes": 150,
+        "width": 320,
+        "height": 193,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 640,
+        "repetition": 0,
+        "captureMs": 1.7999999523162842,
+        "exportMs": 7,
+        "imageBytes": 4495,
+        "mapBytes": 150,
+        "width": 640,
+        "height": 386,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 640,
+        "repetition": 1,
+        "captureMs": 2,
+        "exportMs": 6.799999952316284,
+        "imageBytes": 4495,
+        "mapBytes": 150,
+        "width": 640,
+        "height": 386,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 640,
+        "repetition": 2,
+        "captureMs": 2,
+        "exportMs": 6.799999952316284,
+        "imageBytes": 4495,
+        "mapBytes": 150,
+        "width": 640,
+        "height": 386,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 1024,
+        "repetition": 0,
+        "captureMs": 1.7999999523162842,
+        "exportMs": 15.299999952316284,
+        "imageBytes": 7095,
+        "mapBytes": 153,
+        "width": 956,
+        "height": 576,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 1024,
+        "repetition": 1,
+        "captureMs": 2,
+        "exportMs": 15.400000095367432,
+        "imageBytes": 7095,
+        "mapBytes": 153,
+        "width": 956,
+        "height": 576,
+        "entries": 2
+      },
+      {
+        "maxImageWidth": 1024,
+        "repetition": 2,
+        "captureMs": 1.7000000476837158,
+        "exportMs": 15.5,
+        "imageBytes": 7095,
+        "mapBytes": 153,
+        "width": 956,
+        "height": 576,
+        "entries": 2
+      }
+    ]
+  },
+  "decisions": {
+    "quality": "PASS",
+    "agentBoundaryValue": {
+      "verdict": "PASS",
+      "sensorReportVsOnePostSvg": 0.014538404275413043,
+      "sensorReportVsOnePostAgentMap": 0.10992565211912463,
+      "rule": "report <=25% of post SVG and <=50% of one post map on whole-root fixture"
+    },
+    "localCost": {
+      "verdict": "PASS",
+      "sensorVsRawCycle": 1.2455813953488373,
+      "combinedVsAgentMapCycle": 1.2228163992869874,
+      "rule": "PASS <=1.25x / <=1.35x; HELPER_ONLY when both <=1.5x"
+    },
+    "scopeValue": {
+      "verdict": "PASS",
+      "targetVsPageCombinedCycle": 0.04008746355685131
+    },
+    "visualKnobs": {
+      "verdict": "PASS",
+      "runtimes": {
+        "snapdom224": {
+          "lowPngVsStandard": 0.2686971476654553,
+          "lowPixelsVsStandard": 0.25,
+          "equalEffectivePngRatio": 1,
+          "retinaPngVsStandard": 3.5217953985714954,
+          "decodedSvgSpreadRatio": 0,
+          "pass": true
+        },
+        "snapdom3": {
+          "lowPngVsStandard": 0.2686971476654553,
+          "lowPixelsVsStandard": 0.25,
+          "equalEffectivePngRatio": 1,
+          "retinaPngVsStandard": 3.5217953985714954,
+          "decodedSvgSpreadRatio": 0,
+          "pass": true
+        }
+      }
+    },
+    "commercialValue": "NOT_ASSESSED"
+  },
+  "integrity": {
+    "valid": true,
+    "checks": {
+      "exactTrialCounts": true,
+      "sensorExactOnAllMeasuredActions": true,
+      "agentMapExactOnAllMeasuredActions": true,
+      "combinedExportsOnSameResult": true,
+      "finiteNonNegativeMetrics": true,
+      "summaryCellCounts": true,
+      "sensorNoOpExact": true,
+      "sensorSyntheticSecretAbsent": true,
+      "noHttpRequests": true,
+      "decisionQualityPass": true
+    }
+  },
+  "interpretation": [
+    "There is no cloud saving to measure because this run made no cloud/model call. The relevant boundary metric is the exact body a host might choose to send later.",
+    "AgentMap and Sensor are complementary: AgentMap is a current actionable map; Sensor is private temporal state plus a bounded delta.",
+    "image:false prevents AgentMap's second raster pass but does not prevent SnapDOM from producing its normal SVG.",
+    "scale and dpr are raster controls. Scope/clip/exclude are the structural controls for SnapDOM capture work and SVG size.",
+    "The attached AgentMap source is from the public SnapDOM 2.24.1 tree, but the composition benchmark uses the vendored SnapDOM 3 beta because that is the Sensor package's declared peer range.",
+    "Local wall times are descriptive for one machine and one authored fixture; no speed or population claim follows."
+  ]
+}

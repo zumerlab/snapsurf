@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "snapDOM Companion gate client",
+  "version": "0.0.1",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvNHPLONHsAtx4jOXuo/qX4zBzGoEY1vIIQ/jxL8EF4pev/zx/w0MyKmGaaFjcNQ2E8fRL3kNblnllpHIlaJi7NplybMcofzCWTSMdnMEYp7I7KDllrok6Qux4KVcsWJXs+Pty70Hht+1upn3QyPaDeUlqpLe5adtJbjVA2X0Hxho6JPNX12tPTsrFMA0r6yQWBsXwTuGGWthwQIo6z5dJQBXX6YHe1MGfK2JtwLQI/p8TB8AVnIyILmYoKWVuPrIBczVTie//lAQnNPdtSz4E6TLeQAJUcOI+fdxgJTi6Yg7YD67bVSYDc9OQXHa3O+7dEZV6HTHTUdglJf2FoGeJwIDAQAB",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "action": {
+    "default_title": "snapDOM gate client"
+  }
+}

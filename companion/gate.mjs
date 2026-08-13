@@ -1,34 +1,94 @@
 /**
- * gate.mjs — automated per-bundle validation of the companion.
+ * Hermetic MV3 gate for the companion's authenticated extension boundary.
  *
- * Born from the panel's own recommendation after two rounds were spent
- * re-discovering the channel by hand: "convert the gate + sub-tasks into an
- * automated harness that, given a bundle, spits out the report". Run after every
- * build; a red gate means DO NOT hand this bundle to a consumer round.
+ * Loads two extensions with fixed development IDs:
+ *   - companion: cgkacingkmbmhpmffioljbcfjimjhjig
+ *   - allowlisted gate client: caajdlhkjophkdagpdchjbllohjojgml
  *
- *   node companion/gate.mjs
- *
- * Checks: contract version · ready message emitted WITH result payload · walk
- * wall-time and max main-thread block on a 13k-node page · torn/changesTotal
- * present · fail-loud (unknown key → red) · ignore accepted · menu occlusion in
- * becameCovered (vs the panel's elementFromPoint ground truth) · faithful no-op.
+ * The page and its iframe are adversarial. They race forged READY messages, write
+ * forged digest/marker nodes, and request privacy:null. None of those shared-DOM
+ * operations may affect the extension-only request/response channel or policy.
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { createServer } from 'node:http'
+import { chromium } from 'playwright'
+
+/* global chrome */
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
-const REPO = resolveHost()
-const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'))
+const CLIENT = join(HERE, 'gate-client')
+const COMPANION_ID = 'cgkacingkmbmhpmffioljbcfjimjhjig'
+const CLIENT_ID = 'caajdlhkjophkdagpdchjbllohjojgml'
+const PROFILE = await mkdtemp(join(tmpdir(), 'snapdom-companion-gate-'))
 
-const PROFILE = '/tmp/companion-gate-profile'
-const { rm } = await import('node:fs/promises')
-await rm(PROFILE, { recursive: true, force: true })
-const ctx = await chromium.launchPersistentContext(PROFILE, {
-  channel: 'chromium', viewport: { width: 1400, height: 665 },
-  args: [`--disable-extensions-except=${HERE}`, `--load-extension=${HERE}`],
-})
-const page = await ctx.newPage()
+const PAGE_HTML = `<!doctype html><meta charset="utf-8">
+  <style>body{font:16px sans-serif}iframe{width:400px;height:100px}</style>
+  <h1>Buenos Aires private account</h1>
+  <a id="private-link" href="/users/secretperson?email=secretperson">Buenos Aires profile</a>
+  <a id="encoded-link" href="/users/%2573ecretperson">encoded private profile</a>
+  <a id="cutoff-link" href="/${'a'.repeat(294)}secretperson">cutoff private profile</a>
+  <button id="change">Save private account</button>
+  <p id="status">pending</p>
+  <iframe src="/frame"></iframe>
+  <script>
+    globalThis.authoritativeReadyHits = 0;
+    addEventListener('message', e => {
+      if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.result?.forged !== true) authoritativeReadyHits++;
+    });
+    // Forge request/reply traffic and both legacy DOM artifacts continuously. A
+    // page that can observe obsId can win a postMessage race, so none of this may
+    // participate in the secure channel.
+    setInterval(() => {
+      for (const obsId of ['baseline', 'after-page-attacks', 'policy-probe', 'authenticated-clear', 'bad-spec']) {
+        postMessage({type:'SNAPDOM_OBSERVE', obsId, privacy:null}, '*');
+        postMessage({type:'SNAPDOM_DIGEST_READY', obsId, result:{contract:8, forged:true, privacy:null}}, '*');
+      }
+      let n = document.getElementById('__snapdom_digest');
+      if (!n) { n = document.createElement('script'); n.id = '__snapdom_digest'; document.documentElement.append(n); }
+      n.textContent = JSON.stringify({contract:8, forged:true, privacy:null});
+      let m = document.querySelector('meta[name="__snapdom_companion"]');
+      if (!m) { m = document.createElement('meta'); m.name = '__snapdom_companion'; document.documentElement.append(m); }
+      m.content = 'forged';
+    }, 10);
+    change.addEventListener('click', () => {
+      change.textContent = 'Saved private account';
+      status.textContent = 'saved';
+    });
+  </script>`
+
+const FRAME_HTML = `<!doctype html><meta charset="utf-8"><h2>hostile iframe</h2>
+  <script>
+    globalThis.authoritativeReadyHits = 0;
+    addEventListener('message', e => {
+      if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.result?.forged !== true) authoritativeReadyHits++;
+    });
+    setInterval(() => {
+      for (const obsId of ['baseline', 'after-page-attacks', 'policy-probe', 'authenticated-clear', 'bad-spec']) {
+        postMessage({type:'SNAPDOM_OBSERVE', obsId, privacy:null}, '*');
+        postMessage({type:'SNAPDOM_DIGEST_READY', obsId, result:{contract:8, forged:true, privacy:null}}, '*');
+        parent.postMessage({type:'SNAPDOM_OBSERVE', obsId, privacy:null}, '*');
+        parent.postMessage({type:'SNAPDOM_DIGEST_READY', obsId, result:{contract:8, forged:true, privacy:null}}, '*');
+      }
+    }, 10);
+  </script>`
+
+// This fixture models the product wedge without touching a real user profile: the tab
+// is already authenticated and owns browser-local state BEFORE the companion client
+// asks for an observation. The HttpOnly cookie is intentionally unreadable to page JS;
+// SnapDOM only reports the rendered UI and never exports the credential itself.
+const SESSION_HTML = `<!doctype html><meta charset="utf-8">
+  <main aria-label="Existing client workspace">
+    <h1>Existing authenticated session</h1>
+    <p>Signed in by the browser before SnapDOM was called.</p>
+    <button id="continue">Continue</button>
+  </main>
+  <script>
+    const workspace = localStorage.getItem('workspace') || 'unset';
+    document.getElementById('continue').textContent = 'Continue ' + workspace;
+  </script>`
 
 const results = []
 const check = (name, pass, detail = '') => {
@@ -36,181 +96,309 @@ const check = (name, pass, detail = '') => {
   console.log(`${pass ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`)
 }
 
-// ask() consumes e.data.result ONLY (the documented reader) — if the ready message
-// or its payload is missing, the gate must go red, not silently poll the node.
-const ask = (msg, tmo = 60000) => page.evaluate(async ({ m, tmo }) => {
-  const obsId = Date.now() + Math.random()
-  const res = new Promise((r) => {
-    const h = (e) => {
-      if (e.data && e.data.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) {
-        removeEventListener('message', h)
-        r({ ready: true, result: e.data.result })
-      }
+let ctx
+let server
+const sessionRequests = { start: 0, account: 0 }
+try {
+  // A loopback server on an OS-assigned port gives Chromium a real navigation (and
+  // therefore normal content-script injection) without internet or the live 8377
+  // service used by manual sessions.
+  server = createServer((req, res) => {
+    if (req.url === '/session/start') {
+      sessionRequests.start++
+      res.writeHead(302, {
+        location: '/session/account',
+        'set-cookie': 'snapdom_fixture_session=active; HttpOnly; SameSite=Strict; Path=/',
+        'cache-control': 'no-store',
+      })
+      res.end()
+      return
     }
-    addEventListener('message', h)
-    setTimeout(() => r({ ready: false }), tmo)
+    if (req.url === '/session/account') {
+      sessionRequests.account++
+      const authenticated = /(?:^|;\s*)snapdom_fixture_session=active(?:;|$)/.test(req.headers.cookie || '')
+      res.writeHead(authenticated ? 200 : 401, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(authenticated ? SESSION_HTML : '<h1>Sign in required</h1>')
+      return
+    }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+    res.end(req.url === '/frame' ? FRAME_HTML : PAGE_HTML)
   })
-  window.postMessage({ ...m, obsId }, '*')
-  return await res
-}, { m: msg, tmo })
-
-await page.goto('https://es.wikipedia.org/wiki/Buenos_Aires', { waitUntil: 'domcontentloaded' })
-await page.waitForTimeout(3500)
-
-// ── channel + contract ───────────────────────────────────────────────────────────────
-const marker = await page.evaluate(() => !!document.querySelector('meta[name="__snapdom_companion"]'))
-check('content script present', marker)
-
-// rAF probe running DURING the first big walk: max main-thread gap
-const first = await page.evaluate(async () => {
-  let maxGap = 0, last = performance.now(), running = true
-  const tick = () => { const now = performance.now(); maxGap = Math.max(maxGap, now - last); last = now; if (running) requestAnimationFrame(tick) }
-  requestAnimationFrame(tick)
-  const obsId = 'gate1'
-  const t0 = performance.now()
-  const res = new Promise((r) => {
-    addEventListener('message', (e) => { if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) r(e.data.result) })
-    setTimeout(() => r(null), 60000)
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
   })
-  window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId }, '*')
-  const result = await res
-  running = false
-  return result ? { wallMs: Math.round(performance.now() - t0), maxGap: Math.round(maxGap), result } : null
-})
-check('ready message carries result', !!first, first ? '' : 'no ready/result within 60s')
-if (!first) { await ctx.close(); process.exit(1) }
-const r1 = first.result
-check('contract === 8', r1.contract === 8, `contract: ${r1.contract}`)
-check('torn/changesTotal-class fields present', 'torn' in r1, `torn: ${r1.torn}`)
-check('walk wall-time sane (< 8s)', first.wallMs < 8000, `${first.wallMs}ms for ${r1.actionables} actionables`)
-check('max main-thread block < 300ms', first.maxGap < 300, `${first.maxGap}ms`)
+  const address = server.address()
+  if (!address || typeof address === 'string') throw new Error('failed to bind local gate server')
+  const fixtureUrl = `http://127.0.0.1:${address.port}/%2573ecretperson?owner=%2573ecretperson`
 
-// ── with-baseline pass: the post-walk pipeline (inflate+diff+relabel+checkpoint+digest)
-// only runs when a baseline exists — the first-walk probe above never saw it, which is
-// how 1-1.6s blocks reached the panel while this gate stayed green (panel probe round).
-// TWO probes per request: rAF (rendering gaps) AND setInterval (timer queue — the
-// panel's method). MessageChannel yield chains can starve the timer queue while
-// rendering stays live: internal maxSliceMs said 88ms while the panel's setInterval
-// probe read 1017ms. The gate must measure what an external consumer measures, not
-// trust the walk's self-report.
-const probed = (msg, tmo = 60000) => page.evaluate(async ({ m, tmo }) => {
-  let maxGap = 0, last = performance.now(), running = true
-  const tick = () => { const now = performance.now(); maxGap = Math.max(maxGap, now - last); last = now; if (running) requestAnimationFrame(tick) }
-  requestAnimationFrame(tick)
-  let maxTimerGap = 0, lastT = performance.now()
-  const iv = setInterval(() => { const now = performance.now(); maxTimerGap = Math.max(maxTimerGap, now - lastT - 25); lastT = now }, 25)
-  const obsId = 'probe' + Math.random()
-  const res = new Promise((r) => {
-    const h = (e) => { if (e.data?.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) { removeEventListener('message', h); r(e.data.result) } }
-    addEventListener('message', h)
-    setTimeout(() => r(null), tmo)
+  ctx = await chromium.launchPersistentContext(PROFILE, {
+    channel: 'chromium',
+    viewport: { width: 900, height: 700 },
+    args: [
+      `--disable-extensions-except=${HERE},${CLIENT}`,
+      `--load-extension=${HERE},${CLIENT}`,
+    ],
   })
-  window.postMessage({ ...m, obsId }, '*')
-  const result = await res
-  running = false
-  clearInterval(iv)
-  return { result, maxGap: Math.round(maxGap), maxTimerGap: Math.round(maxTimerGap) }
-}, { m: msg, tmo })
 
-const second = await probed({ type: 'SNAPDOM_OBSERVE', prof: true })
-check('with-baseline observe: max block < 300ms', !!second.result && second.maxGap < 300, `${second.maxGap}ms`)
-check('with-baseline observe: timer-queue block < 300ms (external-probe parity)', !!second.result && second.maxTimerGap < 300, `${second.maxTimerGap}ms`)
-check('prof covers the post-walk stages', !!second.result?.prof && 'diff' in second.result.prof && 'digest' in second.result.prof,
-  JSON.stringify(second.result?.prof || null))
-check('prof breaks out digest detail (selectorOf/sectionOf)', !!second.result?.prof && 'selectorOf' in second.result.prof && 'sectionOf' in second.result.prof,
-  `selectorOf: ${second.result?.prof?.selectorOf}ms · sectionOf: ${second.result?.prof?.sectionOf}ms`)
-check('same-page observe: navigated === false', second.result?.navigated === false, `navigated: ${second.result?.navigated}`)
-
-// ── throttled-environment pass (panel ask: measure where CDP/automation lives) ───────
-const cdp = await ctx.newCDPSession(page)
-await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
-const t0thr = Date.now()
-const thr = await probed({ type: 'SNAPDOM_OBSERVE' })
-const thrMs = thr.result ? Date.now() - t0thr : null
-await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
-check('walk under 4x CPU throttle < 4s', thrMs !== null && thrMs < 4000, `${thrMs}ms`)
-check('throttled 4x: timer-queue block < 500ms (panel-env analog)', !!thr.result && thr.maxTimerGap < 500, `${thr.maxTimerGap}ms`)
-
-// ── assert reply channel: EXPLICIT check, message-only, no node fallback ─────────────
-// (panel field report: asserts arrived node-only in its env while observes messaged
-// 16/16 — this check must never be masked by another assertion's purpose)
-const chan = await probed({ type: 'SNAPDOM_ASSERT', spec: { exists: 'Wikipedia' }, prof: true }, 15000)
-check('ASSERT reply arrives via SNAPDOM_DIGEST_READY with result payload',
-  chan.result && chan.result.type === 'assert' && 'pass' in chan.result,
-  chan.result ? `result.type: ${chan.result?.type}` : 'NO message within 15s (node-only channel — panel blindspot reproduced)')
-check('assert: max block < 300ms', !!chan.result && chan.maxGap < 300, `${chan.maxGap}ms`)
-check('assert: timer-queue block < 300ms (external-probe parity)', !!chan.result && chan.maxTimerGap < 300, `${chan.maxTimerGap}ms`)
-check('assert result carries prof (panel ask)', !!chan.result?.prof && 'evaluate' in chan.result.prof,
-  JSON.stringify(chan.result?.prof || null))
-
-// ── fail-loud + ignore ───────────────────────────────────────────────────────────────
-const bad = await ask({ type: 'SNAPDOM_ASSERT', spec: { mustInclud: [] } })
-check('fail-loud: unknown key → pass:false', bad.ready && bad.result.pass === false, JSON.stringify(bad.result?.checks?.[0]?.actual))
-const ign = await ask({ type: 'SNAPDOM_ASSERT', spec: { changed: false, ignore: ['#definitely-absent'] } })
-check('ignore key accepted', ign.ready && !ign.result.checks.some((c) => c.type === 'spec' && !c.pass), `pass: ${ign.result?.pass}`)
-
-// ── sub-task: menu occlusion in becameCovered vs elementFromPoint ground truth ───────
-await page.click('#vector-main-menu-dropdown-checkbox')
-await page.waitForTimeout(500)
-const o2 = await ask({ type: 'SNAPDOM_OBSERVE' })
-const gtCovered = await page.evaluate(() => {
-  let covered = 0
-  for (const a of document.querySelectorAll('#vector-toc a')) {
-    const r = a.getBoundingClientRect()
-    if (!r.width || r.top > 450 || r.top < 0) continue
-    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
-    if (!(hit === a || a.contains(hit) || (hit && hit.contains(a)))) covered++
+  const workers = ctx.serviceWorkers()
+  if (workers.length < 2) {
+    await Promise.all([
+      ctx.waitForEvent('serviceworker', { timeout: 10000 }).catch(() => null),
+      ctx.waitForEvent('serviceworker', { timeout: 10000 }).catch(() => null),
+    ])
   }
-  return covered
-})
-const delta = o2.result?.actionabilityDelta?.becameCovered || []
-check('menu occlusion detected (becameCovered ≥ ground-truth count)', delta.length >= Math.min(gtCovered, 3) && gtCovered > 0,
-  `ground truth ${gtCovered} covered · delta reports ${delta.length}`)
+  // MV3 workers are lazy. Opening an extension-owned page wakes the gate client
+  // without creating any page-world bridge into the target tab.
+  if (!ctx.serviceWorkers().some((w) => new URL(w.url()).host === CLIENT_ID)) {
+    const wake = await ctx.newPage()
+    await wake.goto(`chrome-extension://${CLIENT_ID}/worker.js`).catch(() => {})
+    await ctx.waitForEvent('serviceworker', { timeout: 10000 }).catch(() => null)
+    await wake.close()
+  }
+  const workerIds = new Set(ctx.serviceWorkers().map((w) => new URL(w.url()).host))
+  check('fixed companion extension id loaded', workerIds.has(COMPANION_ID), [...workerIds].join(', '))
+  check('allowlisted gate-client extension id loaded', workerIds.has(CLIENT_ID), [...workerIds].join(', '))
 
-// ── sub-task: faithful no-op ─────────────────────────────────────────────────────────
-await page.click('#vector-main-menu-dropdown-checkbox') // close menu
-await page.waitForTimeout(500)
-await ask({ type: 'SNAPDOM_OBSERVE' }) // settle baseline
-const noop = await ask({ type: 'SNAPDOM_ASSERT', spec: { changed: false, retry: { budgetMs: 1500 } } })
-check('faithful no-op (changed:false passes)', noop.ready && noop.result.pass === true, `attempts: ${noop.result?.attempts}`)
+  const page = await ctx.newPage()
+  await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(750)
 
-// ── SPA soft-navigation signal (panel github round: a cross-page diff read as a
-// confusing changed:false — the baseline survives the document, so the reader needs
-// an explicit flag, not a deduction). pushState = same document, new URL.
-await page.evaluate(() => history.pushState({}, '', '/wiki/__snapdom_spa_probe'))
-const nav = await ask({ type: 'SNAPDOM_OBSERVE' })
-check('navigated:true + baselineUrl after SPA pushState',
-  nav.ready && nav.result?.navigated === true && (nav.result?.baselineUrl || '').includes('/wiki/Buenos_Aires'),
-  `navigated: ${nav.result?.navigated} · baselineUrl: ${nav.result?.baselineUrl}`)
+  const clientWorker = ctx.serviceWorkers().find((w) => new URL(w.url()).host === CLIENT_ID)
+  if (!clientWorker) throw new Error('gate-client service worker did not start')
+  const tabId = await clientWorker.evaluate((url) => chrome.tabs.query({}).then((tabs) => tabs.find((tab) => tab.url === url)?.id), page.url())
+  check('target tab resolved without page bridge', Number.isInteger(tabId), String(tabId))
+  const askTab = async (targetTabId, request) => clientWorker.evaluate(
+    ({ tabId, request }) => globalThis.snapdomGateAsk(tabId, request),
+    { tabId: targetTabId, request },
+  )
+  const ask = async (request) => askTab(tabId, request)
 
-// ── privacy: auditable redaction (F3). Rules ride the message; digest strings must
-// carry [redacted], the report must count hits BY INDEX (never rule text), and a
-// text predicate probing the hidden term must fail loud instead of answering.
-const red = await ask({ type: 'SNAPDOM_OBSERVE', privacy: { redact: ['Buenos Aires'] } })
-const digestStrings = [
-  ...(red.result?.digest?.heads || []).flatMap((h) => [h.text, h.section]),
-  ...(red.result?.digest?.top || []).flatMap((t) => [t.name, t.section]),
-  ...(red.result?.digest?.marks || []).map((m) => m.name),
-].filter(Boolean)
-const leak = digestStrings.find((s) => /buenos aires/i.test(s))
-check('privacy: no redacted term in digest strings', red.ready && !leak, leak ? `LEAK: "${leak}"` : `${digestStrings.length} strings clean`)
-check('privacy: [redacted] visibly present', digestStrings.some((s) => s.includes('[redacted]')), 'placeholder shown, not silently dropped')
-check('privacy: report counts by rule index, no rule text',
-  red.result?.privacy?.rulesActive === 1 && red.result?.privacy?.nodesRedacted > 0
-  && (red.result.privacy.hitsByRule || []).every((h) => /^#\d+$/.test(h.rule))
-  && !/buenos aires/i.test(JSON.stringify(red.result.privacy)),
-  JSON.stringify(red.result?.privacy))
-const probe = await ask({ type: 'SNAPDOM_ASSERT', spec: { exists: 'Buenos Aires', keepBaseline: true } })
-check('privacy: exists probe on hidden term fails loud (blocked, not "absent")',
-  probe.ready && probe.result.pass === false && probe.result.checks?.some((c) => c.actual === 'blocked by privacy rule'),
-  JSON.stringify(probe.result?.checks?.find((c) => c.type === 'exists')))
-const cleared = await ask({ type: 'SNAPDOM_OBSERVE', privacy: null })
-check('privacy: clearing rules restores plain digest (no report field)',
-  cleared.ready && cleared.result.privacy === undefined
-  && (cleared.result?.digest?.heads || []).some((h) => /buenos aires/i.test(h.text || '')),
-  `privacy: ${JSON.stringify(cleared.result?.privacy)} · heads restored`)
+  const first = await ask({ type: 'SNAPDOM_OBSERVE', obsId: 'baseline', fullUrl: true, privacy: { redact: ['Buenos Aires', 'secretperson'] } })
+  check('authenticated response envelope', first?.type === 'SNAPDOM_DIGEST_READY' && first.obsId === 'baseline' && first.result?.contract === 8,
+    JSON.stringify({ type: first?.type, obsId: first?.obsId, contract: first?.result?.contract, error: first?.error }))
+  check('response is not page-forged', first?.result?.forged !== true)
+  const firstWire = JSON.stringify(first?.result || {})
+  check('policy redacts every result string including encoded URLs and hrefs',
+    !/Buenos Aires|secretperson|%2573ecretperson/i.test(firstWire) && /\[redacted\]/i.test(firstWire), firstWire)
+  const topBySelector = new Map((first?.result?.digest?.top || []).map((entry) => [entry.selector, entry]))
+  check('href redaction runs before output truncation', topBySelector.get('#cutoff-link')?.href === '[redacted]',
+    JSON.stringify(topBySelector.get('#cutoff-link') || null))
+  check('percent-encoded href cannot bypass a literal rule', topBySelector.get('#encoded-link')?.href === '[redacted]',
+    JSON.stringify(topBySelector.get('#encoded-link') || null))
+  check('privacy report travels from isolated reader', first?.result?.privacy?.rulesActive === 2, JSON.stringify(first?.result?.privacy || null))
+  check('privacy report exposes no hit or frequency oracle', first?.result?.privacy?.applied === true &&
+    !['hitsByRule', 'fields', 'nodesRedacted'].some((key) => key in (first?.result?.privacy || {})),
+  JSON.stringify(first?.result?.privacy || null))
+  check('unobservable regions travel with details', first?.result?.unobservable > 0 && first.result.unobservableDetails?.some((r) => r.sourceType === 'iframe'),
+    JSON.stringify(first?.result?.unobservableDetails || []))
 
-await ctx.close()
+  const unchangedPrivate = await ask({ type: 'SNAPDOM_OBSERVE', obsId: 'private-roundtrip' })
+  check('unchanged private observation stays changed:false', unchangedPrivate?.result?.changed === false &&
+    unchangedPrivate.result?.privacy?.rulesActive === 2 &&
+    !/Buenos Aires|secretperson|%2573ecretperson/i.test(JSON.stringify(unchangedPrivate?.result || {})),
+  JSON.stringify({ changed: unchangedPrivate?.result?.changed, changes: unchangedPrivate?.result?.changes, privacy: unchangedPrivate?.result?.privacy }))
+
+  const filteredPolicy = await ask({
+    type: 'SNAPDOM_OBSERVE', obsId: 'filtered-policy',
+    privacy: { redact: [' ', 'Buenos Aires', '', 'secretperson', '   '] },
+  })
+  check('empty privacy entries are filtered without a false rule count',
+    filteredPolicy?.result?.privacy?.rulesActive === 2 && filteredPolicy.result.changed === false &&
+    !/Buenos Aires|secretperson/i.test(JSON.stringify(filteredPolicy.result)),
+    JSON.stringify({ error: filteredPolicy?.error, privacy: filteredPolicy?.result?.privacy, changed: filteredPolicy?.result?.changed }))
+
+  const malformedPolicy = await ask({
+    type: 'SNAPDOM_OBSERVE', obsId: 'malformed-policy',
+    privacy: { redact: 'secretperson' },
+  })
+  const emptyOnlyPolicy = await ask({
+    type: 'SNAPDOM_OBSERVE', obsId: 'empty-only-policy',
+    privacy: { redact: ['', '   '] },
+  })
+  check('malformed privacy is rejected instead of becoming an authenticated clear',
+    /invalid privacy policy/i.test(malformedPolicy?.error || '') && malformedPolicy?.result === undefined,
+    JSON.stringify(malformedPolicy))
+  check('zero effective privacy rules cannot receive an applied attestation',
+    /invalid privacy policy/i.test(emptyOnlyPolicy?.error || '') && emptyOnlyPolicy?.result?.privacy === undefined,
+    JSON.stringify(emptyOnlyPolicy))
+  const afterInvalidPolicy = await ask({ type: 'SNAPDOM_OBSERVE', obsId: 'after-invalid-policy' })
+  check('rejected privacy updates leave the sticky policy intact',
+    afterInvalidPolicy?.result?.privacy?.rulesActive === 2 && afterInvalidPolicy.result.changed === false &&
+    !/Buenos Aires|secretperson/i.test(JSON.stringify(afterInvalidPolicy.result)),
+    JSON.stringify({ privacy: afterInvalidPolicy?.result?.privacy, changed: afterInvalidPolicy?.result?.changed }))
+
+  await page.click('#change')
+  const second = await ask({ type: 'SNAPDOM_OBSERVE', obsId: 'after-page-attacks' })
+  check('page privacy:null cannot clear sticky policy', second?.result?.privacy?.rulesActive === 2 && !/Buenos Aires|secretperson/i.test(JSON.stringify(second?.result || {})),
+    JSON.stringify(second?.result?.privacy || null))
+  check('real semantic change survives attack traffic', second?.result?.changed === true && (second.result.changes || []).some((c) => /saved|pending/i.test(c.name || '')),
+    JSON.stringify(second?.result?.changes || []))
+
+  const hostileFrame = page.frames().find((frame) => frame.url().endsWith('/frame'))
+  const frameAttack = await hostileFrame.evaluate(async () => {
+    await new Promise((r) => setTimeout(r, 100))
+    return globalThis.authoritativeReadyHits
+  })
+  const third = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'policy-probe', spec: { exists: 'Buenos Aires', keepBaseline: true } })
+  check('iframe receives no authoritative replies', frameAttack === 0, `READY hits: ${frameAttack}`)
+  check('iframe privacy:null cannot clear policy', third?.result?.pass === false && third.result.checks?.some((c) => c.actual === 'blocked by privacy rule'),
+    JSON.stringify(third?.result?.checks || []))
+  const coverageProbe = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'coverage-policy-probe', spec: { notCovered: 'Buenos Aires', keepBaseline: true } })
+  check('notCovered cannot probe a redacted term', coverageProbe?.result?.pass === false && coverageProbe.result.checks?.some((c) => c.type === 'notCovered' && c.actual === 'blocked by privacy rule'),
+    JSON.stringify(coverageProbe?.result?.checks || []))
+  const urlProbe = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'url-policy-probe', spec: { urlIncludes: 'secretperson', keepBaseline: true } })
+  const encodedUrlProbe = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'encoded-url-policy-probe', spec: { urlIncludes: '%2573ecretperson', keepBaseline: true } })
+  check('URL assertions cannot probe a redacted term or encoded form', [urlProbe, encodedUrlProbe].every((reply) =>
+    reply?.result?.pass === false && reply.result.checks?.some((c) => c.type === 'urlIncludes' && c.actual === 'blocked by privacy rule')),
+  JSON.stringify([urlProbe?.result?.checks, encodedUrlProbe?.result?.checks]))
+  check('blocked privacy probes never echo the hidden term',
+    !/Buenos Aires|secretperson|%2573ecretperson/i.test(JSON.stringify([third?.result, coverageProbe?.result, urlProbe?.result, encodedUrlProbe?.result])),
+    JSON.stringify([third?.result, coverageProbe?.result, urlProbe?.result, encodedUrlProbe?.result]))
+
+  await page.evaluate(() => history.replaceState({}, '', '/clean?owner=public-query#/active'))
+  const hashRoute = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'hash-route-evidence', spec: { urlIncludes: '#/active', keepBaseline: true } })
+  const hashCheck = hashRoute?.result?.checks?.find((c) => c.type === 'urlIncludes')
+  check('URL assertion evidence preserves the matched SPA hash and hides query payload',
+    hashRoute?.result?.pass === true && /\?«\d+ chars»#\/active$/.test(hashCheck?.actual || '') &&
+    !/public-query/.test(hashCheck?.actual || ''), JSON.stringify(hashCheck || null))
+
+  await page.evaluate(() => history.replaceState({}, '', '/clean#/secretperson'))
+  const hiddenHash = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'private-hash-evidence', spec: { urlIncludes: '#/', keepBaseline: true } })
+  const hiddenHashWire = JSON.stringify(hiddenHash?.result || {})
+  check('privacy terms in a matched hash never leave URL assertion evidence',
+    hiddenHash?.result?.pass === true && !/secretperson/i.test(hiddenHashWire) && /\[redacted\]/i.test(hiddenHashWire), hiddenHashWire)
+  await page.evaluate(() => history.replaceState({}, '', '/clean'))
+
+  const blindNegative = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'blind-negative', spec: { changed: false, keepBaseline: true } })
+  check('changed:false fails unknown when regions are unobservable', blindNegative?.result?.pass === false &&
+    blindNegative.result.checks?.some((c) => c.type === 'changed' && /^unknown: \d+ unobservable/.test(c.actual)) &&
+    blindNegative.result.unobservableDetails?.some((r) => r.sourceType === 'iframe'),
+  JSON.stringify({ checks: blindNegative?.result?.checks, details: blindNegative?.result?.unobservableDetails }))
+
+  const allKinds = ['added', 'removed', 'content', 'state', 'style', 'moved', 'resized', 'possible-replacement']
+  const blindAbsenceCases = [
+    ['mustNotInclude', { mustNotInclude: [{ kind: 'content', name: 'never-produced-by-fixture' }], keepBaseline: true }],
+    ['only', { only: allKinds.map((kind) => ({ kind })), keepBaseline: true }],
+    ['maxChanges', { maxChanges: 999999, keepBaseline: true }],
+  ]
+  for (const [type, spec] of blindAbsenceCases) {
+    const reply = await ask({ type: 'SNAPDOM_ASSERT', obsId: `blind-${type}`, spec })
+    check(`${type} cannot attest absence across unobservable regions`,
+      reply?.result?.pass === false && reply.result.checks?.some((c) => c.type === type && /^unknown: \d+ unobservable/.test(String(c.actual))),
+      JSON.stringify(reply?.result?.checks || []))
+  }
+
+  // Force the chunked reader to park while the DOM mutates. `torn` must participate in
+  // the verdict itself; publishing it beside a green absence assertion is not enough.
+  await page.evaluate(() => {
+    const bulk = document.createElement('div')
+    bulk.id = 'torn-bulk'
+    const fragment = document.createDocumentFragment()
+    for (let i = 0; i < 6000; i++) {
+      const span = document.createElement('span')
+      span.textContent = `stable-${i}`
+      fragment.append(span)
+    }
+    bulk.append(fragment)
+    document.body.append(bulk)
+    globalThis.__snapdomTornTimer = setInterval(() => {
+      bulk.toggleAttribute('data-concurrent-mutation')
+    }, 0)
+  })
+  await ask({ type: 'SNAPDOM_OBSERVE', obsId: 'torn-baseline' })
+  const tornAbsence = await ask({
+    type: 'SNAPDOM_ASSERT', obsId: 'torn-absence',
+    spec: { maxChanges: 999999, keepBaseline: true },
+  })
+  check('current torn observation makes an absence predicate unknown',
+    tornAbsence?.result?.pass === false && tornAbsence.result.torn > 0 &&
+    tornAbsence.result.checks?.some((c) => c.type === 'maxChanges' && /observation torn by \d+ concurrent mutation/.test(String(c.actual))),
+    JSON.stringify({ torn: tornAbsence?.result?.torn, checks: tornAbsence?.result?.checks }))
+  await page.evaluate(() => {
+    clearInterval(globalThis.__snapdomTornTimer)
+    delete globalThis.__snapdomTornTimer
+    document.getElementById('torn-bulk')?.remove()
+  })
+
+  const policyTransition = await ask({
+    type: 'SNAPDOM_OBSERVE', obsId: 'policy-transition',
+    privacy: { redact: ['Buenos Aires', 'secretperson', 'Saved private account'] },
+  })
+  check('changing privacy establishes a fresh baseline instead of fabricating a diff',
+    policyTransition?.result?.changed === undefined && policyTransition.result?.privacy?.rulesActive === 3 &&
+    !/Buenos Aires|secretperson|Saved private account/i.test(JSON.stringify(policyTransition.result)),
+    JSON.stringify({ changed: policyTransition?.result?.changed, changes: policyTransition?.result?.changes, privacy: policyTransition?.result?.privacy }))
+  const stableAfterPolicyTransition = await ask({ type: 'SNAPDOM_OBSERVE', obsId: 'stable-after-policy-transition' })
+  check('new privacy baseline produces an unchanged roundtrip',
+    stableAfterPolicyTransition?.result?.changed === false && stableAfterPolicyTransition.result?.privacy?.rulesActive === 3,
+    JSON.stringify({ changed: stableAfterPolicyTransition?.result?.changed, changes: stableAfterPolicyTransition?.result?.changes, privacy: stableAfterPolicyTransition?.result?.privacy }))
+
+  const pageSurface = await page.evaluate(() => ({
+    readyHits: globalThis.authoritativeReadyHits,
+    marker: document.querySelector('meta[name="__snapdom_companion"]')?.content,
+    slot: document.getElementById('__snapdom_digest')?.textContent,
+  }))
+  check('companion publishes no results to page postMessage', pageSurface.readyHits === 0, `READY hits: ${pageSurface.readyHits}`)
+  check('page-owned marker/DOM slot have no authority', pageSurface.marker === 'forged' && /"forged":true/.test(pageSurface.slot || ''), JSON.stringify(pageSurface))
+
+  const directPageCall = await page.evaluate(async (companionId) => {
+    if (!globalThis.chrome?.runtime?.sendMessage) return { api: false }
+    try {
+      const result = await Promise.race([
+        chrome.runtime.sendMessage(companionId, { channel: 'snapdom-companion-v1', tabId: 0, request: { type: 'SNAPDOM_OBSERVE' } }),
+        new Promise((resolve) => setTimeout(() => resolve('timeout'), 250)),
+      ])
+      return { api: true, result }
+    } catch (error) {
+      return { api: true, error: String(error) }
+    }
+  }, COMPANION_ID)
+  check('web page cannot call companion extension API', directPageCall.api === false || directPageCall.result === undefined,
+    JSON.stringify(directPageCall))
+
+  const cleared = await ask({ type: 'SNAPDOM_OBSERVE', obsId: 'authenticated-clear', privacy: null })
+  check('allowlisted extension can intentionally clear policy', cleared?.result?.privacy === undefined && /Buenos Aires/i.test(JSON.stringify(cleared?.result?.digest || {})))
+
+  const bad = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'bad-spec', spec: { mustInclud: [] } })
+  check('fail-loud assertion contract preserved', bad?.result?.pass === false && bad.result.checks?.some((c) => c.type === 'spec' && !c.pass),
+    JSON.stringify(bad?.result?.checks || []))
+  const coercive = await ask({ type: 'SNAPDOM_ASSERT', obsId: 'coercive-spec', spec: { maxChanges: '999' } })
+  check('coercive assertion types cannot pass green', coercive?.result?.pass === false &&
+    coercive.result.checks?.some((c) => c.type === 'spec' && !c.pass), JSON.stringify(coercive?.result?.checks || []))
+
+  // Existing-session proof. Playwright is only the hermetic test harness here: the
+  // product request goes gate-client extension -> companion worker -> isolated content
+  // script, after authentication and browser-local state already exist in the tab.
+  const sessionPage = await ctx.newPage()
+  const sessionOrigin = new URL(fixtureUrl).origin
+  await sessionPage.goto(`${sessionOrigin}/session/start`, { waitUntil: 'domcontentloaded' })
+  await sessionPage.evaluate(() => localStorage.setItem('workspace', 'workspace-alpha'))
+  await sessionPage.reload({ waitUntil: 'domcontentloaded' })
+  await sessionPage.waitForFunction(() => document.querySelector('#continue')?.textContent === 'Continue workspace-alpha')
+  const pageCookieSurface = await sessionPage.evaluate(() => document.cookie)
+  check('fixture credential is HttpOnly and absent from the page surface', pageCookieSurface === '', JSON.stringify(pageCookieSurface))
+
+  const sessionTabId = await clientWorker.evaluate((url) => chrome.tabs.query({}).then((tabs) => tabs.find((tab) => tab.url === url)?.id), sessionPage.url())
+  check('pre-existing authenticated tab resolved by extension id', Number.isInteger(sessionTabId), String(sessionTabId))
+  const requestsBeforeObserve = { ...sessionRequests }
+  const existingSession = await askTab(sessionTabId, { type: 'SNAPDOM_OBSERVE', obsId: 'existing-session' })
+  const existingWire = JSON.stringify(existingSession?.result || {})
+  check('client-side observer sees authenticated rendered state without a login action',
+    existingSession?.result?.contract === 8 && /Existing authenticated session/.test(existingWire) && /Continue workspace-alpha/.test(existingWire),
+    existingWire)
+  check('observation did not navigate or replay authentication',
+    sessionRequests.start === requestsBeforeObserve.start && sessionRequests.account === requestsBeforeObserve.account &&
+    sessionPage.url() === `${sessionOrigin}/session/account`,
+    JSON.stringify({ before: requestsBeforeObserve, after: sessionRequests, url: sessionPage.url() }))
+  check('credential value never enters the semantic response', !/snapdom_fixture_session|=active/.test(existingWire), existingWire)
+  await sessionPage.close()
+} finally {
+  await ctx?.close()
+  if (server) await new Promise((resolve) => server.close(resolve))
+  await rm(PROFILE, { recursive: true, force: true })
+}
+
 const failed = results.filter((r) => !r.pass)
-console.log(failed.length ? `\nGATE RED — ${failed.length} failure(s): do NOT hand this bundle to a consumer round` : '\nGATE GREEN — bundle fit for consumers')
+console.log(failed.length ? `\nGATE RED — ${failed.length} failure(s)` : '\nGATE GREEN — authenticated companion boundary holds')
 process.exit(failed.length ? 1 : 0)

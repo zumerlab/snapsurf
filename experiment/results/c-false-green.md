@@ -1,33 +1,40 @@
-# Phase C — Catching failures that look like successes
+# Phase C — Internal false-green fixture
 
 2026-08-01 · `experiment/c-false-green.mjs` · app `demo-qa/silent-failures.html`, which
 carries deliberate ambient noise (a live clock, a spinner, a ticker) · agent-browser
 0.33.1 · perceptual pixel comparison (pixelmatch class, @zumer/snapdiff).
 
-Eight actions that **look** as if they worked. Each channel answers "did my action have
-the effect I intended?", and an independent judge — `window.__intent()`, which reads the
-real DOM state without going through any channel — says what actually happened.
+Eight actions that **look** as if they worked. An independent judge —
+`window.__intent()`, which reads the real DOM state without going through any channel —
+says what actually happened. Only the stated-expectation arm receives the case-specific
+intended outcome. The other arms receive a weaker generic change question, so this is an
+internal product-design experiment, not an equal-intent tool comparison.
 
 ## Result
 
 | Channel | Right | **WRONG SUCCESS** | wrong failure |
 |---|---:|---:|---:|
-| **Stating the expected outcome and checking it** | **8/8** | **0** | 0 |
-| Just asking "did anything change?" | 4–6/8 † | 2–4 | 0 |
+| **SnapDOM assertion with the case-specific postcondition** | **8/8** | **0** | 0 |
+| SnapDOM `changed` check only | 4–6/8 † | 2–4 | 0 |
 | agent-browser `diff snapshot` (as it ships) | 2/8 | 6 | 0 |
 | agent-browser with references normalized away | 2/8 | 6 | 0 |
 | Screenshot (perceptual pixel comparison) | 2/8 | 6 | 0 |
 
-**The difference: 0 against 6 wrong success reports out of 8 cases.** The cut-off in
-`TESTPLAN.md` asked for 30 points; the result is 75.
+**The historical internal difference is 0 against 6 wrong success reports out of 8
+cases. It is withdrawn as a competitive headline.** It demonstrates that an explicit
+postcondition is stronger than a generic change signal on these authored fixtures. It
+must not be read as a head-to-head result against Playwright Test (or any other system)
+given the same postcondition: only the stated-expectation arm received that intent here.
+See [`../../docs/VALUE-COMPARISON.md`](../../docs/VALUE-COMPARISON.md) for the
+equal-intent protocol and the first descriptive focal.
 
 † **The raw "did anything change?" arm is NOT stable between runs.** The first run scored
 6/8 with 2 wrong successes; the re-run on 2026-08-01 scored 4/8 with 4. It depends on what
 the page's ambient noise happens to do at that moment — which is exactly what these cases
 simulate. The stated-expectation arm scored 8/8 with 0 wrong successes in both runs. This
-does not weaken the document's conclusion, it strengthens it: asking "did anything change?"
-is inherently unstable under noise, which is why the stated expectation is the product and
-the raw comparison is the input.
+supports the narrower conclusion that asking "did anything change?" is inherently
+unstable under noise. Whether this product checks a stated expectation more effectively
+than Playwright must be measured separately with identical intent.
 
 ## Per case
 
@@ -51,16 +58,16 @@ Rows below are from the first run, where the raw arm scored 6/8.
 "something changed" is true; F8: the URL changed and the content never arrived). The
 channel that reaches 0 is the one that checks the outcome you intended. This confirms by
 measurement what we already suspected: **a bare `changed:true` is a smoke signal, not an
-assertion**, and the defensible product is the runtime that checks postconditions, not
-"a better diff".
+assertion**. The defensible finding is that a verifier needs the intended postcondition,
+not merely "a better diff"; whether this runtime supplies that layer more effectively
+than Playwright remains the separate equal-intent question.
 
-**2. The other channels do not fail because they are bad. They fail because they answer a
-different question.** The pixel comparison detects movement, and there is always movement
-here because the clock runs. agent-browser hands over a text diff the caller has to
-interpret. Neither of them **lies**: they simply have no primitive for expressing "I
-expected ONE row named X to be added". The honest comparison is not "their diff is
-broken", it is **"with their diff you still have to write the layer that decides whether
-it worked, and that is where the wrong success reports appear"**.
+**2. The other channels were asked a different question.** The pixel comparison detects
+movement, and there is always movement here because the clock runs. The historical
+agent-browser arm returned a text diff for the runner to interpret. This experiment did
+not give either arm the same postcondition through Playwright assertions, custom code, or
+another verifier. It therefore says nothing about how those implementations perform
+when the missing decision layer is supplied.
 
 **3. The two cases that separate everything are the uncomfortable ones**: F7, where the
 action worked *too much*, and F8, where the navigation started and never finished. Both
@@ -92,7 +99,7 @@ successes — which is precisely the error this experiment exists to detect.
 
 ```bash
 npm install -g agent-browser
-node packages/agent/experiment/c-false-green.mjs
+node experiment/c-false-green.mjs
 ```
 
-Raw per-case data: `results/c-false-green.json`.
+Raw per-case data: [`experiment/results/c-false-green.json`](c-false-green.json).

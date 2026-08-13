@@ -1,0 +1,2724 @@
+{
+  "schema": 1,
+  "experimentId": "schema-drift-receipt-value-v1",
+  "completedAt": "2026-08-12T16:32:55.526Z",
+  "decision": "NO_MAINTENANCE_ADVANTAGE_SDK_LOST_TELEMETRY",
+  "question": "Does the packed browser receipt SDK reduce diagnostic-envelope authoring or maintenance across equivalent markup/framework drift compared with a strong generic host implementation?",
+  "nonClaim": "This experiment never assesses task correctness. Every arm receipt must say taskOutcome NOT_ASSESSED; a changed:true postcondition PASS is only a receipt-local observation and may never be counted as task success.",
+  "package": {
+    "name": "@zumer/snapdom-receipt",
+    "bundleBytes": 38595,
+    "bundleSha256": "889f6c2366b88361525ba6298fec31774959b2223e9621ec46c5910116554f36",
+    "dependencies": []
+  },
+  "schedule": {
+    "variants": 5,
+    "repetitions": 3,
+    "pairedTrials": 15
+  },
+  "byArm": {
+    "H": {
+      "exactTrials": 15,
+      "totalTrials": 15,
+      "exactVariants": [
+        "native-stable",
+        "wrapper-stable",
+        "remount-stable",
+        "renamed-legitimate",
+        "switch-legitimate"
+      ],
+      "medianBaselineBytes": 570,
+      "medianPostBytes": 217,
+      "medianCycleMs": 1.6,
+      "envelopeShapeHashes": [
+        "be6e097e06d08893"
+      ]
+    },
+    "R": {
+      "exactTrials": 9,
+      "totalTrials": 15,
+      "exactVariants": [
+        "native-stable",
+        "wrapper-stable",
+        "remount-stable"
+      ],
+      "medianBaselineBytes": 921,
+      "medianPostBytes": 1284,
+      "medianCycleMs": 4.76,
+      "envelopeShapeHashes": [
+        "a53581934fa08ca9",
+        "1d46737b97196646",
+        "28bc66bcb53ead10"
+      ]
+    }
+  },
+  "authoringMetrics": {
+    "H": {
+      "initialRuntimeLoc": 64,
+      "variantSpecificReferences": 0
+    },
+    "R": {
+      "initialRuntimeLoc": 17,
+      "variantSpecificReferences": 0
+    }
+  },
+  "rows": [
+    {
+      "variant": "native-stable",
+      "variantClass": "stable semantics",
+      "rep": 0,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "H": 4.06,
+        "R": 7.86
+      },
+      "postMs": {
+        "R": 3.82,
+        "H": 1.84
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_aqo5oHgz8hG3",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "id": "n_aqo5oHgz8hG5",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_aqo5oHgz8hG4",
+                  "afterId": "n_aySMm0Ku2RT4"
+                },
+                {
+                  "id": "n_aySMm0Ku2RT6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_aqo5oHgz8hG6",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_aqo5oHgz8hG5",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_aySMm0Ku2RT6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "native-stable",
+      "variantClass": "stable semantics",
+      "rep": 1,
+      "order": [
+        "R",
+        "H"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "R": 2.73,
+        "H": 0.5
+      },
+      "postMs": {
+        "H": 0.91,
+        "R": 2.69
+      },
+      "receipts": {
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        },
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_91hB54cH_yV3",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "id": "n_91hB54cH_yV5",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_91hB54cH_yV4",
+                  "afterId": "n_0nJ7h5qq_1p4"
+                },
+                {
+                  "id": "n_0nJ7h5qq_1p6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_91hB54cH_yV6",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_91hB54cH_yV5",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_0nJ7h5qq_1p6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        }
+      }
+    },
+    {
+      "variant": "native-stable",
+      "variantClass": "stable semantics",
+      "rep": 2,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "H": 1.18,
+        "R": 2.25
+      },
+      "postMs": {
+        "R": 2.37,
+        "H": 0.65
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_9iH7uly0Pq63",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "id": "n_9iH7uly0Pq65",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_9iH7uly0Pq64",
+                  "afterId": "n_a0nuNk9IGeV4"
+                },
+                {
+                  "id": "n_a0nuNk9IGeV6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_9iH7uly0Pq66",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_9iH7uly0Pq65",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_a0nuNk9IGeV6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "wrapper-stable",
+      "variantClass": "stable semantics",
+      "rep": 0,
+      "order": [
+        "R",
+        "H"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 772,
+        "R": 1066
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "R": 3.43,
+        "H": 0.54
+      },
+      "postMs": {
+        "H": 0.62,
+        "R": 2.57
+      },
+      "receipts": {
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        },
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_3jezoL4BmL15",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_3jezoL4BmL16",
+                  "afterId": "n_eE_7-9CGMIR6"
+                },
+                {
+                  "id": "n_3jezoL4BmL17",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_eE_7-9CGMIR8",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_3jezoL4BmL18",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_3jezoL4BmL17",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_eE_7-9CGMIR8",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        }
+      }
+    },
+    {
+      "variant": "wrapper-stable",
+      "variantClass": "stable semantics",
+      "rep": 1,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 772,
+        "R": 1066
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "H": 1.06,
+        "R": 2.58
+      },
+      "postMs": {
+        "R": 2.3,
+        "H": 0.6
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_att-j7ZHn_65",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_att-j7ZHn_66",
+                  "afterId": "n_4w_vYH6CEgw6"
+                },
+                {
+                  "id": "n_att-j7ZHn_67",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_4w_vYH6CEgw8",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_att-j7ZHn_68",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_att-j7ZHn_67",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_4w_vYH6CEgw8",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "wrapper-stable",
+      "variantClass": "stable semantics",
+      "rep": 2,
+      "order": [
+        "R",
+        "H"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 772,
+        "R": 1066
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "R": 3,
+        "H": 0.58
+      },
+      "postMs": {
+        "H": 0.65,
+        "R": 2.46
+      },
+      "receipts": {
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        },
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_2lGJa29ZiZ85",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_2lGJa29ZiZ86",
+                  "afterId": "n_0liEGZkN2_V6"
+                },
+                {
+                  "id": "n_2lGJa29ZiZ87",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_0liEGZkN2_V8",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_2lGJa29ZiZ88",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_2lGJa29ZiZ87",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_0liEGZkN2_V8",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        }
+      }
+    },
+    {
+      "variant": "remount-stable",
+      "variantClass": "stable semantics",
+      "rep": 0,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 670,
+        "R": 1001
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "H": 1.02,
+        "R": 2.27
+      },
+      "postMs": {
+        "R": 2.38,
+        "H": 0.87
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_4HgjPlsxaT94",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_4HgjPlsxaT95",
+                  "afterId": "n_coVbVQsuMNM5"
+                },
+                {
+                  "id": "n_4HgjPlsxaT96",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_coVbVQsuMNM7",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_4HgjPlsxaT97",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_4HgjPlsxaT96",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_coVbVQsuMNM7",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "remount-stable",
+      "variantClass": "stable semantics",
+      "rep": 1,
+      "order": [
+        "R",
+        "H"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 670,
+        "R": 1001
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "R": 3.25,
+        "H": 0.57
+      },
+      "postMs": {
+        "H": 0.61,
+        "R": 2.15
+      },
+      "receipts": {
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        },
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_fEzo61nLP3W4",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_fEzo61nLP3W5",
+                  "afterId": "n_1-pc5Z1PAt45"
+                },
+                {
+                  "id": "n_fEzo61nLP3W6",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_1-pc5Z1PAt47",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_fEzo61nLP3W7",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_fEzo61nLP3W6",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_1-pc5Z1PAt47",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        }
+      }
+    },
+    {
+      "variant": "remount-stable",
+      "variantClass": "stable semantics",
+      "rep": 2,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Approve account:pressed=true",
+        "status:status:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "state:button:Approve account:pressed=true",
+          "status:status:Approved",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": true
+      },
+      "baselineBytes": {
+        "H": 670,
+        "R": 1001
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1284
+      },
+      "baselineMs": {
+        "H": 0.99,
+        "R": 2.21
+      },
+      "postMs": {
+        "R": 2.06,
+        "H": 0.73
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_3-uoFgsNCCF4",
+                  "kind": "state",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Approve account",
+                  "before": {
+                    "pressed": false
+                  },
+                  "after": {
+                    "pressed": true
+                  }
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "status",
+                  "name": "Approved",
+                  "beforeName": "Ready",
+                  "beforeId": "n_3-uoFgsNCCF5",
+                  "afterId": "n_5xc8xmQBzf65"
+                },
+                {
+                  "id": "n_3-uoFgsNCCF6",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_5xc8xmQBzf67",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_3-uoFgsNCCF7",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 5,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_3-uoFgsNCCF6",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_5xc8xmQBzf67",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Approve account:pressed=true",
+            "status:status:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "renamed-legitimate",
+      "variantClass": "legitimate semantic change",
+      "rep": 0,
+      "order": [
+        "R",
+        "H"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Authorize account:pressed=true",
+        "status:alert:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Authorize account:pressed=true",
+          "status:alert:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": false
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 218,
+        "R": 1331
+      },
+      "baselineMs": {
+        "R": 2.71,
+        "H": 0.47
+      },
+      "postMs": {
+        "H": 0.64,
+        "R": 2.05
+      },
+      "receipts": {
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Authorize account:pressed=true",
+            "status:alert:Approved",
+            "unobservable:canvas:1"
+          ]
+        },
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_9v7Uv4v9u285",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "button",
+                  "name": "Authorize account",
+                  "beforeName": "Approve account",
+                  "beforeId": "n_9v7Uv4v9u283",
+                  "afterId": "n_4XmsuNywPQO3"
+                },
+                {
+                  "id": "n_4XmsuNywPQO4",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "alert",
+                  "name": "Approved"
+                },
+                {
+                  "id": "n_4XmsuNywPQO6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_9v7Uv4v9u284",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "status",
+                  "name": "Ready"
+                },
+                {
+                  "id": "n_9v7Uv4v9u286",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 6,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_9v7Uv4v9u285",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_4XmsuNywPQO6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        }
+      }
+    },
+    {
+      "variant": "renamed-legitimate",
+      "variantClass": "legitimate semantic change",
+      "rep": 1,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Authorize account:pressed=true",
+        "status:alert:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Authorize account:pressed=true",
+          "status:alert:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": false
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 218,
+        "R": 1331
+      },
+      "baselineMs": {
+        "H": 1.02,
+        "R": 2.37
+      },
+      "postMs": {
+        "R": 2.15,
+        "H": 0.58
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_9ipA5n9rRgG5",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "button",
+                  "name": "Authorize account",
+                  "beforeName": "Approve account",
+                  "beforeId": "n_9ipA5n9rRgG3",
+                  "afterId": "n_dOiU48A0S9E3"
+                },
+                {
+                  "id": "n_dOiU48A0S9E4",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "alert",
+                  "name": "Approved"
+                },
+                {
+                  "id": "n_dOiU48A0S9E6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_9ipA5n9rRgG4",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "status",
+                  "name": "Ready"
+                },
+                {
+                  "id": "n_9ipA5n9rRgG6",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 6,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_9ipA5n9rRgG5",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_dOiU48A0S9E6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Authorize account:pressed=true",
+            "status:alert:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "renamed-legitimate",
+      "variantClass": "legitimate semantic change",
+      "rep": 2,
+      "order": [
+        "R",
+        "H"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:button:Authorize account:pressed=true",
+        "status:alert:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:button:Authorize account:pressed=true",
+          "status:alert:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": false
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 218,
+        "R": 1331
+      },
+      "baselineMs": {
+        "R": 2.84,
+        "H": 0.52
+      },
+      "postMs": {
+        "H": 0.78,
+        "R": 2.57
+      },
+      "receipts": {
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:button:Authorize account:pressed=true",
+            "status:alert:Approved",
+            "unobservable:canvas:1"
+          ]
+        },
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_0MQpjqM5Nwa5",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "kind": "possible-replacement",
+                  "match": "ambiguous",
+                  "role": "button",
+                  "name": "Authorize account",
+                  "beforeName": "Approve account",
+                  "beforeId": "n_0MQpjqM5Nwa3",
+                  "afterId": "n_6YOcbWIL0SO3"
+                },
+                {
+                  "id": "n_6YOcbWIL0SO4",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "alert",
+                  "name": "Approved"
+                },
+                {
+                  "id": "n_6YOcbWIL0SO6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_0MQpjqM5Nwa4",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "status",
+                  "name": "Ready"
+                },
+                {
+                  "id": "n_0MQpjqM5Nwa6",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 6,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_0MQpjqM5Nwa5",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [],
+                "total": 0,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_6YOcbWIL0SO6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        }
+      }
+    },
+    {
+      "variant": "switch-legitimate",
+      "variantClass": "legitimate semantic change",
+      "rep": 0,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:switch:Automatic approval:checked=true",
+        "status:log:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:switch:Automatic approval:checked=true",
+          "status:log:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": false
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1412
+      },
+      "baselineMs": {
+        "H": 1.18,
+        "R": 2.25
+      },
+      "postMs": {
+        "R": 2.14,
+        "H": 0.65
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_9BokC89xA7x5",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_cxXlXqGfAy13",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "switch",
+                  "name": "Automatic approval"
+                },
+                {
+                  "id": "n_cxXlXqGfAy14",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "log",
+                  "name": "Approved"
+                },
+                {
+                  "id": "n_cxXlXqGfAy16",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_9BokC89xA7x3",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "button",
+                  "name": "Approve account"
+                },
+                {
+                  "id": "n_9BokC89xA7x4",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "status",
+                  "name": "Ready"
+                },
+                {
+                  "id": "n_9BokC89xA7x6",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 7,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_9BokC89xA7x5",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [
+                  {
+                    "id": "n_cxXlXqGfAy13",
+                    "role": "switch",
+                    "name": "Automatic approval"
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_cxXlXqGfAy16",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:switch:Automatic approval:checked=true",
+            "status:log:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "switch-legitimate",
+      "variantClass": "legitimate semantic change",
+      "rep": 1,
+      "order": [
+        "R",
+        "H"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:switch:Automatic approval:checked=true",
+        "status:log:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:switch:Automatic approval:checked=true",
+          "status:log:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": false
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1412
+      },
+      "baselineMs": {
+        "R": 2.68,
+        "H": 0.47
+      },
+      "postMs": {
+        "H": 0.62,
+        "R": 2.04
+      },
+      "receipts": {
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:switch:Automatic approval:checked=true",
+            "status:log:Approved",
+            "unobservable:canvas:1"
+          ]
+        },
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_7Un9LjD_cfh5",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_asGKITbtdVd3",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "switch",
+                  "name": "Automatic approval"
+                },
+                {
+                  "id": "n_asGKITbtdVd4",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "log",
+                  "name": "Approved"
+                },
+                {
+                  "id": "n_asGKITbtdVd6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_7Un9LjD_cfh3",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "button",
+                  "name": "Approve account"
+                },
+                {
+                  "id": "n_7Un9LjD_cfh4",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "status",
+                  "name": "Ready"
+                },
+                {
+                  "id": "n_7Un9LjD_cfh6",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 7,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_7Un9LjD_cfh5",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [
+                  {
+                    "id": "n_asGKITbtdVd3",
+                    "role": "switch",
+                    "name": "Automatic approval"
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_asGKITbtdVd6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        }
+      }
+    },
+    {
+      "variant": "switch-legitimate",
+      "variantClass": "legitimate semantic change",
+      "rep": 2,
+      "order": [
+        "H",
+        "R"
+      ],
+      "expected": [
+        "covered:button:Continue",
+        "state:switch:Automatic approval:checked=true",
+        "status:log:Approved",
+        "unobservable:canvas:1"
+      ],
+      "actual": {
+        "H": [
+          "covered:button:Continue",
+          "state:switch:Automatic approval:checked=true",
+          "status:log:Approved",
+          "unobservable:canvas:1"
+        ],
+        "R": [
+          "covered:button:Continue",
+          "unobservable:canvas:1"
+        ]
+      },
+      "exact": {
+        "H": true,
+        "R": false
+      },
+      "baselineBytes": {
+        "H": 570,
+        "R": 921
+      },
+      "postBytes": {
+        "H": 217,
+        "R": 1412
+      },
+      "baselineMs": {
+        "H": 1.03,
+        "R": 2.24
+      },
+      "postMs": {
+        "R": 2.51,
+        "H": 0.69
+      },
+      "receipts": {
+        "R": {
+          "contract": "snapdom.action-receipt/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "postcondition": {
+            "kind": "changed",
+            "expected": {
+              "changed": true
+            },
+            "outcome": "PASS",
+            "reason": "changed is true"
+          },
+          "observed": {
+            "changed": true,
+            "torn": 0,
+            "changes": {
+              "items": [
+                {
+                  "id": "n_2vOAjIc6cmt5",
+                  "kind": "moved",
+                  "match": "exact",
+                  "role": "button",
+                  "name": "Continue"
+                },
+                {
+                  "id": "n_bd5thQ1gs-A3",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "switch",
+                  "name": "Automatic approval"
+                },
+                {
+                  "id": "n_bd5thQ1gs-A4",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "log",
+                  "name": "Approved"
+                },
+                {
+                  "id": "n_bd5thQ1gs-A6",
+                  "kind": "added",
+                  "match": "new",
+                  "role": "img"
+                },
+                {
+                  "id": "n_2vOAjIc6cmt3",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "button",
+                  "name": "Approve account"
+                },
+                {
+                  "id": "n_2vOAjIc6cmt4",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "status",
+                  "name": "Ready"
+                },
+                {
+                  "id": "n_2vOAjIc6cmt6",
+                  "kind": "removed",
+                  "match": "removed",
+                  "role": "img"
+                }
+              ],
+              "total": 7,
+              "truncated": 0
+            },
+            "actionabilityDelta": {
+              "becameCovered": {
+                "items": [
+                  {
+                    "id": "n_2vOAjIc6cmt5",
+                    "role": "button",
+                    "name": "Continue",
+                    "coveredBy": {
+                      "role": "generic"
+                    }
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              },
+              "becameVisible": {
+                "items": [
+                  {
+                    "id": "n_bd5thQ1gs-A3",
+                    "role": "switch",
+                    "name": "Automatic approval"
+                  }
+                ],
+                "total": 1,
+                "truncated": 0
+              }
+            },
+            "unobservable": {
+              "items": [
+                {
+                  "id": "n_bd5thQ1gs-A6",
+                  "role": "img",
+                  "sourceType": "canvas",
+                  "rasterAvailable": true,
+                  "bbox": [
+                    32,
+                    76,
+                    10,
+                    10
+                  ]
+                }
+              ],
+              "total": 1,
+              "truncated": 0
+            }
+          },
+          "privacy": {
+            "rulesActive": 0,
+            "applied": false
+          },
+          "limits": {
+            "changes": 24,
+            "actionability": 12,
+            "unobservable": 12
+          }
+        },
+        "H": {
+          "contract": "host.generic-action-telemetry/v1",
+          "version": 1,
+          "taskOutcome": "NOT_ASSESSED",
+          "facts": [
+            "covered:button:Continue",
+            "state:switch:Automatic approval:checked=true",
+            "status:log:Approved",
+            "unobservable:canvas:1"
+          ]
+        }
+      }
+    }
+  ],
+  "integrity": {
+    "exactScheduledTrials": true,
+    "portAssignedByOs": true,
+    "portNot8377": true,
+    "portClosed": true,
+    "tempRemoved": true,
+    "personalChromeAccessed": false,
+    "allTaskOutcomeNotAssessed": true
+  },
+  "provenance": {
+    "runnerSha256": "81da633f4b2e81ab8eab3d40a3d3c0490bc5a550a336b60acba97e8940260391",
+    "preregistrationSha256": "4ffa8b2b7048d1ddb80915b3f0c5515ff10758dbedee0a1df60b6b6516577287",
+    "bundleSha256": "889f6c2366b88361525ba6298fec31774959b2223e9621ec46c5910116554f36"
+  },
+  "interpretation": "The SDK receipt omitted at least one preregistered fact on semantic drift, so no maintenance advantage is supported.",
+  "caveats": [
+    "Synthetic authored variants are not a production holdout.",
+    "Physical LOC is a descriptive buy-versus-build proxy, not engineering effort.",
+    "Task success and commercial demand are not assessed."
+  ]
+}

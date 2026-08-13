@@ -1,0 +1,2468 @@
+{
+  "schema": 2,
+  "classification": "single-machine, synthetic, descriptive egress experiment; not a speed, token, or task-success claim",
+  "question": "For the same exact pre/post contract, what evidence bytes and reader wall time are observed for full ARIA snapshots versus the client-side SnapDOM response, including SnapDOM baseline cost?",
+  "exactContract": {
+    "pre": {
+      "cart": "0",
+      "status": "Ready"
+    },
+    "post": {
+      "cart": "1",
+      "status": "Added Item 0"
+    }
+  },
+  "startedAt": "2026-08-12T15:31:35.890Z",
+  "completedAt": "2026-08-12T15:31:47.719Z",
+  "browser": {
+    "engine": "chromium",
+    "version": "140.0.7339.186",
+    "profile": "task-owned temporary profile"
+  },
+  "companionPath": "allowlisted gate-client extension -> companion service worker -> isolated content script",
+  "fixture": {
+    "host": "127.0.0.1",
+    "portSelection": "explicit random integer in [20000, 61000); retry on collision; 8377 forbidden",
+    "port": 34257,
+    "bindAttempts": 1
+  },
+  "primary": {
+    "rowScales": [
+      50,
+      250,
+      1000,
+      3000
+    ],
+    "repetitions": 4,
+    "readOrder": "balanced independently before and after; post order reverses pre order in each repetition",
+    "summary": [
+      {
+        "rowCount": 50,
+        "repetitions": 4,
+        "medianActionables": 51,
+        "aria": {
+          "medianBaselineBytes": 5752,
+          "medianBaselineWallMs": 13.71,
+          "medianWarmPostBytes": 5766,
+          "medianWarmPostWallMs": 11.72,
+          "medianColdPrePlusPostBytes": 11518,
+          "medianColdPrePlusPostWallMs": 25.43
+        },
+        "snapdom": {
+          "medianBaselineBytes": 6442,
+          "medianBaselineWallMs": 15.4,
+          "medianWarmPostBytes": 6888,
+          "medianWarmPostWallMs": 12.15,
+          "medianColdPrePlusPostBytes": 13330,
+          "medianColdPrePlusPostWallMs": 27.31
+        },
+        "contractsExact": {
+          "aria": true,
+          "snapdom": true,
+          "primitiveOracle": true
+        }
+      },
+      {
+        "rowCount": 250,
+        "repetitions": 4,
+        "medianActionables": 251,
+        "aria": {
+          "medianBaselineBytes": 29002,
+          "medianBaselineWallMs": 20.89,
+          "medianWarmPostBytes": 29016,
+          "medianWarmPostWallMs": 19.36,
+          "medianColdPrePlusPostBytes": 58018,
+          "medianColdPrePlusPostWallMs": 40.24
+        },
+        "snapdom": {
+          "medianBaselineBytes": 6145,
+          "medianBaselineWallMs": 30.21,
+          "medianWarmPostBytes": 6591,
+          "medianWarmPostWallMs": 39.81,
+          "medianColdPrePlusPostBytes": 12736,
+          "medianColdPrePlusPostWallMs": 69.86
+        },
+        "contractsExact": {
+          "aria": true,
+          "snapdom": true,
+          "primitiveOracle": true
+        }
+      },
+      {
+        "rowCount": 1000,
+        "repetitions": 4,
+        "medianActionables": 1001,
+        "aria": {
+          "medianBaselineBytes": 116752,
+          "medianBaselineWallMs": 63.96,
+          "medianWarmPostBytes": 116766,
+          "medianWarmPostWallMs": 37.94,
+          "medianColdPrePlusPostBytes": 233518,
+          "medianColdPrePlusPostWallMs": 102.06
+        },
+        "snapdom": {
+          "medianBaselineBytes": 6146,
+          "medianBaselineWallMs": 89.72,
+          "medianWarmPostBytes": 6592.5,
+          "medianWarmPostWallMs": 117.64,
+          "medianColdPrePlusPostBytes": 12738.5,
+          "medianColdPrePlusPostWallMs": 210.58
+        },
+        "contractsExact": {
+          "aria": true,
+          "snapdom": true,
+          "primitiveOracle": true
+        }
+      },
+      {
+        "rowCount": 3000,
+        "repetitions": 4,
+        "medianActionables": 3001,
+        "aria": {
+          "medianBaselineBytes": 356752,
+          "medianBaselineWallMs": 279.87,
+          "medianWarmPostBytes": 356766,
+          "medianWarmPostWallMs": 112.83,
+          "medianColdPrePlusPostBytes": 713518,
+          "medianColdPrePlusPostWallMs": 393.28
+        },
+        "snapdom": {
+          "medianBaselineBytes": 6148,
+          "medianBaselineWallMs": 234.79,
+          "medianWarmPostBytes": 6594,
+          "medianWarmPostWallMs": 281.2,
+          "medianColdPrePlusPostBytes": 12742,
+          "medianColdPrePlusPostWallMs": 518.18
+        },
+        "contractsExact": {
+          "aria": true,
+          "snapdom": true,
+          "primitiveOracle": true
+        }
+      }
+    ],
+    "trials": [
+      {
+        "id": "rows-50-rep-0",
+        "rowCount": 50,
+        "rep": 0,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 50
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 50
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 5752,
+            "wallMs": 15.32,
+            "artifact": {
+              "id": "rows-50-rep-0:aria:pre",
+              "byteLength": 5752,
+              "sha256": "bfc999ef693a7cef967663da3ca1711c0a65594db205a4f6386da1333a16bded",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 5766,
+            "wallMs": 3.46,
+            "artifact": {
+              "id": "rows-50-rep-0:aria:post",
+              "byteLength": 5766,
+              "sha256": "e61d3c4870918644bf1a5ca8457ccc866cab24baf5450400a6e273c7fc674fda",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 11518,
+            "wallMs": 18.78
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6443,
+            "wallMs": 28.03,
+            "artifact": {
+              "id": "rows-50-rep-0:snapdom:pre",
+              "byteLength": 6443,
+              "sha256": "82aa415a3df9159c6ba8e756d39ede3467107ae7eb8f203b49321b47a7550d8b",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 17,
+            "actionables": 51,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6888,
+            "wallMs": 29.99,
+            "artifact": {
+              "id": "rows-50-rep-0:snapdom:post",
+              "byteLength": 6888,
+              "sha256": "03381844f799b1ba410fe179657bb408fd3e687cc3a9bdd070d1341b97089d6c",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 9,
+            "actionables": 51,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 13331,
+            "wallMs": 58.02
+          }
+        }
+      },
+      {
+        "id": "rows-50-rep-1",
+        "rowCount": 50,
+        "rep": 1,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 50
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 50
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 5752,
+            "wallMs": 12.09,
+            "artifact": {
+              "id": "rows-50-rep-1:aria:pre",
+              "byteLength": 5752,
+              "sha256": "bfc999ef693a7cef967663da3ca1711c0a65594db205a4f6386da1333a16bded",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 5766,
+            "wallMs": 19.98,
+            "artifact": {
+              "id": "rows-50-rep-1:aria:post",
+              "byteLength": 5766,
+              "sha256": "e61d3c4870918644bf1a5ca8457ccc866cab24baf5450400a6e273c7fc674fda",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 11518,
+            "wallMs": 32.07
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6442,
+            "wallMs": 13.61,
+            "artifact": {
+              "id": "rows-50-rep-1:snapdom:pre",
+              "byteLength": 6442,
+              "sha256": "11fd6ea8e16fe72a44610edc434b179b907700a8031a97bb28fa73e0e5b4a3e9",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 9,
+            "actionables": 51,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6888,
+            "wallMs": 11.88,
+            "artifact": {
+              "id": "rows-50-rep-1:snapdom:post",
+              "byteLength": 6888,
+              "sha256": "b3fe9957b42f8e0cf1be23b7b9cb8ceb756be776516ab24a5de302d6f1099ac0",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 8,
+            "actionables": 51,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 13330,
+            "wallMs": 25.49
+          }
+        }
+      },
+      {
+        "id": "rows-50-rep-2",
+        "rowCount": 50,
+        "rep": 2,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 50
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 50
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 5752,
+            "wallMs": 10.82,
+            "artifact": {
+              "id": "rows-50-rep-2:aria:pre",
+              "byteLength": 5752,
+              "sha256": "bfc999ef693a7cef967663da3ca1711c0a65594db205a4f6386da1333a16bded",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 5766,
+            "wallMs": 3.04,
+            "artifact": {
+              "id": "rows-50-rep-2:aria:post",
+              "byteLength": 5766,
+              "sha256": "e61d3c4870918644bf1a5ca8457ccc866cab24baf5450400a6e273c7fc674fda",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 11518,
+            "wallMs": 13.86
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6442,
+            "wallMs": 17.18,
+            "artifact": {
+              "id": "rows-50-rep-2:snapdom:pre",
+              "byteLength": 6442,
+              "sha256": "9c889d910aebb83b92d463b457f19614da2fb8b29eff6becf520a30f282024bc",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 9,
+            "actionables": 51,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6888,
+            "wallMs": 11.95,
+            "artifact": {
+              "id": "rows-50-rep-2:snapdom:post",
+              "byteLength": 6888,
+              "sha256": "27c860a3d02644fdacc5deb5ef1b17f2622a08ddb3f5b54148b50ae16f0796c4",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 9,
+            "actionables": 51,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 13330,
+            "wallMs": 29.13
+          }
+        }
+      },
+      {
+        "id": "rows-50-rep-3",
+        "rowCount": 50,
+        "rep": 3,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 50
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 50
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 5752,
+            "wallMs": 15.56,
+            "artifact": {
+              "id": "rows-50-rep-3:aria:pre",
+              "byteLength": 5752,
+              "sha256": "bfc999ef693a7cef967663da3ca1711c0a65594db205a4f6386da1333a16bded",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 5766,
+            "wallMs": 21.32,
+            "artifact": {
+              "id": "rows-50-rep-3:aria:post",
+              "byteLength": 5766,
+              "sha256": "e61d3c4870918644bf1a5ca8457ccc866cab24baf5450400a6e273c7fc674fda",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 11518,
+            "wallMs": 36.88
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6442,
+            "wallMs": 12.45,
+            "artifact": {
+              "id": "rows-50-rep-3:snapdom:pre",
+              "byteLength": 6442,
+              "sha256": "17ad7467fa98302b21020a70ee7fecfbb27e498187ecb5e9c440fea2aad80ccc",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 8,
+            "actionables": 51,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6888,
+            "wallMs": 12.35,
+            "artifact": {
+              "id": "rows-50-rep-3:snapdom:post",
+              "byteLength": 6888,
+              "sha256": "0de4b87c6d594c1c647d96631443850a4fbda78b02c2ce1b8ae702d66c1d8ee8",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 8,
+            "actionables": 51,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 13330,
+            "wallMs": 24.8
+          }
+        }
+      },
+      {
+        "id": "rows-250-rep-0",
+        "rowCount": 250,
+        "rep": 0,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 250
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 250
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 29002,
+            "wallMs": 20.48,
+            "artifact": {
+              "id": "rows-250-rep-0:aria:pre",
+              "byteLength": 29002,
+              "sha256": "e7b95b729e4ee810e554984343cee2662e208076fd1a73029d7ee1aaa2f1240b",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 29016,
+            "wallMs": 11.15,
+            "artifact": {
+              "id": "rows-250-rep-0:aria:post",
+              "byteLength": 29016,
+              "sha256": "c04caaf078132f1c070ff9630c117608d93dd1d2dda469e7dbd632f347808ffb",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 58018,
+            "wallMs": 31.63
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6145,
+            "wallMs": 35.59,
+            "artifact": {
+              "id": "rows-250-rep-0:snapdom:pre",
+              "byteLength": 6145,
+              "sha256": "391e4914ac1b4a7046dbc5e5491d29825286aad3585cc55fdb2506a5f9ccd7d2",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 26,
+            "actionables": 251,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6591,
+            "wallMs": 55.23,
+            "artifact": {
+              "id": "rows-250-rep-0:snapdom:post",
+              "byteLength": 6591,
+              "sha256": "d8ac2747e0e887fe13ce92cf9d0d4cb373aa4ca6fec4e43f6e75b134b9867e0b",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 34,
+            "actionables": 251,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12736,
+            "wallMs": 90.82
+          }
+        }
+      },
+      {
+        "id": "rows-250-rep-1",
+        "rowCount": 250,
+        "rep": 1,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 250
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 250
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 29002,
+            "wallMs": 26.2,
+            "artifact": {
+              "id": "rows-250-rep-1:aria:pre",
+              "byteLength": 29002,
+              "sha256": "e7b95b729e4ee810e554984343cee2662e208076fd1a73029d7ee1aaa2f1240b",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 29016,
+            "wallMs": 32.23,
+            "artifact": {
+              "id": "rows-250-rep-1:aria:post",
+              "byteLength": 29016,
+              "sha256": "c04caaf078132f1c070ff9630c117608d93dd1d2dda469e7dbd632f347808ffb",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 58018,
+            "wallMs": 58.43
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6145,
+            "wallMs": 29.51,
+            "artifact": {
+              "id": "rows-250-rep-1:snapdom:pre",
+              "byteLength": 6145,
+              "sha256": "40e02dce6e8bb77cd5f6b2531cd3bfc9cc87117fc49656dc18fabf453460eaf4",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 25,
+            "actionables": 251,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6591,
+            "wallMs": 28.58,
+            "artifact": {
+              "id": "rows-250-rep-1:snapdom:post",
+              "byteLength": 6591,
+              "sha256": "5711b3e13551c357193848dbc41f1843cda4b8b5ad2e8e238459103e2197dc46",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 24,
+            "actionables": 251,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12736,
+            "wallMs": 58.09
+          }
+        }
+      },
+      {
+        "id": "rows-250-rep-2",
+        "rowCount": 250,
+        "rep": 2,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 250
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 250
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 29002,
+            "wallMs": 19.61,
+            "artifact": {
+              "id": "rows-250-rep-2:aria:pre",
+              "byteLength": 29002,
+              "sha256": "e7b95b729e4ee810e554984343cee2662e208076fd1a73029d7ee1aaa2f1240b",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 29016,
+            "wallMs": 10.55,
+            "artifact": {
+              "id": "rows-250-rep-2:aria:post",
+              "byteLength": 29016,
+              "sha256": "c04caaf078132f1c070ff9630c117608d93dd1d2dda469e7dbd632f347808ffb",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 58018,
+            "wallMs": 30.16
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6145,
+            "wallMs": 30.17,
+            "artifact": {
+              "id": "rows-250-rep-2:snapdom:pre",
+              "byteLength": 6145,
+              "sha256": "e9e0770042f8c8c54bb0f9eb8a7e8b153fda8cdc0f9ab42d096796c30c29d140",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 26,
+            "actionables": 251,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6591,
+            "wallMs": 51.04,
+            "artifact": {
+              "id": "rows-250-rep-2:snapdom:post",
+              "byteLength": 6591,
+              "sha256": "5a7586a3a90c858a773033cb4a7b4d07991417ed646b347c6f59334a5652130b",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 28,
+            "actionables": 251,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12736,
+            "wallMs": 81.21
+          }
+        }
+      },
+      {
+        "id": "rows-250-rep-3",
+        "rowCount": 250,
+        "rep": 3,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 250
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 250
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 29002,
+            "wallMs": 21.29,
+            "artifact": {
+              "id": "rows-250-rep-3:aria:pre",
+              "byteLength": 29002,
+              "sha256": "e7b95b729e4ee810e554984343cee2662e208076fd1a73029d7ee1aaa2f1240b",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 29016,
+            "wallMs": 27.57,
+            "artifact": {
+              "id": "rows-250-rep-3:aria:post",
+              "byteLength": 29016,
+              "sha256": "c04caaf078132f1c070ff9630c117608d93dd1d2dda469e7dbd632f347808ffb",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 58018,
+            "wallMs": 48.86
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6145,
+            "wallMs": 30.24,
+            "artifact": {
+              "id": "rows-250-rep-3:snapdom:pre",
+              "byteLength": 6145,
+              "sha256": "2cd44875cf3b3deb3f6bc8b1229d0ba3c697fde988bb3fbf8180541eb3330f98",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 25,
+            "actionables": 251,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6591,
+            "wallMs": 28.28,
+            "artifact": {
+              "id": "rows-250-rep-3:snapdom:post",
+              "byteLength": 6591,
+              "sha256": "cc0cf06032ffe2cf8c63dac3f8c52e049130224fdcf1e2bd71709747bd630819",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 24,
+            "actionables": 251,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12736,
+            "wallMs": 58.52
+          }
+        }
+      },
+      {
+        "id": "rows-1000-rep-0",
+        "rowCount": 1000,
+        "rep": 0,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 1000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 1000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 116752,
+            "wallMs": 64.06,
+            "artifact": {
+              "id": "rows-1000-rep-0:aria:pre",
+              "byteLength": 116752,
+              "sha256": "0090dadb7cfeac1dc9cdf738b2e5cd91a9d864728d970262e267bb7b74c445b5",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 116766,
+            "wallMs": 38.94,
+            "artifact": {
+              "id": "rows-1000-rep-0:aria:post",
+              "byteLength": 116766,
+              "sha256": "f1145380c74929859ebdf84aaaa6b6e10ed9d7c0066241b9f028b036bfa28498",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 233518,
+            "wallMs": 103
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6146,
+            "wallMs": 93.86,
+            "artifact": {
+              "id": "rows-1000-rep-0:snapdom:pre",
+              "byteLength": 6146,
+              "sha256": "93f6f928ab4e34fc1ad32d0e2f9c07f6fcfee9a143df8518c4891c4096900bdb",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 86,
+            "actionables": 1001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6592,
+            "wallMs": 117.39,
+            "artifact": {
+              "id": "rows-1000-rep-0:snapdom:post",
+              "byteLength": 6592,
+              "sha256": "b0b8b586fb0aac06c8ef71e6f27d0ce6a79fd7d7febf456003c257ab68ed2b5e",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 91,
+            "actionables": 1001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12738,
+            "wallMs": 211.25
+          }
+        }
+      },
+      {
+        "id": "rows-1000-rep-1",
+        "rowCount": 1000,
+        "rep": 1,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 1000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 1000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 116752,
+            "wallMs": 63.85,
+            "artifact": {
+              "id": "rows-1000-rep-1:aria:pre",
+              "byteLength": 116752,
+              "sha256": "0090dadb7cfeac1dc9cdf738b2e5cd91a9d864728d970262e267bb7b74c445b5",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 116766,
+            "wallMs": 36.83,
+            "artifact": {
+              "id": "rows-1000-rep-1:aria:post",
+              "byteLength": 116766,
+              "sha256": "f1145380c74929859ebdf84aaaa6b6e10ed9d7c0066241b9f028b036bfa28498",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 233518,
+            "wallMs": 100.68
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6146,
+            "wallMs": 85.58,
+            "artifact": {
+              "id": "rows-1000-rep-1:snapdom:pre",
+              "byteLength": 6146,
+              "sha256": "7e828dc80ee4afeb4d750e24ba5611a7fd7c1dfae3efc11f0e223a7b030a6710",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 78,
+            "actionables": 1001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6593,
+            "wallMs": 124.34,
+            "artifact": {
+              "id": "rows-1000-rep-1:snapdom:post",
+              "byteLength": 6593,
+              "sha256": "aa4a4d6ce6cd78e8453d3dfa506db663c4e65c8ab3d41ee384134159ece51f97",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 118,
+            "actionables": 1001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12739,
+            "wallMs": 209.92
+          }
+        }
+      },
+      {
+        "id": "rows-1000-rep-2",
+        "rowCount": 1000,
+        "rep": 2,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 1000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 1000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 116752,
+            "wallMs": 61.19,
+            "artifact": {
+              "id": "rows-1000-rep-2:aria:pre",
+              "byteLength": 116752,
+              "sha256": "0090dadb7cfeac1dc9cdf738b2e5cd91a9d864728d970262e267bb7b74c445b5",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 116766,
+            "wallMs": 39.93,
+            "artifact": {
+              "id": "rows-1000-rep-2:aria:post",
+              "byteLength": 116766,
+              "sha256": "f1145380c74929859ebdf84aaaa6b6e10ed9d7c0066241b9f028b036bfa28498",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 233518,
+            "wallMs": 101.12
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6146,
+            "wallMs": 99.48,
+            "artifact": {
+              "id": "rows-1000-rep-2:snapdom:pre",
+              "byteLength": 6146,
+              "sha256": "ff4b404ac3ee70cc471bce035ae05449e9a97d6ccd61b91f745a6e62b14c599e",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 83,
+            "actionables": 1001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6592,
+            "wallMs": 116.34,
+            "artifact": {
+              "id": "rows-1000-rep-2:snapdom:post",
+              "byteLength": 6592,
+              "sha256": "82a57b935b639f0e8862c9f560bfa4423b840ed09b320f636cbdc6fc36a43405",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 92,
+            "actionables": 1001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12738,
+            "wallMs": 215.82
+          }
+        }
+      },
+      {
+        "id": "rows-1000-rep-3",
+        "rowCount": 1000,
+        "rep": 3,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 1000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 1000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 116752,
+            "wallMs": 79.66,
+            "artifact": {
+              "id": "rows-1000-rep-3:aria:pre",
+              "byteLength": 116752,
+              "sha256": "0090dadb7cfeac1dc9cdf738b2e5cd91a9d864728d970262e267bb7b74c445b5",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 116766,
+            "wallMs": 36.94,
+            "artifact": {
+              "id": "rows-1000-rep-3:aria:post",
+              "byteLength": 116766,
+              "sha256": "f1145380c74929859ebdf84aaaa6b6e10ed9d7c0066241b9f028b036bfa28498",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 233518,
+            "wallMs": 116.6
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6146,
+            "wallMs": 83.81,
+            "artifact": {
+              "id": "rows-1000-rep-3:snapdom:pre",
+              "byteLength": 6146,
+              "sha256": "3c58ddf62aa7e6ce389b6d78c3b0ac02bf02f51200548bad58b93786cf3d6322",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 77,
+            "actionables": 1001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6593,
+            "wallMs": 117.89,
+            "artifact": {
+              "id": "rows-1000-rep-3:snapdom:post",
+              "byteLength": 6593,
+              "sha256": "03d4cc227ba2699a5339de81b55d322d14429214e38c6601f342fccda2a84f9b",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 112,
+            "actionables": 1001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12739,
+            "wallMs": 201.7
+          }
+        }
+      },
+      {
+        "id": "rows-3000-rep-0",
+        "rowCount": 3000,
+        "rep": 0,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 3000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 3000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 356752,
+            "wallMs": 283.73,
+            "artifact": {
+              "id": "rows-3000-rep-0:aria:pre",
+              "byteLength": 356752,
+              "sha256": "f232775f8cc580130cbf369eb56470379360fc96a3dd48029bc4f469e11467e4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 356766,
+            "wallMs": 112.78,
+            "artifact": {
+              "id": "rows-3000-rep-0:aria:post",
+              "byteLength": 356766,
+              "sha256": "839f30886a2ab771d4afc81a709a212e36a95754c9ccde07a5f2b01b0ffddec4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 713518,
+            "wallMs": 396.51
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6148,
+            "wallMs": 265.21,
+            "artifact": {
+              "id": "rows-3000-rep-0:snapdom:pre",
+              "byteLength": 6148,
+              "sha256": "d9fe6c54a8a9f6342b9e26c917aaf4faa6e6778ad2059016562fe468365baa1c",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 225,
+            "actionables": 3001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6594,
+            "wallMs": 277.94,
+            "artifact": {
+              "id": "rows-3000-rep-0:snapdom:post",
+              "byteLength": 6594,
+              "sha256": "72e6ea7d4d6e1cca13cb09947cf63a112725f8370f9e1b216e478b7c6e022467",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 248,
+            "actionables": 3001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12742,
+            "wallMs": 543.15
+          }
+        }
+      },
+      {
+        "id": "rows-3000-rep-1",
+        "rowCount": 3000,
+        "rep": 1,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 3000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 3000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 356752,
+            "wallMs": 282.27,
+            "artifact": {
+              "id": "rows-3000-rep-1:aria:pre",
+              "byteLength": 356752,
+              "sha256": "f232775f8cc580130cbf369eb56470379360fc96a3dd48029bc4f469e11467e4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 356766,
+            "wallMs": 112.87,
+            "artifact": {
+              "id": "rows-3000-rep-1:aria:post",
+              "byteLength": 356766,
+              "sha256": "839f30886a2ab771d4afc81a709a212e36a95754c9ccde07a5f2b01b0ffddec4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 713518,
+            "wallMs": 395.14
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6148,
+            "wallMs": 235.06,
+            "artifact": {
+              "id": "rows-3000-rep-1:snapdom:pre",
+              "byteLength": 6148,
+              "sha256": "b34dd69f1f136e16bf675a7e978837c43e9101d25b3f4278e8ceb397a2514476",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 222,
+            "actionables": 3001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6594,
+            "wallMs": 282.18,
+            "artifact": {
+              "id": "rows-3000-rep-1:snapdom:post",
+              "byteLength": 6594,
+              "sha256": "dbcc7c3a0ed33e2221cf9aae521ce41ef95eabf7c41d6ac5287f43fb93d1fc0f",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 264,
+            "actionables": 3001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12742,
+            "wallMs": 517.24
+          }
+        }
+      },
+      {
+        "id": "rows-3000-rep-2",
+        "rowCount": 3000,
+        "rep": 2,
+        "readOrder": {
+          "pre": [
+            "snapdom",
+            "aria"
+          ],
+          "post": [
+            "aria",
+            "snapdom"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 3000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 3000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 356752,
+            "wallMs": 268.06,
+            "artifact": {
+              "id": "rows-3000-rep-2:aria:pre",
+              "byteLength": 356752,
+              "sha256": "f232775f8cc580130cbf369eb56470379360fc96a3dd48029bc4f469e11467e4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 356766,
+            "wallMs": 111.73,
+            "artifact": {
+              "id": "rows-3000-rep-2:aria:post",
+              "byteLength": 356766,
+              "sha256": "839f30886a2ab771d4afc81a709a212e36a95754c9ccde07a5f2b01b0ffddec4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 713518,
+            "wallMs": 379.79
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6148,
+            "wallMs": 229.53,
+            "artifact": {
+              "id": "rows-3000-rep-2:snapdom:pre",
+              "byteLength": 6148,
+              "sha256": "59f045b4126f35539b504280223864d3d39a8420e583d06420c3ce2da2773a20",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 216,
+            "actionables": 3001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6594,
+            "wallMs": 280.22,
+            "artifact": {
+              "id": "rows-3000-rep-2:snapdom:post",
+              "byteLength": 6594,
+              "sha256": "cb1c53b528c34f5b50c28793200706cabce2d33b8143955f90e38d7c02665aac",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 249,
+            "actionables": 3001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12742,
+            "wallMs": 509.75
+          }
+        }
+      },
+      {
+        "id": "rows-3000-rep-3",
+        "rowCount": 3000,
+        "rep": 3,
+        "readOrder": {
+          "pre": [
+            "aria",
+            "snapdom"
+          ],
+          "post": [
+            "snapdom",
+            "aria"
+          ]
+        },
+        "oracle": {
+          "pre": {
+            "badge": "0",
+            "status": "Ready",
+            "bannerLabel": "Cart 0 | Ready",
+            "rows": 3000
+          },
+          "post": {
+            "badge": "1",
+            "status": "Added Item 0",
+            "bannerLabel": "Cart 1 | Added Item 0",
+            "rows": 3000
+          },
+          "contractPass": true
+        },
+        "contracts": {
+          "aria": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          },
+          "snapdom": {
+            "preCart0": true,
+            "preReady": true,
+            "postCart1": true,
+            "postAddedItem0": true,
+            "exactPrePost": true
+          }
+        },
+        "aria": {
+          "baseline": {
+            "bytes": 356752,
+            "wallMs": 277.46,
+            "artifact": {
+              "id": "rows-3000-rep-3:aria:pre",
+              "byteLength": 356752,
+              "sha256": "f232775f8cc580130cbf369eb56470379360fc96a3dd48029bc4f469e11467e4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "warmPost": {
+            "bytes": 356766,
+            "wallMs": 113.95,
+            "artifact": {
+              "id": "rows-3000-rep-3:aria:post",
+              "byteLength": 356766,
+              "sha256": "839f30886a2ab771d4afc81a709a212e36a95754c9ccde07a5f2b01b0ffddec4",
+              "mediaType": "text/yaml; profile=playwright-aria-snapshot"
+            }
+          },
+          "coldPrePlusPost": {
+            "bytes": 713518,
+            "wallMs": 391.41
+          }
+        },
+        "snapdom": {
+          "baseline": {
+            "bytes": 6148,
+            "wallMs": 234.51,
+            "artifact": {
+              "id": "rows-3000-rep-3:snapdom:pre",
+              "byteLength": 6148,
+              "sha256": "0618842459e297812da32a3e6a81783a467a5be7e5f7bb412b81306c7a5ce0c8",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 222,
+            "actionables": 3001,
+            "changed": null,
+            "changes": 0,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "warmPost": {
+            "bytes": 6594,
+            "wallMs": 284.61,
+            "artifact": {
+              "id": "rows-3000-rep-3:snapdom:post",
+              "byteLength": 6594,
+              "sha256": "5b46583bc701cdcd40fa22f530a5644ec9a5cfb098ac2e290dfe3e365548535e",
+              "mediaType": "application/json"
+            },
+            "reportedWalkMs": 264,
+            "actionables": 3001,
+            "changed": true,
+            "changes": 3,
+            "torn": 0,
+            "unobservable": 0
+          },
+          "coldPrePlusPost": {
+            "bytes": 12742,
+            "wallMs": 519.12
+          }
+        }
+      }
+    ]
+  },
+  "uncertaintyBoundary": {
+    "regionScales": [
+      0,
+      10,
+      100,
+      300
+    ],
+    "repetitions": 4,
+    "composition": "alternating visible canvas and sandboxed opaque iframe regions",
+    "question": "How does the received SnapDOM response body grow as unobservableDetails grows?",
+    "summary": {
+      "byRegionCount": [
+        {
+          "regionCount": 0,
+          "repetitions": 4,
+          "medianResponseBytes": 417,
+          "medianWallMs": 7.45,
+          "medianUnobservableDetails": 0,
+          "allCountsExact": true,
+          "medianGrowthBytesVsZero": 0,
+          "medianGrowthBytesPerRegionVsZero": null
+        },
+        {
+          "regionCount": 10,
+          "repetitions": 4,
+          "medianResponseBytes": 2355,
+          "medianWallMs": 8.5,
+          "medianUnobservableDetails": 10,
+          "allCountsExact": true,
+          "medianGrowthBytesVsZero": 1938,
+          "medianGrowthBytesPerRegionVsZero": 193.8
+        },
+        {
+          "regionCount": 100,
+          "repetitions": 4,
+          "medianResponseBytes": 15726,
+          "medianWallMs": 67.14,
+          "medianUnobservableDetails": 100,
+          "allCountsExact": true,
+          "medianGrowthBytesVsZero": 15309,
+          "medianGrowthBytesPerRegionVsZero": 153.09
+        },
+        {
+          "regionCount": 300,
+          "repetitions": 4,
+          "medianResponseBytes": 37691,
+          "medianWallMs": 80.87,
+          "medianUnobservableDetails": 300,
+          "allCountsExact": true,
+          "medianGrowthBytesVsZero": 37274,
+          "medianGrowthBytesPerRegionVsZero": 124.25
+        }
+      ],
+      "responseBytesMonotonicNonDecreasing": true
+    },
+    "trials": [
+      {
+        "id": "uncertainty-0-rep-0",
+        "regionCount": 0,
+        "rep": 0,
+        "oracle": {
+          "canvases": 0,
+          "opaqueIframes": 0,
+          "totalRegions": 0
+        },
+        "snapdom": {
+          "bytes": 417,
+          "wallMs": 8.76,
+          "artifact": {
+            "id": "uncertainty-0-rep-0:snapdom:baseline",
+            "byteLength": 417,
+            "sha256": "7b0954639ae55ebddcfe23d9a0541ee3ac2552ae4e96cf94ecff9b1e383ac155",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 2,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 0,
+          "unobservableDetails": 0,
+          "bySourceType": {}
+        }
+      },
+      {
+        "id": "uncertainty-0-rep-1",
+        "regionCount": 0,
+        "rep": 1,
+        "oracle": {
+          "canvases": 0,
+          "opaqueIframes": 0,
+          "totalRegions": 0
+        },
+        "snapdom": {
+          "bytes": 417,
+          "wallMs": 6.66,
+          "artifact": {
+            "id": "uncertainty-0-rep-1:snapdom:baseline",
+            "byteLength": 417,
+            "sha256": "e4802d677973709b5a8a95d45da4ad23cacc696c7221fad768a5163724d45572",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 2,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 0,
+          "unobservableDetails": 0,
+          "bySourceType": {}
+        }
+      },
+      {
+        "id": "uncertainty-0-rep-2",
+        "regionCount": 0,
+        "rep": 2,
+        "oracle": {
+          "canvases": 0,
+          "opaqueIframes": 0,
+          "totalRegions": 0
+        },
+        "snapdom": {
+          "bytes": 417,
+          "wallMs": 6.98,
+          "artifact": {
+            "id": "uncertainty-0-rep-2:snapdom:baseline",
+            "byteLength": 417,
+            "sha256": "f97bf07ee462a3472bc351075184d4a25bbfb74bd287195dcc4da9b2c1bff86c",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 2,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 0,
+          "unobservableDetails": 0,
+          "bySourceType": {}
+        }
+      },
+      {
+        "id": "uncertainty-0-rep-3",
+        "regionCount": 0,
+        "rep": 3,
+        "oracle": {
+          "canvases": 0,
+          "opaqueIframes": 0,
+          "totalRegions": 0
+        },
+        "snapdom": {
+          "bytes": 417,
+          "wallMs": 7.91,
+          "artifact": {
+            "id": "uncertainty-0-rep-3:snapdom:baseline",
+            "byteLength": 417,
+            "sha256": "a1d8f370734074ef627aa6a77e9e83bd01d229cb75e0984a7e9f473d1aef2625",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 2,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 0,
+          "unobservableDetails": 0,
+          "bySourceType": {}
+        }
+      },
+      {
+        "id": "uncertainty-10-rep-0",
+        "regionCount": 10,
+        "rep": 0,
+        "oracle": {
+          "canvases": 5,
+          "opaqueIframes": 5,
+          "totalRegions": 10
+        },
+        "snapdom": {
+          "bytes": 2355,
+          "wallMs": 6.97,
+          "artifact": {
+            "id": "uncertainty-10-rep-0:snapdom:baseline",
+            "byteLength": 2355,
+            "sha256": "55e08ba113963fb27a331325a30dd4ad167ed2aeff2c5efd45bb7904980baf6b",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 3,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 10,
+          "unobservableDetails": 10,
+          "bySourceType": {
+            "canvas": 5,
+            "iframe": 5
+          }
+        }
+      },
+      {
+        "id": "uncertainty-10-rep-1",
+        "regionCount": 10,
+        "rep": 1,
+        "oracle": {
+          "canvases": 5,
+          "opaqueIframes": 5,
+          "totalRegions": 10
+        },
+        "snapdom": {
+          "bytes": 2355,
+          "wallMs": 10.03,
+          "artifact": {
+            "id": "uncertainty-10-rep-1:snapdom:baseline",
+            "byteLength": 2355,
+            "sha256": "27e4b83e3f7d66873e9ff15c29b8bdbef6bc93363246baec79bf3d4e6259b9a9",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 5,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 10,
+          "unobservableDetails": 10,
+          "bySourceType": {
+            "canvas": 5,
+            "iframe": 5
+          }
+        }
+      },
+      {
+        "id": "uncertainty-10-rep-2",
+        "regionCount": 10,
+        "rep": 2,
+        "oracle": {
+          "canvases": 5,
+          "opaqueIframes": 5,
+          "totalRegions": 10
+        },
+        "snapdom": {
+          "bytes": 2355,
+          "wallMs": 5.83,
+          "artifact": {
+            "id": "uncertainty-10-rep-2:snapdom:baseline",
+            "byteLength": 2355,
+            "sha256": "df6e3a9e2be22c5e44d13542045b19b515716fe4e2875f827f4c7ec322c74640",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 3,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 10,
+          "unobservableDetails": 10,
+          "bySourceType": {
+            "canvas": 5,
+            "iframe": 5
+          }
+        }
+      },
+      {
+        "id": "uncertainty-10-rep-3",
+        "regionCount": 10,
+        "rep": 3,
+        "oracle": {
+          "canvases": 5,
+          "opaqueIframes": 5,
+          "totalRegions": 10
+        },
+        "snapdom": {
+          "bytes": 2355,
+          "wallMs": 10.47,
+          "artifact": {
+            "id": "uncertainty-10-rep-3:snapdom:baseline",
+            "byteLength": 2355,
+            "sha256": "27bdb6001d71c7112b66fa9117e8e5f6a43a253b990d9923ee2d0dc81e9ec397",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 5,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 10,
+          "unobservableDetails": 10,
+          "bySourceType": {
+            "canvas": 5,
+            "iframe": 5
+          }
+        }
+      },
+      {
+        "id": "uncertainty-100-rep-0",
+        "regionCount": 100,
+        "rep": 0,
+        "oracle": {
+          "canvases": 50,
+          "opaqueIframes": 50,
+          "totalRegions": 100
+        },
+        "snapdom": {
+          "bytes": 15726,
+          "wallMs": 75.36,
+          "artifact": {
+            "id": "uncertainty-100-rep-0:snapdom:baseline",
+            "byteLength": 15726,
+            "sha256": "4661843da9ccd50e168ca6045a257fd60ab8d968e4d5a9ced49b21110ddc59e4",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 6,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 100,
+          "unobservableDetails": 100,
+          "bySourceType": {
+            "canvas": 50,
+            "iframe": 50
+          }
+        }
+      },
+      {
+        "id": "uncertainty-100-rep-1",
+        "regionCount": 100,
+        "rep": 1,
+        "oracle": {
+          "canvases": 50,
+          "opaqueIframes": 50,
+          "totalRegions": 100
+        },
+        "snapdom": {
+          "bytes": 15726,
+          "wallMs": 68.3,
+          "artifact": {
+            "id": "uncertainty-100-rep-1:snapdom:baseline",
+            "byteLength": 15726,
+            "sha256": "3a7c6e48623f1b1639c5a3af602abd610a7dd6ea46b965d88a05f948ae287d0c",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 6,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 100,
+          "unobservableDetails": 100,
+          "bySourceType": {
+            "canvas": 50,
+            "iframe": 50
+          }
+        }
+      },
+      {
+        "id": "uncertainty-100-rep-2",
+        "regionCount": 100,
+        "rep": 2,
+        "oracle": {
+          "canvases": 50,
+          "opaqueIframes": 50,
+          "totalRegions": 100
+        },
+        "snapdom": {
+          "bytes": 15726,
+          "wallMs": 65.98,
+          "artifact": {
+            "id": "uncertainty-100-rep-2:snapdom:baseline",
+            "byteLength": 15726,
+            "sha256": "4147e79f7acbce34a30ef63a656f8267c667c6d37c0dfb08e43a723f68a126e6",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 6,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 100,
+          "unobservableDetails": 100,
+          "bySourceType": {
+            "canvas": 50,
+            "iframe": 50
+          }
+        }
+      },
+      {
+        "id": "uncertainty-100-rep-3",
+        "regionCount": 100,
+        "rep": 3,
+        "oracle": {
+          "canvases": 50,
+          "opaqueIframes": 50,
+          "totalRegions": 100
+        },
+        "snapdom": {
+          "bytes": 15726,
+          "wallMs": 64.28,
+          "artifact": {
+            "id": "uncertainty-100-rep-3:snapdom:baseline",
+            "byteLength": 15726,
+            "sha256": "97a7478ac698ccad0d46711f82a369bbef47a0a05c69d433e8159a4c75835dcb",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 6,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 100,
+          "unobservableDetails": 100,
+          "bySourceType": {
+            "canvas": 50,
+            "iframe": 50
+          }
+        }
+      },
+      {
+        "id": "uncertainty-300-rep-0",
+        "regionCount": 300,
+        "rep": 0,
+        "oracle": {
+          "canvases": 150,
+          "opaqueIframes": 150,
+          "totalRegions": 300
+        },
+        "snapdom": {
+          "bytes": 37691,
+          "wallMs": 82.72,
+          "artifact": {
+            "id": "uncertainty-300-rep-0:snapdom:baseline",
+            "byteLength": 37691,
+            "sha256": "f9c9337125d01ba362e13b99554052f2d9dcd230c8d19ade3239f697dc7b7d9d",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 13,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 300,
+          "unobservableDetails": 300,
+          "bySourceType": {
+            "canvas": 150,
+            "iframe": 150
+          }
+        }
+      },
+      {
+        "id": "uncertainty-300-rep-1",
+        "regionCount": 300,
+        "rep": 1,
+        "oracle": {
+          "canvases": 150,
+          "opaqueIframes": 150,
+          "totalRegions": 300
+        },
+        "snapdom": {
+          "bytes": 37691,
+          "wallMs": 77.79,
+          "artifact": {
+            "id": "uncertainty-300-rep-1:snapdom:baseline",
+            "byteLength": 37691,
+            "sha256": "4bdf152368e8ce00d0ebb80d391cf468b61e7500f5c9035779184555aa0fe5c6",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 13,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 300,
+          "unobservableDetails": 300,
+          "bySourceType": {
+            "canvas": 150,
+            "iframe": 150
+          }
+        }
+      },
+      {
+        "id": "uncertainty-300-rep-2",
+        "regionCount": 300,
+        "rep": 2,
+        "oracle": {
+          "canvases": 150,
+          "opaqueIframes": 150,
+          "totalRegions": 300
+        },
+        "snapdom": {
+          "bytes": 37691,
+          "wallMs": 79.01,
+          "artifact": {
+            "id": "uncertainty-300-rep-2:snapdom:baseline",
+            "byteLength": 37691,
+            "sha256": "87ca27e302dd7cc591dc52dc8b95538fa0e338dc94c949cb127fbe897b5614ef",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 13,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 300,
+          "unobservableDetails": 300,
+          "bySourceType": {
+            "canvas": 150,
+            "iframe": 150
+          }
+        }
+      },
+      {
+        "id": "uncertainty-300-rep-3",
+        "regionCount": 300,
+        "rep": 3,
+        "oracle": {
+          "canvases": 150,
+          "opaqueIframes": 150,
+          "totalRegions": 300
+        },
+        "snapdom": {
+          "bytes": 37691,
+          "wallMs": 85.15,
+          "artifact": {
+            "id": "uncertainty-300-rep-3:snapdom:baseline",
+            "byteLength": 37691,
+            "sha256": "a7e53c10a817e1c923be3fd159983b7400ad80ada83045065047f2c389383daa",
+            "mediaType": "application/json"
+          },
+          "reportedWalkMs": 14,
+          "changed": null,
+          "torn": 0,
+          "unobservable": 300,
+          "unobservableDetails": 300,
+          "bySourceType": {
+            "canvas": 150,
+            "iframe": 150
+          }
+        }
+      }
+    ]
+  },
+  "measurements": {
+    "bytes": "UTF-8 byte length of the exact received ARIA string or JSON.stringify of the exact received SnapDOM reply envelope",
+    "wallTime": "descriptive single-reader elapsed wall time measured around each read; readers ran sequentially in balanced order",
+    "warmPost": "post-action body only, after that reader already made its pre-action observation",
+    "coldPrePlusPost": "sum of that reader's pre-action and post-action bodies/times; this explicitly includes the SnapDOM baseline"
+  },
+  "artifactArchive": {
+    "path": "client-side-egress-v2.artifacts.json.gz",
+    "mediaType": "application/gzip",
+    "byteLength": 326746,
+    "sha256": "d22a763c27f7f3375d31910828f7d62e63115b822f0e6527986fa5a6de6777ab",
+    "bodyCount": 80
+  },
+  "integrity": {
+    "primaryTrials": 16,
+    "expectedPrimaryTrials": 16,
+    "uncertaintyTrials": 16,
+    "expectedUncertaintyTrials": 16,
+    "balancedPreReadOrder": true,
+    "balancedPostReadOrder": true,
+    "allPrimitiveOraclesExact": true,
+    "allAriaContractsExact": true,
+    "allSnapdomContractsExact": true,
+    "allSnapdomBaselinesCold": true,
+    "allSnapdomPostsChanged": true,
+    "allUnobservableCountsExact": true,
+    "allUnobservableKindsExact": true,
+    "zeroUnexpectedUnobservableInPrimary": true,
+    "zeroTorn": true,
+    "fixturePortNot8377": true,
+    "fixturePortWasExplicitHighPort": true,
+    "fixturePortClosed": true,
+    "temporaryProfileRemoved": true,
+    "artifactBodies": {
+      "expectedBodies": 80,
+      "bodies": 80,
+      "uniqueIds": true,
+      "allHashesMatch": true,
+      "allBodiesReferenced": true,
+      "noDanglingReferences": true
+    }
+  },
+  "caveats": [
+    "The ARIA string and SnapDOM reply are different evidence formats. Both are required here to carry the same authored contract, but SnapDOM also carries geometry, typed deltas, and uncertainty metadata.",
+    "The SnapDOM byte measurement serializes the reply received from Chrome extension messaging; it is not a measurement of Chrome IPC framing or transport overhead.",
+    "The fixture is synthetic and changes one fixed semantic region. These observations do not establish model-token savings, task success, production-site behavior, or causal speed superiority.",
+    "Reader wall times are reported because the protocol requires them, but no speed claim is made. The readers have different implementations and run sequentially.",
+    "The cold pre+post metric is an evidence-cycle total, not browser startup or extension installation time.",
+    "The uncertainty stress intentionally demonstrates a boundary: honest unobservableDetails can make the SnapDOM response grow with canvas and opaque-frame count.",
+    "Playwright launches and controls the isolated test browser. The measured SnapDOM product request itself uses extension messaging and makes no CDP/debugger request."
+  ]
+}

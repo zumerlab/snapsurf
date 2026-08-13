@@ -22,15 +22,15 @@
  */
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
-import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
-const REPO = resolveHost()
+const AGENT = join(HERE, '..')
 const CORPUS = join(HERE, '..', 'corpus')
-const TMP = join('/tmp', 'snapdom-bench-qa')
+const TMP = await mkdtemp(join(tmpdir(), 'snapdom-bench-qa-'))
 await mkdir(TMP, { recursive: true })
 
 // ── Fixture wrappers ─────────────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ await mkdir(TMP, { recursive: true })
 // they expect an ELEMENT root. `document` breaks appendChild (HierarchyRequestError)
 // and `document.body` misses <style> tags the parser hoisted into <head> — use
 // document.documentElement. Bundle each module properly instead of regex-inlining.
-const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
+const esbuild = await import('esbuild')
 const mutateBundles = new Map()
 async function bundleMutate(name) {
   if (!mutateBundles.has(name)) {
@@ -51,19 +51,18 @@ async function bundleMutate(name) {
   return mutateBundles.get(name)
 }
 
-// Mount EXACTLY like the product's own corpus runner (test/corpus.test.js):
-// a container div, innerHTML = fragment, mutate(container). mode 'auto' fires the
-// mutation at +1500ms (oracle arm: open observes the baseline first); 'manual'
-// exposes window.__runMutation() so the competitor arm controls before/after.
+// Mount with the same semantic root as the corpus runner: one styled root containing
+// the fixture, then mutate(root). The product observes document.body, so body itself is
+// that root; an extra wrapper would add an artificial ancestor resize to every diff.
+// mode 'auto' fires at +1500ms; 'manual' exposes a competitor-controlled mutation.
 async function buildWrapper(name, mode) {
   const page = await readFile(join(CORPUS, name, 'page.html'), 'utf8')
-  const bundle = await bundleMutate(name)
-  const html = `<!doctype html><html><body>
-<script>
-const container = document.createElement('div')
+const bundle = await bundleMutate(name)
+  const html = `<!doctype html><html><head><script>
+addEventListener('DOMContentLoaded', () => {
+const container = document.body
 container.style.cssText = 'width:900px;position:relative'
 container.innerHTML = ${JSON.stringify(page).replace(/<\/script/gi, '<\\/script')}
-document.body.appendChild(container)
 ${bundle}
 const __frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 const __run = async () => {
@@ -71,7 +70,8 @@ const __run = async () => {
   catch (e) { window.__mutateErr = String(e) }
 }
 ${mode === 'auto' ? 'setTimeout(__run, 1500)' : 'window.__runMutation = __run'}
-</script></body></html>`
+})
+</script></head><body></body></html>`
   const file = join(TMP, `${name}.${mode}.html`)
   await writeFile(file, html)
   return pathToFileURL(file).href
@@ -80,6 +80,7 @@ ${mode === 'auto' ? 'setTimeout(__run, 1500)' : 'window.__runMutation = __run'}
 // ── Arm 1: oracle through MCP ────────────────────────────────────────────────────────
 function startMcp() {
   const srv = spawn(process.execPath, [join(HERE, '..', 'mcp', 'server.mjs')], { stdio: ['pipe', 'pipe', 'ignore'] })
+  const exited = new Promise((resolve) => srv.once('exit', resolve))
   const pending = new Map()
   let nextId = 1
   createInterface({ input: srv.stdout }).on('line', (l) => {
@@ -90,7 +91,19 @@ function startMcp() {
     pending.set(id, r)
     srv.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n')
   })
-  return { srv, call }
+  const close = async () => {
+    if (srv.exitCode !== null) return
+    srv.stdin.end()
+    const clean = await Promise.race([
+      exited.then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 5000)),
+    ])
+    if (!clean && srv.exitCode === null) {
+      srv.kill('SIGTERM')
+      await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 3000))])
+    }
+  }
+  return { srv, call, close }
 }
 
 async function oracleArm(mcp, url) {
@@ -103,15 +116,16 @@ async function oracleArm(mcp, url) {
   return {
     ms: Date.now() - t0,
     changed: !!sc.changed,
-    changes: sc.changes || 0,
+    changes: Array.isArray(sc.changes) ? sc.changes : [],
+    actionabilityDelta: sc.actionabilityDelta || { becameCovered: [], becameVisible: [] },
     evidenceBytes: text.length,
     text,
   }
 }
 
 // ── Arms 2+3: pixel (snapdiff) and a11y (Playwright) on a plain page ─────────────────
-const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'))
-const diffSrc = (await readFile(join(REPO, 'node_modules/@zumer/snapdiff/src/diff.js'), 'utf8'))
+const { chromium } = await import('playwright')
+const diffSrc = (await readFile(join(AGENT, 'node_modules/@zumer/snapdiff/src/diff.js'), 'utf8'))
   .replace(/^export /gm, '')
 
 async function competitorArms(browser, name) {
@@ -162,27 +176,68 @@ async function competitorArms(browser, name) {
 const fixtures = (await readdir(CORPUS, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name).sort()
 console.error(`fixtures: ${fixtures.length}`)
 const mcp = startMcp()
-await mcp.call('initialize', { protocolVersion: '2024-11-05' })
-const browser = await chromium.launch()
+let browser = null
 
 const rows = []
-for (const name of fixtures) {
-  const expected = JSON.parse(await readFile(join(CORPUS, name, 'expected.json'), 'utf8'))
-  const url = await buildWrapper(name, 'auto')
-  let oracle, comp
-  try { oracle = await oracleArm(mcp, url) } catch (e) { oracle = { error: String(e).slice(0, 80) } }
-  try { comp = await competitorArms(browser, name) } catch (e) { comp = { pixel: { error: String(e).slice(0, 80) }, a11y: { error: String(e).slice(0, 80) } } }
-  const row = { name, expected: expected.changed, oracle, ...comp }
-  // correctness: does the arm's boolean match the hand-written truth?
-  row.oracleOk = oracle.error ? false : oracle.changed === expected.changed
-  row.pixelOk = comp.pixel.error ? false : comp.pixel.changed === expected.changed
-  row.a11yOk = comp.a11y.error ? false : comp.a11y.changed === expected.changed
-  rows.push(row)
-  console.error(`${name}: expected=${expected.changed} oracle=${oracle.changed ?? 'ERR'}(${row.oracleOk ? 'ok' : 'X'}) pixel=${comp.pixel.changed ?? 'ERR'}(${row.pixelOk ? 'ok' : 'X'}) a11y=${comp.a11y.changed ?? 'ERR'}(${row.a11yOk ? 'ok' : 'X'})`)
+const oracleViolations = (expected, oracle) => {
+  if (oracle.error) return [oracle.error]
+  const errors = []
+  const changes = Array.isArray(oracle.changes) ? oracle.changes : []
+  if (oracle.changed !== expected.changed) errors.push(`changed=${oracle.changed}, expected ${expected.changed}`)
+  if (expected.expectEmpty && changes.length) errors.push(`expected no changes, got ${changes.length}`)
+  if (Number.isInteger(expected.maxChanges) && changes.length > expected.maxChanges) errors.push(`changes ${changes.length} > ${expected.maxChanges}`)
+  for (const forbidden of expected.forbidKinds || []) {
+    if (changes.some((change) => change.kind === forbidden)) errors.push(`forbidden kind ${forbidden}`)
+  }
+  if (expected.allowKindsOnly) {
+    const allowed = new Set(expected.allowKindsOnly)
+    const extra = [...new Set(changes.filter((change) => !allowed.has(change.kind)).map((change) => change.kind))]
+    if (extra.length) errors.push(`unexpected kinds ${extra.join(',')}`)
+  }
+  for (const wanted of expected.mustInclude || []) {
+    const count = changes.filter((change) =>
+      (wanted.kind === undefined || change.kind === wanted.kind) &&
+      (wanted.role === undefined || change.role === wanted.role) &&
+      (wanted.name === undefined ||
+        String(change.name || '').includes(wanted.name) ||
+        String(change.beforeName || '').includes(wanted.name))).length
+    if (count < (wanted.minCount || 1)) errors.push(`missing ${JSON.stringify(wanted)} (got ${count})`)
+  }
+  if (expected.actionability) {
+    const covered = oracle.actionabilityDelta?.becameCovered || []
+    if (covered.length < (expected.actionability.becameCoveredMin || 0)) {
+      errors.push(`becameCovered ${covered.length} < ${expected.actionability.becameCoveredMin}`)
+    }
+    if (expected.actionability.coveredByIncludes &&
+        !covered.some((entry) => JSON.stringify(entry.coveredBy || '').includes(expected.actionability.coveredByIncludes))) {
+      errors.push(`coveredBy missing ${expected.actionability.coveredByIncludes}`)
+    }
+  }
+  return errors
 }
 
-await browser.close()
-mcp.srv.kill('SIGTERM')
+try {
+  await mcp.call('initialize', { protocolVersion: '2024-11-05' })
+  browser = await chromium.launch()
+  for (const name of fixtures) {
+    const expected = JSON.parse(await readFile(join(CORPUS, name, 'expected.json'), 'utf8'))
+    const url = await buildWrapper(name, 'auto')
+    let oracle, comp
+    try { oracle = await oracleArm(mcp, url) } catch (e) { oracle = { error: String(e).slice(0, 160) } }
+    try { comp = await competitorArms(browser, name) } catch (e) { comp = { pixel: { error: String(e).slice(0, 80) }, a11y: { error: String(e).slice(0, 80) } } }
+    const row = { name, expected: expected.changed, oracle, ...comp }
+    row.oracleViolations = oracleViolations(expected, oracle)
+    row.oracleOk = row.oracleViolations.length === 0
+    row.pixelOk = comp.pixel.error ? false : comp.pixel.changed === expected.changed
+    row.a11yOk = comp.a11y.error ? false : comp.a11y.changed === expected.changed
+    rows.push(row)
+    console.error(`${name}: expected=${expected.changed} oracle=${oracle.changed ?? 'ERR'}(${row.oracleOk ? 'ok' : 'X'}) pixel=${comp.pixel.changed ?? 'ERR'}(${row.pixelOk ? 'ok' : 'X'}) a11y=${comp.a11y.changed ?? 'ERR'}(${row.a11yOk ? 'ok' : 'X'})${row.oracleViolations.length ? ` — ${row.oracleViolations.join('; ')}` : ''}`)
+  }
+} finally {
+  await browser?.close().catch(() => {})
+  await mcp.close()
+  await rm(TMP, { recursive: true, force: true })
+}
 
 // ── Report ───────────────────────────────────────────────────────────────────────────
 const tally = (k) => rows.filter((r) => r[k]).length
@@ -222,4 +277,6 @@ Honesty notes:
 await writeFile(join(HERE, 'results', 'bench-qa.md'), md)
 await writeFile(join(HERE, 'results', 'bench-qa.json'), JSON.stringify(rows, null, 2))
 console.error('report → experiment/results/bench-qa.md')
-process.exit(0)
+const oracleFailures = rows.filter((row) => !row.oracleOk)
+if (oracleFailures.length) console.error(`ORACLE GATE RED: ${oracleFailures.map((row) => row.name).join(', ')}`)
+process.exitCode = oracleFailures.length ? 1 : 0

@@ -10,9 +10,11 @@
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { writeFile, mkdir, stat, readFile, rm } from 'node:fs/promises'
+import { writeFile, stat, readFile, mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
+import { daemonFetch } from '../tools/daemon-client.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
@@ -22,11 +24,13 @@ const AGENT = join(HERE, '..')
 const dArg = process.argv.indexOf('--daemon')
 const BROWSE = dArg > -1 && process.argv[dArg + 1] ? process.argv[dArg + 1] : join(AGENT, 'tools/browse.mjs')
 const TAG = dArg > -1 ? 'global' : 'repo'
-const TMP = '/tmp/snapdom-abis'
-await rm(TMP, { recursive: true, force: true })
-await mkdir(TMP, { recursive: true })
+const TMP = await mkdtemp(join(tmpdir(), 'snapdom-abis-'))
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+let srv = null
+let daemon = null
+let exitCode = 1
 
+try {
 // A page with: a card holding 2+ clickable things (for `parent`), many clickable things
 // (for `map`), an animated element (for `rec`) and one concrete region (for `snap`).
 const PAGE = `<!doctype html><html><body style="font-family:system-ui">
@@ -34,7 +38,7 @@ const PAGE = `<!doctype html><html><body style="font-family:system-ui">
   <h3 id="title">Producto destacado</h3>
   <span id="price">$ 1.234</span>
   <a href="/detalle/9">Ver detalle</a>
-  <button id="buy">Comprar</button>
+  <button id="buy" onclick="this.textContent='Comprado'">Comprar</button>
 </div>
 <div id="anim" style="width:80px;height:80px;background:#4a7dff;animation:mv 1s linear infinite"></div>
 <style>@keyframes mv { from { transform: translateX(0) } to { transform: translateX(200px) } }</style>
@@ -47,20 +51,25 @@ for (let i = 0; i < 60; i++) {
 </script></body></html>`
 await writeFile(join(TMP, 'page.html'), PAGE)
 
-const PORT = 8395
-const srv = createServer(async (req, res) => {
+srv = createServer(async (req, res) => {
   const n = decodeURIComponent((req.url || '').split('?')[0]).replace(/^\//, '')
   let body = null
   try { body = await readFile(join(TMP, n), 'utf8') } catch { /* 404 */ }
   if (body === null) { res.writeHead(404); res.end('nope'); return }
   res.writeHead(200, { 'content-type': 'text/html' }); res.end(body)
 })
-await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
+await new Promise((resolve, reject) => {
+  srv.once('error', reject)
+  srv.listen(0, '127.0.0.1', resolve)
+})
+const fixtureAddress = srv.address()
+if (!fixtureAddress || typeof fixtureAddress === 'string') throw new Error('failed to bind abis fixture server')
+const PORT = fixtureAddress.port
 const URL_ = `http://127.0.0.1:${PORT}/page.html`
 
 console.log(`daemon under test: ${BROWSE}`)
-const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
-const cmd = (c, args = []) => fetch('http://127.0.0.1:8377/cmd', {
+daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
+const cmd = (c, args = []) => daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true }),
 }).then((r) => r.json()).catch((e) => ({ ok: false, text: String(e), error: String(e) }))
@@ -72,12 +81,15 @@ const check = (verb, name, pass, detail = '') => {
   console.log(`${pass ? '✓' : '✗'} [${verb}] ${name}${detail ? ` — ${detail}` : ''}`)
 }
 const sizeOf = async (p) => { try { return (await stat(p)).size } catch { return 0 } }
+const ID_PATTERN = /\bn_[A-Za-z0-9_-]+\b/g
+const firstId = (response) => response?.meta?.matches?.[0]?.id || (response?.text || '').match(ID_PATTERN)?.[0]
+const idWithRole = (response, role) => response?.meta?.matches?.find((match) => match.role === role)?.id || firstId(response)
 
 await cmd('open', [URL_])
 
 // ── parent ───────────────────────────────────────────────────────────────────────────
 const fPrice = await cmd('find', ['1.234'])
-const priceId = (fPrice.text || '').match(/n_\w+/)?.[0]
+const priceId = firstId(fPrice)
 check('parent', 'find locates the price inside the card', !!priceId, priceId || fPrice.text?.slice(0, 60))
 if (priceId) {
   const par = await cmd('parent', [priceId])
@@ -90,7 +102,7 @@ if (priceId) {
 // ── map (paging) ────────────────────────────────────────────────────────────────────
 const m0 = await cmd('map', ['0'])
 const m40 = await cmd('map', ['40'])
-const ids = (s) => [...new Set([...(s || '').matchAll(/n_\w+/g)].map((x) => x[0]))]
+const ids = (s) => [...new Set((s || '').match(ID_PATTERN) || [])]
 const p0 = ids(m0.text), p40 = ids(m40.text)
 check('map', 'the first page returns entries', p0.length > 0, `${p0.length} ids`)
 check('map', 'the offset returns different entries', p40.length > 0 && p40.some((i) => !p0.includes(i)), `${p40.length} ids, ${p40.filter((i) => !p0.includes(i)).length} new`)
@@ -99,7 +111,7 @@ check('map', 'no overlap between pages', dup.length === 0, dup.length ? `${dup.l
 
 // ── snap (pixels of one region) ─────────────────────────────────────────────────────
 const cardFind = await cmd('find', ['Producto destacado'])
-const cardId = (cardFind.text || '').match(/n_\w+/)?.[0]
+const cardId = idWithRole(cardFind, 'heading')
 const snapPath = join(TMP, 'card.png')
 const snapRes = await cmd('snap', [cardId || 'n_1r1', snapPath])
 const snapSize = await sizeOf(snapPath)
@@ -110,14 +122,19 @@ const cpSave = await cmd('cp', ['save', 'base'])
 check('cp', 'save creates a named reference point', !!cpSave.ok && !/error/i.test(cpSave.text || ''), (cpSave.text || '').slice(0, 60))
 const cpList = await cmd('cp', ['list'])
 check('cp', 'list shows the saved reference point', /base/.test(cpList.text || ''), (cpList.text || '').slice(0, 60))
-// mutate the page and check the comparison against the reference point sees it
-await cmd('click', ['n_1r1'])
-await fetch(`http://127.0.0.1:8377/cmd`, {
+// mutate the page through a CURRENT id and check that the comparison sees the change.
+// IDs are opaque base64url strings and expire per observation; parsing `n_\w+` used to
+// truncate them at '-' and made this gate exercise an unknown id while still reporting
+// the checkpoint command itself as green.
+const buyFind = await cmd('find', ['Comprar'])
+const buyId = idWithRole(buyFind, 'button')
+if (buyId) await cmd('click', [buyId])
+await daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: 'find', args: ['Comprar'], envelope: true }),
 })
 const cpDiff = await cmd('cp', ['diff', 'base'])
-check('cp', 'diff against the reference point answers without error', !!cpDiff.ok, (cpDiff.text || '').slice(0, 80).replace(/\n/g, ' '))
+check('cp', 'diff against the reference point reports the mutation', !!cpDiff.ok && /CHANGES/.test(cpDiff.text || ''), (cpDiff.text || '').slice(0, 80).replace(/\n/g, ' '))
 
 // ── rec (recording) ─────────────────────────────────────────────────────────────────
 for (const [file, label] of [['clip.gif', 'GIF'], ['clip.mp4', 'MP4']]) {
@@ -130,7 +147,7 @@ for (const [file, label] of [['clip.gif', 'GIF'], ['clip.mp4', 'MP4']]) {
 }
 // scoped to one element — search again first: ids expire per reading
 const freshFind = await cmd('find', ['Producto destacado'])
-const freshId = (freshFind.text || '').match(/n_\w+/)?.[0]
+const freshId = idWithRole(freshFind, 'heading')
 if (freshId) {
   const p = join(TMP, 'card.gif')
   const r = await cmd('rec', ['2', freshId, p])
@@ -154,9 +171,9 @@ check('rec', 'a navigation during recording does NOT break the daemon', !!(await
 // find/text/assert break. That is the silent failure that broke the global install.
 await cmd('open', [URL_])
 const fTitle = await cmd('find', ['Producto destacado'])
-check('find', 'find answers without throwing in the page', !!fTitle.ok && /n_\w+/.test(fTitle.text || ''),
+check('find', 'find answers without throwing in the page', !!fTitle.ok && !!firstId(fTitle),
   (fTitle.text || fTitle.error || '').slice(0, 70).replace(/\n/g, ' '))
-const titleId = (fTitle.text || '').match(/n_\w+/)?.[0]
+const titleId = idWithRole(fTitle, 'heading')
 if (titleId) {
   const t = await cmd('text', [titleId])
   check('text', 'text returns the node text', !!t.ok && /Producto/.test(t.text || ''),
@@ -175,13 +192,27 @@ check('redact', 'probing a hidden term fails loudly', /blocked by privacy rule/.
   (probe.text || '').split('\n')[1]?.slice(0, 70) || '')
 await cmd('redact', ['off'])
 
-// ── teardown ────────────────────────────────────────────────────────────────────────
-await new Promise((r) => { const s = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
-try { daemon.kill() } catch { /* ya murió */ }
-srv.close()
-
 const failed = results.filter((r) => !r.pass)
 console.log(`\n${results.length - failed.length}/${results.length} checks OK`)
 if (failed.length) console.log('FAILING: ' + failed.map((f) => `[${f.verb}] ${f.name}`).join(' · '))
 await writeFile(join(AGENT, `experiment/results/abis-verbs${TAG === 'repo' ? '' : '-' + TAG}.json`), JSON.stringify(results, null, 2) + '\n')
-process.exit(failed.length ? 1 : 0)
+exitCode = failed.length ? 1 : 0
+} finally {
+  if (daemon) {
+    await Promise.race([
+      new Promise((resolve) => {
+        const stop = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' })
+        stop.once('error', resolve)
+        stop.once('exit', resolve)
+      }),
+      sleep(5000),
+    ])
+    if (daemon.exitCode === null) daemon.kill('SIGTERM')
+  }
+  if (srv) {
+    srv.closeAllConnections?.()
+    if (srv.listening) await new Promise((resolve) => srv.close(resolve))
+  }
+  await rm(TMP, { recursive: true, force: true })
+}
+process.exitCode = exitCode

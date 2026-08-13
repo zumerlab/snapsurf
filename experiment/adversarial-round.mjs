@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
+import { daemonFetch } from '../tools/daemon-client.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
@@ -30,13 +31,21 @@ const PAGE = `<!doctype html><html><head><title>${SECRET} clinic</title></head><
 <p data-note="${SECRET}">visible text mentioning ${SECRET} inline</p>
 <p>${'filler '.repeat(40)}${SECRET}-far-away</p>
 </body></html>`
-const PORT = 8408
 const srv = createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end(PAGE) })
-await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
-const URL_ = `http://127.0.0.1:${PORT}/p/${SECRET}`
+let daemon = null
+let exitCode = 1
 
-const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
-const cmd = (c, args = []) => fetch('http://127.0.0.1:8377/cmd', {
+try {
+await new Promise((resolve, reject) => {
+  srv.once('error', reject)
+  srv.listen(0, '127.0.0.1', resolve)
+})
+const fixtureAddress = srv.address()
+if (!fixtureAddress || typeof fixtureAddress === 'string') throw new Error('failed to bind adversarial fixture server')
+const URL_ = `http://127.0.0.1:${fixtureAddress.port}/p/${SECRET}`
+
+daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
+const cmd = (c, args = []) => daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true }),
 }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }))
@@ -111,9 +120,9 @@ attack('a page that did not change cannot assert changed:true',
 // ── Attack 5 · session isolation under hostile use ───────────────────────────────────
 const s1 = (await cmd('session', ['open'])).meta?.sessionId
 const s2 = (await cmd('session', ['open'])).meta?.sessionId
-await fetch('http://127.0.0.1:8377/cmd', { method: 'POST', headers: { 'content-type': 'application/json' },
+await daemonFetch({ method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: 'open', args: [URL_], envelope: true, sessionId: s1 }) })
-const bogus = await fetch('http://127.0.0.1:8377/cmd', { method: 'POST', headers: { 'content-type': 'application/json' },
+const bogus = await daemonFetch({ method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: 'find', args: ['notes'], envelope: true, sessionId: 's_does_not_exist' }) }).then((r) => r.json())
 attack('an unknown session id is refused, not silently defaulted',
   bogus.ok === true, bogus.ok ? 'SILENTLY SERVED by another session' : String(bogus.error || '').slice(0, 60),
@@ -129,10 +138,22 @@ attack('the session cap refuses with a reason instead of exhausting memory',
   'an unbounded cap turns a runaway caller into a dead machine')
 for (const s of opened) await cmd('session', ['close', s])
 
-await new Promise((r) => { const s = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
-try { daemon.kill() } catch { /* gone */ }
-srv.close(); srv.closeAllConnections?.()
-
 console.log(`\n${findings.length} finding(s)`)
 for (const f of findings) console.log(`  · ${f.name}: ${f.detail}\n    why it matters: ${f.why}`)
-process.exit(findings.length ? 1 : 0)
+exitCode = findings.length ? 1 : 0
+} finally {
+  if (daemon) {
+    await Promise.race([
+      new Promise((resolve) => {
+        const stop = spawn(process.execPath, [BROWSE, 'stop'], { stdio: 'ignore' })
+        stop.once('error', resolve)
+        stop.once('exit', resolve)
+      }),
+      sleep(5000),
+    ])
+    if (daemon.exitCode === null) daemon.kill('SIGTERM')
+  }
+  srv.closeAllConnections?.()
+  if (srv.listening) await new Promise((resolve) => srv.close(resolve))
+}
+process.exitCode = exitCode

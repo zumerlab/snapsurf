@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "schema-drift-receipt-value-v1",
+  "registeredAt": "2026-08-12T16:17:58Z",
+  "status": "PREREGISTERED_BEFORE_BROWSER_RUN",
+  "question": "Does the packed browser receipt SDK reduce diagnostic-envelope authoring or maintenance across equivalent markup/framework drift compared with a strong generic host implementation?",
+  "nonClaim": "This experiment never assesses task correctness. Every arm receipt must say taskOutcome NOT_ASSESSED; a changed:true postcondition PASS is only a receipt-local observation and may never be counted as task success.",
+  "comparison": {
+    "H": "A strong clean-room host helper that generically discovers roles, accessible names, state, content, centre-point coverage, and opaque regions, then emits a versioned receipt-shaped envelope.",
+    "R": "The npm-packed and temporarily installed @zumer/snapdom-receipt package, called through createBaseline and createReceipt.",
+    "fairness": [
+      "H may use roles, accessible names, DOM APIs, computed layout/hit testing, and generic reusable JavaScript.",
+      "No arm may use variant IDs, fixture oracle markers, or per-variant selectors/configuration.",
+      "Both arms observe the same root before and after the same fixture mutation.",
+      "A generic H helper that handles every variant with zero variant-specific edits eliminates any demonstrated maintenance advantage; that outcome must be reported.",
+      "Fixture construction, the independent oracle, and result scoring are test infrastructure and are excluded from integration LOC for both arms. Their exclusion must be disclosed."
+    ]
+  },
+  "auditedTelemetry": {
+    "families": [
+      "typed interaction-state endpoint change",
+      "typed status-content change keyed by role and accessible name",
+      "became-covered actionability change keyed by role and accessible name",
+      "current unobservable-region source type and exact count"
+    ],
+    "exactness": "For each arm and trial, the canonical set for these four families must equal the independent oracle set: no missing and no unexpected facts within the audited families. Other valid receipt facts such as geometry, additions, removals, or became-visible entries are retained as evidence but excluded from this preregistered fact-set comparison.",
+    "oracle": "A separate primitive reader uses data-oracle markers only in test fixtures, reads raw ARIA/DOM state, status text, elementFromPoint coverage, and canvas count, and never calls either arm or reads either arm output."
+  },
+  "variants": [
+    {
+      "id": "native-stable",
+      "class": "stable semantics",
+      "drift": "native button and output/status markup",
+      "action": "button / Approve account / pressed false to true",
+      "status": "status / Approval result / Ready to Approved"
+    },
+    {
+      "id": "wrapper-stable",
+      "class": "stable semantics",
+      "drift": "nested wrappers and a div-backed ARIA button/status",
+      "action": "button / Approve account / pressed false to true",
+      "status": "status / Approval result / Ready to Approved"
+    },
+    {
+      "id": "remount-stable",
+      "class": "stable semantics",
+      "drift": "framework-style node remount without stable DOM IDs; role and accessible name remain stable",
+      "action": "button / Approve account / pressed false to true",
+      "status": "status / Approval result / Ready to Approved"
+    },
+    {
+      "id": "renamed-legitimate",
+      "class": "legitimate semantic change",
+      "drift": "product copy and live-region role legitimately change",
+      "action": "button / Authorize account / pressed false to true",
+      "status": "alert / Authorization result / Ready to Approved"
+    },
+    {
+      "id": "switch-legitimate",
+      "class": "legitimate semantic change",
+      "drift": "control becomes a switch with checked state and the live region becomes a log",
+      "action": "switch / Automatic approval / checked false to true",
+      "status": "log / Automation result / Ready to Approved"
+    }
+  ],
+  "schedule": {
+    "repetitionsPerVariant": 3,
+    "pairedTrials": 15,
+    "readerOrder": "balanced by variantIndex plus repetition parity before the mutation; finish order reverses baseline order",
+    "pageReset": "fresh local page for every paired trial",
+    "browserRuns": "one execution of the complete runner after every static gate passes"
+  },
+  "metrics": {
+    "telemetryExactness": "exact canonical fact sets versus the independent oracle, by arm and variant",
+    "initialAuthoringLOC": "physical nonblank, non-comment lines inside preregistered marker-delimited host-generic and SDK-integration blocks in the runner; braces and declarations count",
+    "variantMaintenanceLOC": "arm runtime references to a specific variant or arm-specific variant adapter/configuration; expected zero only if source gates confirm no variant IDs occur inside either runtime block",
+    "predicates": "four shared telemetry families, generic postconditions, task predicates, and any additional predicates/configuration per variant",
+    "schemaStability": "required envelope paths present, stable contract/version/taskOutcome, and one envelope-shape hash per arm across all variants; item-level optional-shape variation is reported separately",
+    "evidenceBytes": "UTF-8 bytes of the exact JSON-safe post receipt and the local baseline, with SHA-256 retained",
+    "wallTime": "browser-side baseline, post, and cycle elapsed milliseconds, descriptive only"
+  },
+  "staticGatesBeforeBrowser": [
+    "preregistration and runner paths are distinct; the result path does not exist",
+    "runner parses and the checked-in browser SDK distribution is fresh",
+    "SDK is npm-packed and installed offline into a temporary directory with dev dependencies omitted",
+    "installed SDK declares no runtime dependency fields and its bundle hash matches its manifest",
+    "both arm runtime blocks contain none of the five preregistered variant IDs",
+    "source LOC markers are unique and metric definitions can be computed",
+    "fixture and oracle declarations cover all five variants and all four audited fact families"
+  ],
+  "browserAndCleanupGates": [
+    "Chromium uses a dedicated temporary persistent profile; personal Chrome state is never opened",
+    "the fixture binds only 127.0.0.1 on an operating-system-assigned port and rejects port 8377",
+    "all browser network requests remain on the fixture origin or blob/data URLs",
+    "all 15 paired trials complete once per arm and the oracle validates every declared transition",
+    "all receipts have taskOutcome NOT_ASSESSED; postcondition PASS is never a task-success metric",
+    "browser context closes, loopback server closes and refuses a new connection, and the temporary directory/profile is removed before any result is written",
+    "any cleanup failure fails the run closed"
+  ],
+  "decisionRule": {
+    "maintenanceReductionSupported": "Only if R is at least as telemetry-exact as H and requires fewer variant-specific adapter LOC or predicates on at least one drift variant.",
+    "maintenanceReductionNotDemonstrated": "If a single reusable H helper is exact across all variants with the same zero variant-specific LOC/predicates as R, report no demonstrated maintenance advantage, regardless of initial implementation size.",
+    "initialAuthoringOnly": "If both arms tie on maintenance but the SDK integration block is smaller than the clean-room H generic engine, report only a one-time buy-versus-build authoring reduction, conditional on the host not already owning an equivalent helper.",
+    "schemaClaim": "Schema advantage is supported only if R is stable and H is not; if both are stable, report a tie.",
+    "correctnessAndCommercialClaims": "Task correctness, end-to-end success, production generalization, demand, and willingness to pay are NOT ASSESSED under every outcome."
+  }
+}

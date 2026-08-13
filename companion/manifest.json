@@ -1,8 +1,23 @@
 {
   "manifest_version": 3,
   "name": "snapDOM Agent Companion (local)",
-  "version": "0.4.0",
-  "description": "Inyecta el or\u00e1culo sem\u00e1ntico de snapDOM en cada p\u00e1gina (isolated world, inmune a CSP) y publica digests bajo demanda en el DOM para que cualquier agente los lea. USO LOCAL \u2014 nunca publicar.",
+  "version": "0.5.0",
+  "description": "Runs the snapDOM semantic oracle in an isolated content-script world and exposes it only to explicitly allowlisted extension clients. LOCAL USE ONLY.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1l4rOG4U6ZnCPVRSjm9G/1LW7GD37QEODKgaexmEKd9me1h/WNxyf/flil8RUHqiw0pPGOzU1wa+Ar03lUcrMZK0LooBj3vEQCPjFCBQSNzjLkUAYhfpEpEbjQCVNT32M+hP2sTjuW0KtSd3bQ/hF1y10qgAdITe0IFel3/WIVcuvZWWD2TjhkaJ3alFjPY3Isi6WuDC1jvxPJ0iTGh3aXkiIE2kk+wUjvJRpuyB8UIFSZE3Ij/+hDEAR1B1FFT1gyO4MjmJNZ/6CF4h+FmGltYa7w3Irwrfd7Ve6KCvOzk2t8qQo0bTTXugmzs+uZX5jkE9LxAcTch/b1h1HkSK5wIDAQAB",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "worker.js",
+    "type": "module"
+  },
+  "externally_connectable": {
+    "ids": [
+      "fcoeoabgfenejglbffodgkkbkcdhcgfn",
+      "caajdlhkjophkdagpdchjbllohjojgml"
+    ]
+  },
   "content_scripts": [
     {
       "matches": [
@@ -11,7 +26,9 @@
       "js": [
         "content.bundle.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": false,
+      "world": "ISOLATED"
     }
   ]
 }

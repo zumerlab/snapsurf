@@ -1,81 +1,111 @@
-# Privacy: exactly what leaves the page, and how to audit it
+# Privacy contract
 
-One page. If a string is not listed under "what travels", it does not travel.
+This document describes the current executable behavior. It is a boundary statement,
+not a claim that page content itself is trustworthy.
 
-## What travels in an observation (digest / diff / checkpoint)
+## What travels
 
-| Channel | Content | Redactable? |
+| Channel | Content | Protection |
 |---|---|---|
-| `name` / `label` | Accessible names of nodes (buttons, links, headings) | yes — redact rules |
-| `text` | Visible text of nodes (pre-truncated ~80c; find/match up to 300c) | yes — redact rules |
-| `state` string values | e.g. `aria-expanded`, selected option label | yes — redact rules |
-| Change entries (`changes`, `actionabilityDelta`) | kind + role + the fields above, before/after | yes — same rules, same pass |
-| `url` | origin + pathname only; **query strings never travel by default** (daemon logs them as `?«N chars»`; the companion offers opt-in `fullUrl`) | structural |
-| Geometry / roles / ids | bbox, vbox, role, `n_xxx` ids, selectors | not text — nothing to redact |
+| `name`, `label`, `text` | Accessible names and visible text | literal redact rules |
+| string state | ARIA state and selected labels | the same redact pass |
+| `changes`, actionability deltas | kind, role, readable fields, state and geometry | the same redact pass |
+| page URL | origin + pathname; query becomes `?«N chars»` by default | URL redaction before truncation |
+| link/resource URLs | compact href/resource evidence | raw and percent-decoded rule matching before truncation |
+| geometry, roles, ids, selectors | structural evidence | no readable text to redact |
 
-## What NEVER travels, rules or no rules
+The companion can include the complete page URL only when `fullUrl: true` is requested.
+It still applies the active rules. Opaque URLs such as `data:` are represented by scheme
+and length rather than by their payload.
 
-- **Input values.** The snapshot stores only a mask (`•••`, capped length) plus a
-  content hash used solely for change detection. The raw value of any
-  `<input>`/`<textarea>` is never serialized; sensitive input types skip even the
-  mask. (The hash is deterministic, not salted — a holder of a checkpoint could
-  verify a *guessed* value against it, so treat stored checkpoints of pages with
-  secret input values as sensitive artifacts.)
-- **Typed text in logs.** The daemon JSONL records `type` as `«N chars»`.
-- **Redact rule terms in logs.** A `redact` command is logged as `«N rule(s)»`.
-- Pixels, unless explicitly requested (`snap`/`shot`/`browser_screenshot`).
+## Form values
+
+Raw `<input>`, `<textarea>`, and `<select>` values are never serialized or returned.
+There are two checkpoint behaviors:
+
+- Password, email and telephone fields, plus sensitive `autocomplete` categories, store
+  only presence and a coarse length bucket. They never store a digest derived from the
+  value. Edits within one bucket may be missed, so the observation includes an explicit
+  `unobservable` entry with `sourceType: "sensitive-input-value"`.
+- Ordinary fields store a capped bullet mask and a deterministic value fingerprint for
+  change detection. A holder of such a checkpoint can test guesses. Therefore, treat
+  every checkpoint containing ordinary filled form fields as a sensitive artifact.
+
+This distinction is deliberate: a false claim that all value changes are both perfectly
+observable and non-verifiable from a persisted checkpoint would be impossible.
 
 ## Redact rules
 
-A rule is a plain string; matching is case-insensitive substring. Any `name`,
-`label`, `text` or state string containing a rule term leaves every surface as
-`[redacted]` — snapshot views, diffs, digests, `find`/`match` results, `text`
-verb reads, section headings, click echoes.
+A rule is a case-insensitive literal substring, not a regular expression. A matching
+readable field leaves the semantic surfaces as `[redacted]`. Percent-encoded variants
+are checked too.
 
-- Core API: `inspect(el, { privacy: { redact: ['Jane Doe', 'ACME'] } })`
-- Daemon: `serve --redact "Jane Doe,ACME"` or at runtime `redact Jane Doe,ACME`
-  (`redact off` clears; bare `redact` shows the count)
-- MCP: `browser_open` with `redact: ["Jane Doe", "ACME"]` (session-wide until replaced)
-- Companion: any `SNAPDOM_OBSERVE`/`SNAPDOM_ASSERT` message with
-  `privacy: { redact: [...] }` (sticky for the session; `privacy: null` clears)
+- Core: `inspect(el, { privacy: { redact: ['Jane Doe', 'ACME'] } })`
+- Daemon: `serve --redact "Jane Doe,ACME"`, or the `redact` verb per session
+- MCP: `browser_open` with `redact: ["Jane Doe", "ACME"]`
+- Companion: an authenticated request with `privacy: { redact: [...] }`
 
-Matching is NOT affected: node identity rides fingerprints and hashes, so diffs
-stay correct across redacted content.
+Daemon rules, revisions and baselines are scoped to one isolated browser context.
+Companion rules are sticky per Chrome tab in `chrome.storage.session`; omitting the field
+keeps them, and only an allowlisted extension can intentionally clear them with
+`privacy: null`.
 
-## The audit report
+Matching and identity use non-readable structural signals, so applying a rule does not
+turn a state mutation into remove-plus-add noise.
 
-Every observation taken with active rules carries a `privacy` report:
+## Audit evidence without a presence oracle
+
+The core and companion can produce a tally such as:
 
 ```json
-{ "rulesActive": 2,
-  "hitsByRule": [{ "rule": "#0", "hits": 4 }, { "rule": "#1", "hits": 2 }],
-  "fields": { "name": 4, "text": 2 },
-  "nodesRedacted": 4 }
+{
+  "rulesActive": 2,
+  "hitsByRule": [{ "rule": "#0", "hits": 4 }],
+  "fields": { "name": 3, "text": 1 },
+  "nodesRedacted": 3
+}
 ```
 
-- Rules are identified **by index, never by text**: the report travels to the
-  consumer (an LLM), and naming the rule would leak the exact string the operator
-  asked to hide. The operator maps `#0`, `#1`… back to their own rule list.
-- `rulesActive` with zero hits is still reported — "the rules are running and
-  matched nothing" is auditable information.
-- Surfaces: `ui.privacy` (core), the `privacy:` line + JSONL `meta.privacy`
-  (daemon), `structuredContent.privacy` (MCP), `result.privacy` (companion).
+Rule identifiers are indexes, never the hidden strings. The daemon stores this detailed
+tally only in its private operator log. MCP/HTTP consumers receive the policy revision,
+active-rule count and `applied: true`, but not hit counts; otherwise a model could infer
+whether and how often the hidden term occurred.
 
-## Probing is refused, loudly
+A predicate whose query overlaps a rule would itself be a one-bit oracle. `exists` and
+`notCovered` therefore fail with `actual: "blocked by privacy rule"`. Search operates on
+the redacted view and cannot recover the term.
 
-A text predicate whose query touches a redact rule (either direction of
-substring) would confirm the hidden term's presence — a 1-bit leak around the
-redaction. `assert exists` / `notCovered` on such a query fails with
-`actual: "blocked by privacy rule"` instead of answering. `find`/`match` simply
-cannot match redacted strings (they search the redacted view).
+## Transport and storage boundaries
 
-## Threat model, honestly
+- The daemon evaluates its SDK and privacy policy in a Chromium isolated world. Page
+  JavaScript cannot replace the observer globals, clear the policy, or fabricate the
+  attestation.
+- The daemon binds loopback and publishes a random token in a `0600` file. CLI and MCP
+  prove the listener knows that token before sending a command, then authenticate the
+  exact request and response with domain-separated HMACs and one-time nonces. This also
+  prevents a process that pre-binds the port from collecting command bodies.
+- The daemon's trust boundary is the operating-system user. Another process running as
+  that same user can generally read that user's files or memory and is not considered an
+  isolated principal.
+- Every daemon session owns a separate BrowserContext, including cookies, storage,
+  permissions, service workers and its popup tree.
+- Log directories are forced to `0700`; logs, checkpoints and generated captures are
+  written `0600`. Typed text is logged only as `«N chars»`, and rule strings are omitted.
+- The Chrome companion accepts only explicitly allowlisted extension ids and returns
+  through the extension runtime. Page `postMessage`, DOM result nodes and markers have no
+  authority.
 
-Redaction is applied at the moment strings leave the page world. It protects
-against the *consumer* (the model reading observations) — it is not a defense
-against code running in the page itself, which by definition already has the DOM.
-Screenshots (`snap`/`shot`) are pixels and are NOT redacted; if a region is
-sensitive, do not request its pixels.
+Screenshots and recordings are pixels and are not redacted. Do not request them for a
+sensitive region.
 
-Verified by: `test/privacy-probe.test.js` (core, 8 tests), `companion/gate.mjs`
-(5 privacy checks against a real page), and the daemon/MCP smoke flows.
+The companion protocol itself has no pixel-returning response. Its `privacy.applied`
+attestation covers only the semantic result produced by the isolated content reader;
+screenshots taken by a consumer remain outside that attestation.
+
+## Verification
+
+- `test/privacy-probe.test.js`: core redaction, encoded forms and audit behavior
+- `test/sensitive-input-privacy.test.js`: non-verifiable sensitive value checkpoints
+- `test/audit-daemon-mcp.test.mjs`: isolated world, authenticated transport, private
+  files, session storage isolation, popup cleanup and URL redaction
+- `companion/gate.mjs`: hostile page/iframe attacks against the extension boundary

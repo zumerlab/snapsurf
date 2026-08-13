@@ -1,14 +1,14 @@
 ---
 name: agent-browse
-description: Browse websites by reading the oracle's semantic diffs (packages/agent) instead of screenshots — cheaper and more precise. Use ALWAYS when exploring/operating/observing a web page from Claude Code (default over the Chrome extension, which is reserved for the user's logged-in session), or when the user asks to "browse con el oráculo".
+description: Browse websites by reading snapDOM Agent's semantic diffs instead of screenshots. Use when operating a page through the local daemon or when the user asks to "browse con el oráculo".
 ---
 
 # agent-browse — browse with the oracle instead of screenshots
 
-> MACHINE-GLOBAL install (~/.claude/snapdom-agent). Refresh after agent-lab changes:
-> `node /Users/martin/GitHub/zumerlab/snapdom/packages/agent/tools/install-global.mjs`
+> MACHINE-GLOBAL install (~/.claude/snapdom-agent). Refresh after source changes:
+> `node tools/install-global.mjs`
 
-Dogfooding harness for the `packages/agent` product: a Playwright daemon with the SDK
+Dogfooding harness for snapDOM Agent: a Playwright daemon with the SDK
 injected on every navigation, plus a CLI driven from Bash. The measured economics
 (EXPERIMENT.md): an incremental `look` costs ~19 reading tokens vs ~1,365 for a
 screenshot; ask for pixels only when unsure.
@@ -21,19 +21,20 @@ description says which field it fills. Parsing the fenced text is never necessar
 
 Four fields decide whether an answer is usable, and all four are honest about what they
 do NOT know: `blocked`+`challenge` (content withheld, not a thin page), `failure`
-{layer,code} (dns/tls — never reached HTTP), `authState` (this drives its own cookie jar,
-so a site you are signed into elsewhere is read anonymously), and `truncated` (escalate
-with browser_text, never record a cut value).
+{layer,code} (dns/tls — never reached HTTP), `authState` (always `unknown` until the
+workflow proves identity; `cookiesForOrigin` is evidence, not authentication), and
+`truncated` (escalate with browser_text, never record a cut value).
 
 **Sweeping several sites?** One session per site (`browser_session_open`), passing its
 `sessionId`. Ids and observation counters are then independent — without it, one `open`
-voids the ids another sweep is holding. Cookies are shared, so this is right for unrelated
-public sites and wrong for two logged-in identities.
+voids the ids another sweep is holding. Each session has its own BrowserContext, cookies,
+storage and permissions, so identities do not cross sessions.
 
 ## Startup (once per session)
 
 ```bash
-node /Users/martin/.claude/snapdom-agent/browse.mjs serve   # run with run_in_background
+B="${SNAPDOM_AGENT_BIN:-$HOME/.claude/snapdom-agent/browse.mjs}"
+node "$B" serve   # run with run_in_background
 ```
 
 Wait for the line `agent-browse daemon at http://127.0.0.1:8377`. `--headed` if the
@@ -46,7 +47,7 @@ is the honest configuration.
 ## Workflow
 
 ```bash
-B=/Users/martin/.claude/snapdom-agent/browse.mjs
+B="${SNAPDOM_AGENT_BIN:-$HOME/.claude/snapdom-agent/browse.mjs}"
 node $B open es.wikipedia.org        # navigate → ~2KB DIGEST: landmark regions (with ids
                                      # for zooming), headings, top-15 RANKED actionables with hrefs
 node $B outline                      # full outline of the current observation (explicit
@@ -90,7 +91,7 @@ node $B run "open ebay.com" "find Search for anything"   # BATCH: N commands in 
                                      # error, the JSONL still logs verb by verb
 ```
 
-The whole session lands in a durable JSONL log (`packages/agent/logs/<session>.jsonl`):
+The whole session lands in a durable JSONL log (`logs/<session>.jsonl`):
 ts/seq/epoch, URLs before/after, resolved role/name of every click, duration, errors,
 hash of every image. `type` text is logged redacted (length only). `status` prints the
 log path.
@@ -147,25 +148,12 @@ When the session has both worlds available, the measured division of labor
 - **Do NOT inject the oracle SDK into user tabs via javascript_tool**: CSP
   (wikipedia, ebay) and Private Network Access (public→localhost) block it — proven
   2026-07-31; a hung promise also freezes the tab's renderer ~45s.
-- **If the COMPANION is installed in the user's Chrome** (local extension
-  `packages/agent/companion`, loaded unpacked), user tabs DO have the oracle.
-  Detect and use via javascript_tool (page world; CSP does not matter):
-  ```js
-  // present? → document.querySelector('meta[name="__snapdom_companion"]')
-  const obsId = Date.now();
-  const ready = new Promise(r => {
-    const h = e => { if (e.data && e.data.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) { removeEventListener('message', h); r(); } };
-    addEventListener('message', h); setTimeout(r, 2000);
-  });
-  window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId }, '*');
-  await ready;
-  JSON.parse(document.getElementById('__snapdom_digest').textContent)
-  // → {url, walkMs, actionables, changed, changes, actionabilityDelta, digest:{marks,heads,top}}
-  ```
-  The second observe of the same document brings the DIFF (what changed) — use it
-  instead of comparing screenshots. For targeted search use
-  `postMessage({type:'SNAPDOM_OBSERVE', obsId, match:'text'})` (~2KB, full text,
-  hrefs, verified selectors). Prefer this over read_page/screenshot in user tabs.
+- **If the COMPANION is installed in the user's Chrome**, it is available only through
+  its authenticated extension-to-extension API. Page-world JavaScript, `postMessage`,
+  DOM result nodes, and marker probing are deliberately unsupported. The consumer
+  extension must be allowlisted and call the fixed companion id as documented in
+  `companion/PROMPT-extension.md`. If that integration is not available, use the
+  browser's normal tools; do not recreate the retired page bridge.
 
 ## Limits
 
@@ -174,4 +162,5 @@ When the session has both worlds available, the measured division of labor
 - Huge pages (>10k nodes): `open` can take a few seconds (known ceiling). The settle
   is adaptive (networkidle with a cap): small pages open in <1s; SPAs with eternal
   polling pay the cap (3.5s on open, 1.5-2s on click/enter).
-- The daemon is a single tab; to compare two pages use sequential opens + notes.
+- Each daemon session owns one tab. Use `session open` for independent parallel pages;
+  each session has a separate browser context, cookie jar, storage and popup tree.

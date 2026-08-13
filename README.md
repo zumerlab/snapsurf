@@ -1,331 +1,370 @@
-# snapDOM Agent (working name)
+# snapDOM Agent
 
-**PRIVATE. PROPRIETARY. NEVER PUBLISHED.** Not covered by the repository's MIT license;
-`private: true`, excluded from every publish path, and this package lives on a local-only
-branch. See `LICENSE`.
+snapDOM Agent contains SnapDOM Sensor, a stateful plugin for rendered web pages. A caller
+reuses one plugin instance across normal, scoped SnapDOM captures. The plugin keeps a
+private semantic baseline and adds a bounded `toSensor()` report with typed effects:
+`added`, `removed`, `content`, `state`, `style`, `moved`, `resized`, rendered
+actionability changes, and explicit uncertainty.
 
-Tells a program **what changed on a web page** after it clicked, typed or navigated.
+The report compares capture endpoints. It does not attribute a change to an actor
+(`causality.status === 'NOT_ESTABLISHED'`) and does not decide whether the actor's task
+succeeded. SnapDOM still performs its normal SVG capture; the sensor stores only its
+detached semantic graph as prior state.
 
-It reads the page after the browser has applied styles and computed layout, and compares
-that reading against an earlier one. It answers with words you can act on — added,
-removed, text changed, state changed, style changed, moved, resized — plus which element,
-and whether something that used to be clickable is now covered.
+The current goal is reliability, not distribution. The package is private and the
+license in `LICENSE` applies.
 
-It runs **inside the page**, so it needs no Chrome DevTools Protocol and no second
-browser. That is what makes it usable inside a Chrome extension, an embedded copilot, or
-an Electron webview.
+## Where it fits
 
-It is a tool, not a replacement for anything you already use. It is best at one job:
-telling you that a step did nothing, on a page where a clock or a carousel changed the
-picture anyway. It does **not** make an agent better at finishing tasks — see `PAPER.md`
-§5.9 for the measurement that says so.
+SnapDOM Agent is a perception/evidence layer, not a replacement for Playwright.
+Playwright remains the default for browser control and authored tests: its locators,
+auto-waiting, network tooling, tracing, screenshots, and cross-browser support are much
+broader and more mature. Playwright Test also has retrying assertions for element state,
+text, value, URL, CSS, screenshots, and ARIA snapshots. Playwright MCP, when started with
+its testing capability, has direct verification tools and returns a current accessibility
+snapshot after interactions.
 
----
+The sensor hypothesis is that a host already using SnapDOM can obtain a typed before/after
+diff, rendered actionability evidence, known blind spots, and explicit uncertainty from
+the same scoped capture result. The sensor does not verify the host's task.
 
-## Which mode do you want?
+Separately, the historical MCP verification path was tested against Playwright. A first
+hermetic MCP-to-MCP probe gave both tools the same four local postconditions, each as a
+correct effect and a deterministic near miss. Playwright out of the box, Playwright with
+custom evaluation, and SnapDOM each matched the frozen expected-truth manifest in all 24 route
+trials (72 total), with no false green, false negative, or `UNKNOWN`. SnapDOM used one
+uniform declarative verification call; Playwright used zero to two out-of-box calls or
+one custom-JavaScript call. On the same 24-trial set, median effective full-flow bytes
+were 2,557.5 for Playwright out of box, 5,288 for SnapDOM, and 3,330.5 for custom
+evaluation; median full-flow rounds were 3.5, 3, and 3. Playwright was usually smaller,
+so this establishes a one-call typed assertion surface—not superiority.
 
-| | Mode | Use it when | Needs CDP |
-|---|---|---|---|
-| 1 | **MCP server** | Your agent takes MCP tools (Claude Code, Claude Desktop, others) | yes, via the daemon |
-| 2 | **Command line** | You drive a browser yourself and want many commands per turn | yes, it runs Playwright |
-| 3 | **Global install** | You want it in every Claude Code session on this machine | yes |
-| 4 | **Library (SDK)** | You are writing the product that embeds it | **no** |
-| 5 | **Chrome extension** | The agent lives inside the user's own logged-in Chrome | **no** |
+In five immediate repetitions of the aligned six-effect focal, Playwright Test and
+SnapDOM each passed all 30 authored successful effects. SnapDOM used fewer caller-visible
+probes and returned structured success/failure evidence automatically, but its successful
+envelopes were much larger. The cases had no controlled near misses or independent hidden
+oracle, and the retry and observation surfaces still differ, so the repetitions do not
+establish a performance or accuracy advantage.
 
-Modes 1–3 share one engine (the daemon). Modes 4 and 5 are independent paths to the same
-reader. All of them were checked to give the same answers: `node experiment/parity.mjs`.
+A fair comparison must give both implementations the same frozen postcondition and allow
+Playwright to use those native capabilities or custom predicates. Playwright Test versus
+the core library and Playwright MCP versus SnapDOM MCP are separate questions; results
+from one must not be used as evidence for the other.
 
----
+The MCP runner, raw wires and report live in [`experiment/mcp-value.mjs`](experiment/mcp-value.mjs)
+and [`experiment/results/mcp-value.md`](experiment/results/mcp-value.md). The evidence,
+fairness correction to the older false-green experiment, equal-intent protocol, and
+explicit keep/kill gates live in [`docs/VALUE-COMPARISON.md`](docs/VALUE-COMPARISON.md).
 
-## 1. MCP server
+## SnapDOM Sensor plugin
 
-Register it once, then the tools appear natively in your agent:
-
-```bash
-claude mcp add --scope user snapdom-agent -- node /ABS/PATH/packages/agent/mcp/server.mjs
-```
-
-It starts the daemon by itself the first time a tool is called, and shuts it down when the
-client disconnects. Nothing else to run.
-
-**The ten tools**
-
-| Tool | What it does |
-|---|---|
-| `browser_open` | Navigate, return a ~2–3 KB summary: landmarks, headings, top 15 things to click. Optional `redact: [...]` sets privacy rules for the session |
-| `browser_find` | Search text across the **whole** page, ranked, returns ids + href |
-| `browser_act` | `click` (by id or `"x,y"`), `type`, `enter`. Click auto-scrolls and echoes the role and name it resolved |
-| `browser_verify` | **What changed since the last look.** Call this after every action |
-| `browser_assert` | State an expectation and check it. This is the one that catches silent failures |
-| `browser_checkpoint` | Save the current state under a name |
-| `browser_diff` | Compare the present against a named checkpoint |
-| `browser_text` | Full text of one element, by id |
-| `browser_page` | More detail: `outline`, `map` (paged), `zoom` (one subtree only) |
-| `browser_screenshot` | Pixels, as an escalation — not the default |
-
-**Typical turn**
-
-```
-browser_open   { url: "example.com" }
-browser_find   { text: "Sign in" }
-browser_act    { action: "click", target: "n_1r7" }
-browser_assert { changed: true, mustInclude: [{ kind: "added", role: "dialog" }] }
-```
-
----
-
-## 2. Command line
-
-Start the daemon once; every command is a fast call into it.
-
-```bash
-node packages/agent/tools/browse.mjs serve            # add --headed to watch it
-node packages/agent/tools/browse.mjs open example.com
-node packages/agent/tools/browse.mjs find "Sign in"
-node packages/agent/tools/browse.mjs click n_1r7
-node packages/agent/tools/browse.mjs look             # what changed
-node packages/agent/tools/browse.mjs stop
-```
-
-`browse.mjs help` prints the full verb list. The ones you will actually use:
-
-```
-open <url>        navigate + compact summary
-look [id]         what changed · with an id: read only that subtree
-find <text>       ranked search over the whole page → ids
-text <id>         full text of one element
-click <id|x,y> · type <text> · enter
-assert '<json>'   check a stated expectation (see below)
-cp save|list|diff <name>    named reference points
-map [offset] · outline · parent <id>    more detail
-snap [id] [file.png]        snapDOM render · shot [file.jpg] native screenshot
-rec <secs> [id] [file.gif|.mp4]   record the page or one element
-status · stop     (stop verifies the daemon actually died)
-```
-
-**Many commands in one process** (saves ~80 ms of startup each):
-
-```bash
-node packages/agent/tools/browse.mjs run "open example.com" "find Sign in" "click n_1r7" "look"
-```
-
-**Restricting what it may do** — these are real limits, not hints:
-
-```bash
-browse.mjs serve --readonly              # refuses click/type/enter
-browse.mjs serve --allow wikipedia.org   # blocks navigation AND every request off the list
-browse.mjs serve --redact "Jane Doe,ACME"   # those strings never leave the page
-```
-
-An unknown flag refuses to start rather than launching unrestricted. Every command is
-appended to `packages/agent/logs/<session>.jsonl`, including denials and blocked requests.
-
----
-
-## 3. Global install (this machine, every session)
-
-```bash
-node packages/agent/tools/install-global.mjs
-```
-
-Writes `~/.claude/snapdom-agent/` (a copy of the daemon plus a prebuilt bundle) and a
-user-level `agent-browse` skill, so any Claude Code session can use it regardless of which
-branch the repo is on.
-
-**It is a copy.** After changing anything in `packages/agent/src`, re-run the installer or
-you are running old code. To check the installed copy:
-
-```bash
-node packages/agent/experiment/abis-verbs.mjs --daemon ~/.claude/snapdom-agent/browse.mjs
-```
-
----
-
-## 4. Library (SDK)
-
-The reader is a snapDOM plugin, so semantics and pixels come from one capture at one
-moment.
+The development plugin lives separately under `packages/sensor`. Its generated ESM is
+35,725 B raw / 13,404 B gzip, contains no Node, Playwright, CDP, MCP or browser controller,
+and declares SnapDOM v3 as its only peer dependency.
 
 ```js
 import { snapdom } from '@zumer/snapdom'
-import { agentOracle } from '@zumer/snapdom-agent/plugin'
+import { sensor } from '@zumer/snapdom-sensor'
 
-const result = await snapdom(el, { plugins: [agentOracle({ previous: checkpoint })] })
-await result.toChanges()       // { changed, changes, actionabilityDelta, unobservable }
-await result.toAgentMap()      // numbered clickable things + boxes + state
-await result.toAgentContext()  // indented outline
-await result.toCheckpoint()    // reference point for next time
-await result.toPng()           // …and the picture, from the same moment
+const effectSensor = sensor({
+  privacy: { redact: ['account@example.com'] },
+})
+const card = document.querySelector('#checkout-card')
+
+await snapdom(card, {
+  plugins: [effectSensor],
+})
+
+// Another agent, page code, or a person acts. SnapDOM is not told what to expect.
+
+const capture = await snapdom(card, {
+  plugins: [effectSensor],
+})
+const effect = await capture.toSensor()
+
+console.log(effect.taskAssessment) // { status: 'NOT_ASSESSED' }
+console.log(effect.observation.semanticDelta)
+console.log(effect.observation.renderedActionabilityDelta)
+console.log(await capture.toPng()) // regular SnapDOM export remains available
 ```
 
-`agent.inspect()` is the same capture with a friendlier shape:
+The same plugin instance is the private baseline. The caller scopes work by passing the
+smallest useful element directly to `snapdom()`. `toSensor()` is descriptive and bounded;
+it accepts no expected result and never means the task succeeded. Because this design uses
+SnapDOM unchanged, each endpoint is a full SnapDOM capture and includes its SVG result.
+Historical resident `mark/read` measurements remain development evidence for an abandoned
+prototype and are not performance evidence for this plugin.
+
+## Install and verify
+
+Requires Node.js 22 and Chromium for Playwright-backed modes.
+
+```bash
+npm ci
+npx playwright install chromium
+npm test
+npm run test:lint
+npm run test:bundles
+```
+
+`npm test` runs the real-browser core suite and the isolated daemon/MCP regressions.
+`npm run test:cold` copies only files currently tracked by git into a temporary
+directory, installs dependencies and Chromium into empty task-owned locations, and
+repeats the checks. Untracked working-tree files are deliberately absent, so a cold pass
+does not validate them.
+
+A GitHub Actions workflow is prepared at `.github/workflows/ci.yml`, but it is currently
+untracked and has not run in GitHub Actions. CI must not be described as active or
+verified until that workflow is committed and completes there.
+
+## Library
 
 ```js
 import { agent } from '@zumer/snapdom-agent'
 
-const before = await agent.inspect(root)
+const before = await agent.inspect(document.body)
 const checkpoint = before.checkpoint()
 
 await doSomething()
 
-const ui = await agent.inspect(root, {
+const ui = await agent.inspect(document.body, {
   previous: checkpoint,
-  noise: 'agent',                                   // 'agent' | 'none' | custom rules
-  privacy: { redact: ['password', 'delete account'] },
+  noise: 'agent', // 'agent' | 'none' | custom rules
+  privacy: { redact: ['Jane Doe', 'account@example.com'] },
 })
 
-ui.changed              // false if nothing relevant happened, clock or not
-ui.changes              // [{ id, kind:'state', before:{disabled:true}, after:{disabled:false}, match:'exact' }]
-ui.actionabilityDelta   // { becameCovered: [...], becameVisible: [...] }  ← with role+name
-ui.unobservable         // canvas / blocked iframes it cannot read
-ui.context              // outline (built on first access, not before)
-ui.agentMap             // numbered clickable things
-ui.privacy              // redaction report, when rules are active
-
-ui.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Save' })
-agent.resolve(match)    // → live Element | null  (the only bridge; it never acts for you)
-await ui.rasterize()    // the picture already paid for; with a match, just that region
+console.log(ui.changed)
+console.log(ui.changes)
+console.log(ui.actionabilityDelta)
+console.log(ui.unobservable)
 ```
 
-Options: `previous`, `noise`, `excludeText`, `privacy`, and `capture` (passed straight to
-snapDOM).
-
----
-
-## 5. Chrome extension (no CDP)
-
-```bash
-node packages/agent/companion/build.mjs     # rebuild after any src change
-```
-
-Then load `packages/agent/companion` unpacked at `chrome://extensions`. It runs in the
-isolated world, so page CSP does not block it.
-
-Anything with a JavaScript tool talks to it by message:
+Queries and element resolution use the same observation:
 
 ```js
-// is it there?
-!!document.querySelector('meta[name="__snapdom_companion"]')
+const save = ui
+  .getByRole('dialog', { name: 'Settings' })
+  ?.getByRole('button', { name: 'Save' })
 
-// ask for a reading (the reply carries the diff against the previous one)
-window.postMessage({ type: 'SNAPDOM_OBSERVE', obsId: 1 }, '*')
-// → SNAPDOM_DIGEST_READY { obsId, result }
-
-// or check an expectation
-window.postMessage({ type: 'SNAPDOM_ASSERT', obsId: 2, spec: { changed: false } }, '*')
+const element = agent.resolve(save)
 ```
 
-Both messages accept `privacy: { redact: [...] }`, which sticks for the session
-(`privacy: null` clears it). `companion/PROMPT-extension.md` is the text to hand to an
-agent that will use it.
+The library observes and resolves; it does not click or type. Capture plugins supplied in
+`capture.plugins` are composed with the oracle rather than replaced.
 
-Check the extension before trusting it: `node packages/agent/companion/gate.mjs` (27
-checks against a real page).
+Checkpoints are compact, JSON-serializable wire objects. Version 2 uses length-framed
+hashes and a columnar node representation. Version 1 is rejected explicitly because its
+hashes cannot be upgraded honestly. Treat every persisted checkpoint as sensitive: it
+contains structural and state evidence, and ordinary filled fields include a
+deterministic fingerprint that can be tested against guesses.
 
----
+## CLI and daemon
 
-## Things that apply to every mode
+Start one local daemon, then use short commands from other processes:
 
-**The reference point.** Every comparison is against the last full reading. `open` and
-`look`/`browser_verify` set a new one. To re-baseline, just look again — there is no
-separate command.
+```bash
+node tools/browse.mjs serve
+node tools/browse.mjs open example.com
+node tools/browse.mjs find "Sign in"
+node tools/browse.mjs click n_example
+node tools/browse.mjs look
+node tools/browse.mjs stop
+```
 
-**Ids expire.** `n_xxx` ids only mean something within the reading that produced them.
-After any new reading, search again. Using a stale id is refused, not guessed.
+`node tools/browse.mjs help` prints all verbs. Useful groups:
 
-**Change kinds.** `added`, `removed`, `content`, `state`, `style`, `moved`, `resized`,
-and `possible-replacement` when position and text disagree and it will not pretend to
-know.
+```text
+open <url>                 navigate and establish a baseline
+look [id]                  diff, or inspect one subtree
+find <text>                ranked whole-page search
+text <id>                  full text for one element
+click <id|x,y>             act, then use look/assert
+type <text> · enter
+assert '<json>'            evaluate a postcondition
+cp save|list|diff <name>   named checkpoints
+map [offset] · outline · parent <id>
+snap [id] [file.png] · shot [file.jpg]
+session open|list|close
+status · stop
+```
 
-**`assert` — the spec.** Every field is optional, but an empty spec fails on purpose.
+Policies are fail-closed at daemon startup:
+
+```bash
+node tools/browse.mjs serve --readonly
+node tools/browse.mjs serve --allow example.com,static.example.com
+node tools/browse.mjs serve --redact "Jane Doe,account@example.com"
+```
+
+Unknown flags refuse to start. Redaction policy, revisions, baselines, ids, checkpoints,
+and command queues are session-scoped. Each session owns an isolated BrowserContext, so
+cookies, storage, permissions, workers and popup trees do not cross sessions. Closing it
+closes every page it created.
+
+The HTTP control plane binds to loopback and uses a private per-process token. CLI and
+MCP verify an HMAC challenge before sending command data, then authenticate the exact
+request and response with one-time nonces. The discovery token file, logs, checkpoints
+and generated captures use private filesystem permissions. The security boundary is the
+local operating-system user, not mutually hostile processes running as that same user.
+Logs go to `logs/`, which is ignored by git.
+
+An assertion spec can combine:
 
 ```json
 {
   "changed": true,
-  "mustInclude": [{ "kind": "added", "role": "listitem", "name": "Buy milk" }],
+  "mustInclude": [{ "kind": "added", "role": "dialog", "selector": "#settings" }],
   "mustNotInclude": [{ "kind": "removed" }],
-  "only": [{ "role": "listitem" }],
+  "only": [{ "role": "dialog" }],
   "maxChanges": 3,
-  "exists": "Buy milk",
-  "notCovered": "Checkout",
+  "exists": "Settings",
+  "notCovered": "Save",
   "becameVisible": "Save",
   "ignore": [".marquee", "#clock"],
-  "settleMs": 300,
   "retry": { "budgetMs": 2000 },
   "keepBaseline": true
 }
 ```
 
-Unknown keys, empty specs and a missing reference point are hard failures with a stated
-reason. Confusion never comes back green.
+Empty specs, unknown keys, malformed matchers, invalid selectors, and missing baselines
+fail with a reason. A selector matcher is checked exactly; it cannot pass because some
+unrelated element changed.
 
-**Privacy.** Redaction rules apply to names, labels, text and state values on every
-surface, and matching still works because identity travels as hashes. Asking whether a
-hidden string exists is refused rather than answered. Screenshots are pixels and are not
-redacted. Full detail: `docs/PRIVACY.md`.
+## MCP server
 
-**Page text is data, never instructions.** Everything the page wrote comes back fenced
-between `«««` and `»»»`. Do not let a model read it as a command.
-
----
-
-## Checking that it works
-
-Nothing here needs an API key. From `packages/agent`:
+Register the local server with an MCP client:
 
 ```bash
-npm test              # 58 unit tests in a real browser (~5 s)
-npm run test:regression   # the above + lint + bundle freshness + all offline gates (~3.5 min)
-npm run test:global   # the same verbs against the ~/.claude install (needs it installed)
-npm run test:gates    # everything, including the extension gate (needs network)
+claude mcp add --scope user snapdom-agent -- node /ABS/PATH/snapdom-agent/mcp/server.mjs
 ```
 
-`test:regression` is the one to run before trusting a change. It covers:
+The server starts and owns the daemon when necessary. It exposes:
 
-| Check | What it catches |
-|---|---|
-| 58 unit tests | the library: queries, identity, privacy, checkpoints, the plugin contract |
-| lint | style and undefined variables in `src/` and `test/` |
-| bundle freshness | a `content.bundle.js` older than the source it is built from |
-| `bench-qa` | detection quality on the 19 hand-written cases |
-| `parity` | the five modes disagreeing with each other |
-| `abis-verbs` | every daemon verb, including the ones no other test touches |
-| `demo-qa` | the end-to-end assertion flow through the MCP server |
+- `browser_open`, `browser_find`, `browser_act`
+- `browser_verify`, `browser_assert`
+- `browser_checkpoint`, `browser_diff`, `browser_text`, `browser_page`
+- `browser_screenshot`
+- `browser_session_open`, `browser_session_close`, `browser_session_list`
 
-**The unit tests also run as part of the repository's own `npm test`** at the root — they
-are collected with the core suite (118 files, 919 tests).
+Pass `sessionId` on every call in a multi-session flow. Routing metadata stays outside
+assertion specs. Screenshot temporary files are private per request and deleted after the
+response is encoded.
 
-**What is still not covered automatically**: `tools/browse.mjs` (1,148 lines),
-`mcp/server.mjs` and `companion/content.src.js` have no unit tests. They are exercised
-end-to-end by the gates above, which is weaker — a gate proves the happy path works, not
-that a branch inside it is correct. There is also no CI: every command here is one somebody
-has to remember to run. That is exactly how three bugs shipped on 2026-08-01 (see
-`TESTPLAN.md` §history).
+## Chrome companion
 
-`PAPER.md` Appendix A lists the rest, including the ones that cost money.
+The companion observes the user's existing Chrome without CDP. Build and load it:
 
-## What it cannot do
+This mode can see the selected tab's authenticated page state. The current product
+validation does **not** use it: all dogfood and automated gates use isolated temporary
+Chromium contexts. Do not point the companion at a personal profile, tab, cookie store,
+session, history, password store, or extension set without the browser owner's explicit
+authorization.
 
-- No multi-tab, no window management.
-- A checkpoint is a point of comparison, **not an undo**. It cannot revert anything.
-- Permissions are coarse: read-only, an allowed-domain list, and redaction. Nothing
-  per-field.
-- Canvas and unreadable iframes are reported as unreadable, not interpreted.
-- `changed: false` is trustworthy under the noise rules described in `PAPER.md` §5.3, but
-  it is not a guarantee on a page that has not settled.
-- Repeatability is claimed within one environment only. No cross-browser claims.
-
-## Where things are
-
+```bash
+node companion/build.mjs
 ```
-src/          the reader, identity matching, comparison, queries, privacy, the plugin
-mcp/          MCP server (mode 1)
-tools/        daemon + CLI (mode 2), global installer (mode 3), shared bundle definition
-companion/    Chrome extension (mode 5) + its contract test
-corpus/       19 test cases: page + mutation + hand-written correct answer
-test/         unit tests
-experiment/   every runner, benchmark and comparison
-docs/         PRIVACY.md · LANDSCAPE.md · adr/
-PAPER.md      what it does, how it was measured, and what the numbers do not prove
-TESTPLAN.md   what is tested, what is not, and what result would prove us wrong
+
+Load `companion/` unpacked at `chrome://extensions`. Requests are accepted only from
+extension ids in `companion/manifest.json`; ordinary page JavaScript cannot call it. The
+authenticated path is:
+
+```text
+allowlisted consumer extension
+  → companion service worker
+  → chrome.tabs.sendMessage(frameId: 0)
+  → isolated content script
+```
+
+From an allowlisted extension context:
+
+```js
+const reply = await chrome.runtime.sendMessage(
+  'cgkacingkmbmhpmffioljbcfjimjhjig',
+  {
+    channel: 'snapdom-companion-v1',
+    tabId,
+    request: { type: 'SNAPDOM_OBSERVE', obsId: crypto.randomUUID() },
+  },
+)
+```
+
+Results never travel through `window.postMessage`, a page-owned DOM node, or a marker.
+Privacy is sticky per tab in `chrome.storage.session`; only an authenticated client can
+clear it. See `companion/PROMPT-extension.md` for the full protocol.
+
+Run the hermetic adversarial gate after any companion change:
+
+```bash
+node companion/gate.mjs
+```
+
+It loads fixed-id companion and client extensions against a local hostile page and iframe
+and verifies response authenticity, privacy persistence, semantic changes, assertions,
+and rejection of the former page/DOM channels.
+
+## Global machine copy
+
+For a fixed local path independent of the checkout:
+
+```bash
+node tools/install-global.mjs
+```
+
+This writes the daemon, MCP server, SDK bundle, and companion runtime (`manifest.json`,
+`worker.js`, `content.bundle.js`) under `~/.claude/snapdom-agent/`, plus the user-level
+agent-browse skill. Re-run it after source changes. Installation mutates `~/.claude`, so
+it is not part of the repository's default test suite.
+
+## Honesty boundaries
+
+- Canvas pixels, iframe documents, and possible closed shadow roots are reported as
+  unobservable rather than silently treated as unchanged.
+- `noise: 'agent'` suppresses configured ambient signals. `noise: 'none'` preserves
+  clocks, relative time, whitespace, animations, and exact geometry.
+- The observer detects authored destinations/resources/accessibility changes including
+  `href`, `src`, `srcset`, accessible names, and computed `background-image`.
+- A page controls its own DOM. An authenticated transport proves where a result came
+  from, not that hostile page content is factually true.
+- The daemon reader and privacy policy run in a Chromium isolated world; page JavaScript
+  cannot replace the observer or clear its policy.
+- Sensitive form values use presence plus coarse length buckets and report their
+  same-bucket uncertainty; they do not store a value-derived digest. Ordinary form values
+  keep a deterministic change fingerprint. Raw form values are not returned, but every
+  persisted checkpoint must still be handled as a sensitive artifact.
+- Daemon and MCP consumer responses report that redaction is active, with the policy
+  revision and active-rule count. They do not expose per-rule match or hit counts, because
+  those counts would reveal whether a protected term occurred.
+- Screenshots are pixels and are not redacted.
+- IDs expire when a full observation establishes a new epoch. Resolve or search again.
+- A checkpoint compares state; it is not an undo operation.
+- Repeatability is claimed only within one environment. No cross-browser equivalence is
+  implied.
+
+## Test layers
+
+```bash
+npm test                  # core browser suite + daemon/MCP security/session regressions
+npm run test:lint         # src, tests, tools, MCP, and companion
+npm run test:bundles      # deterministic companion bundle freshness
+npm run test:regression   # offline corpus/parity/daemon/contracts/demo gates
+npm run test:adversarial  # adversarial experiment gate
+node companion/gate.mjs   # hermetic extension boundary gate
+npm run test:cold         # git-tracked clean copy, browser install, tests and package gates
+```
+
+`test:global` remains an explicit check of the copy under `~/.claude`; it is not run by
+CI or the default gates because it depends on user machine state.
+
+## Repository map
+
+```text
+src/          observation, matching, diff, privacy, queries, checkpoints
+vendor/       pinned snapDOM browser runtime and export plugins
+tools/        CLI/daemon, bundle definition, installer, cold-install proof
+mcp/          MCP stdio adapter
+companion/    MV3 extension, authenticated worker, adversarial gate
+test/         browser and daemon/MCP regression tests
+corpus/       hand-written mutation fixtures
+experiment/   research and regression runners
+docs/         privacy notes and architecture records
 ```

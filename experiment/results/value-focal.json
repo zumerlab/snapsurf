@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "runClassification": "single-run focal observation; not a throughput benchmark",
+  "started": "2026-08-12T03:49:12.327Z",
+  "finished": "2026-08-12T03:49:48.519Z",
+  "measurement": "historical schema 1 single run with asymmetric timers; navigation and runtime installation excluded",
+  "versions": {
+    "node": "v25.8.1",
+    "playwrightTestDirect": "1.62.1",
+    "directChromium": "Chrome for Testing 151.0.7922.34 (Playwright Chromium 1234)",
+    "snapdomAgent": "0.1.0",
+    "snapdomInternalPlaywright": "1.55.1"
+  },
+  "publicPages": {
+    "controls": "https://the-internet.herokuapp.com/dynamic_controls",
+    "modal": "https://getbootstrap.com/docs/5.3/components/modal/",
+    "delayed": "https://the-internet.herokuapp.com/dynamic_loading/2"
+  },
+  "methodology": {
+    "truth": "declared visible DOM/ARIA postconditions described per case; no independent hidden oracle was used",
+    "timing": "Historical asymmetry: Playwright timing included its precondition assertions; SnapDOM timing started only after its semantic find returned. Both then included action and postconditions.",
+    "bytes": "UTF-8 serialized bytes; no token estimates",
+    "playwrightSuccessEvidence": "expect() returned no serialized semantic evidence; ariaSnapshot() was explicitly requested and measured",
+    "playwrightFailureEvidence": "deliberately wrong 150 ms expect() serialized matcher diagnostics; five of six contained an automatic ARIA snapshot",
+    "snapdomSuccessEvidence": "authenticated daemon response including the structured assert and diff evidence",
+    "snapdomFailureEvidence": "authenticated structured failure response for a deliberately absent exists predicate",
+    "comparabilityCaveat": "The arms target the same user-visible effects, but some conjuncts/preconditions differ and the timer boundaries are asymmetric. SnapDOM's 15,035.8 ms total is 6.9% below Playwright's 16,155.4 ms total here, but that difference is not comparable and must not be presented as a speed advantage.",
+    "successEvidenceCaveat": "Playwright's 0 B automatic-success field and explicit ariaSnapshot bytes measure separate calls, while SnapDOM bytes measure a richer automatic success envelope. Smaller/larger byte totals do not mean equivalent evidence."
+  },
+  "isolation": {
+    "direct": "Playwright 1.62.1 and Chromium 151 installed under a throwaway temporary root; chromium.launch plus fresh non-persistent context",
+    "snapdom": "repository product daemon with pinned runtime, OS-assigned port 55855 (not 8377), temporary token/logs and non-persistent contexts",
+    "cleanupVerified": true,
+    "personalChromeAccessed": false
+  },
+  "cases": [
+    {
+      "effect": "remove",
+      "truth": "The initially visible checkbox is absent and the page reports It's gone!.",
+      "alignment": "Same effect; Playwright also asserts the precondition, SnapDOM asserts a typed removal from its open baseline.",
+      "playwrightTest": { "api": ["expect(locator('#checkbox')).toBeVisible()", "locator('#checkbox-example button').click()", "expect(locator('#checkbox')).toHaveCount(0)", "expect(locator('#checkbox-example #message')).toHaveText(\"It's gone!\")", "locator('#checkbox-example').ariaSnapshot()"], "verdict": "pass", "outcomeLocators": 3, "assertions": 3, "explicitEvidenceCalls": 1, "latencyMs": 3558.8, "automaticSuccessEvidenceBytes": 0, "explicitAriaEvidenceBytes": 52, "failureDiagnosticBytes": 1269, "failureHasAriaSnapshot": true },
+      "snapdom": { "api": ["find Remove; click returned id", "assert {changed:true,mustInclude:[{kind:'removed',role:'checkbox'}],exists:\"It's gone!\",retry:{budgetMs:6500,intervalMs:100}}"], "verdict": "pass", "semanticFindCalls": 1, "assertCalls": 1, "checks": 3, "latencyMs": 3035.9, "attempts": 24, "fullEnvelopeBytes": 3309, "structuredAssertBytes": 2913, "failureEnvelopeBytes": 553 }
+    },
+    {
+      "effect": "add",
+      "truth": "A visible checkbox is added back and the page reports It's back!.",
+      "alignment": "Same effect, different final text conjunct: Playwright checked It's back!; SnapDOM checked the checkbox accessible name A checkbox.",
+      "playwrightTest": { "api": ["expect(locator('#checkbox')).toHaveCount(0)", "locator('#checkbox-example button').click()", "expect(locator('#checkbox')).toBeVisible()", "expect(locator('#checkbox-example #message')).toHaveText(\"It's back!\")", "locator('#checkbox-example').ariaSnapshot()"], "verdict": "pass", "outcomeLocators": 3, "assertions": 3, "explicitEvidenceCalls": 1, "latencyMs": 3359.5, "automaticSuccessEvidenceBytes": 0, "explicitAriaEvidenceBytes": 87, "failureDiagnosticBytes": 893, "failureHasAriaSnapshot": false },
+      "snapdom": { "api": ["find Add; click returned id", "assert {changed:true,mustInclude:[{kind:'added',role:'checkbox'}],exists:'A checkbox',retry:{budgetMs:6500,intervalMs:100}}"], "verdict": "pass", "semanticFindCalls": 1, "assertCalls": 1, "checks": 3, "latencyMs": 3094.9, "attempts": 25, "fullEnvelopeBytes": 3461, "structuredAssertBytes": 3067, "failureEnvelopeBytes": 553 }
+    },
+    {
+      "effect": "state-enable",
+      "truth": "The disabled input becomes enabled and the page reports It's enabled!.",
+      "alignment": "Same effect; Playwright names disabled/enabled pre/postconditions, SnapDOM asserts a typed state diff plus final text.",
+      "playwrightTest": { "api": ["expect(locator('#input-example input')).toBeDisabled()", "locator('#input-example button').click()", "expect(locator('#input-example input')).toBeEnabled()", "expect(locator('#input-example #message')).toHaveText(\"It's enabled!\")", "locator('#input-example').ariaSnapshot()"], "verdict": "pass", "outcomeLocators": 3, "assertions": 3, "explicitEvidenceCalls": 1, "latencyMs": 3325.2, "automaticSuccessEvidenceBytes": 0, "explicitAriaEvidenceBytes": 101, "failureDiagnosticBytes": 1065, "failureHasAriaSnapshot": true },
+      "snapdom": { "api": ["find Enable; click returned id", "assert {changed:true,mustInclude:[{kind:'state',role:'textbox'}],exists:\"It's enabled!\",retry:{budgetMs:6500,intervalMs:100}}"], "verdict": "pass", "semanticFindCalls": 1, "assertCalls": 1, "checks": 3, "latencyMs": 3083.3, "attempts": 25, "fullEnvelopeBytes": 4238, "structuredAssertBytes": 3842, "failureEnvelopeBytes": 553 }
+    },
+    {
+      "effect": "modal",
+      "truth": "The live Bootstrap dialog appears and its Woo-hoo paragraph is rendered without geometric occlusion.",
+      "alignment": "Same four claims; Playwright needed a custom elementFromPoint predicate for occlusion.",
+      "playwrightTest": { "api": ["expect(locator('#exampleModalLive')).toBeHidden()", "getByRole('button',{name:'Launch demo modal',exact:true}).first().click()", "expect(dialog).toBeVisible()", "expect(dialog.getByText(modalText,{exact:true})).toBeVisible()", "paragraph.evaluate(elementFromPoint centre containment)", "dialog.ariaSnapshot()"], "verdict": "pass", "outcomeLocators": 3, "assertions": 4, "customPredicates": 1, "explicitEvidenceCalls": 1, "latencyMs": 225.7, "automaticSuccessEvidenceBytes": 0, "explicitAriaEvidenceBytes": 212, "failureDiagnosticBytes": 1632, "failureHasAriaSnapshot": true },
+      "snapdom": { "api": ["find Launch demo modal; click returned id", "assert {changed:true,mustInclude:[{kind:'added',role:'dialog'}],exists:modalText,notCovered:modalText,retry:{budgetMs:5000,intervalMs:100}}"], "verdict": "pass", "semanticFindCalls": 1, "assertCalls": 1, "checks": 4, "latencyMs": 451.7, "attempts": 1, "fullEnvelopeBytes": 4266, "structuredAssertBytes": 3750, "failureEnvelopeBytes": 553 }
+    },
+    {
+      "effect": "delayed",
+      "truth": "After Start, Hello World! is rendered after the asynchronous loading phase.",
+      "alignment": "Same effect; both arms used an explicit 10 second wait/retry budget.",
+      "playwrightTest": { "api": ["expect(locator('#finish')).toBeHidden()", "getByRole('button',{name:'Start'}).click()", "expect(locator('#finish')).toBeVisible({timeout:10000})", "expect(locator('#finish')).toHaveText('Hello World!')", "locator('#finish').ariaSnapshot()"], "verdict": "pass", "outcomeLocators": 2, "assertions": 3, "explicitEvidenceCalls": 1, "latencyMs": 5375.1, "automaticSuccessEvidenceBytes": 0, "explicitAriaEvidenceBytes": 47, "failureDiagnosticBytes": 1027, "failureHasAriaSnapshot": true },
+      "snapdom": { "api": ["find Start; click returned id", "assert {changed:true,mustInclude:[{kind:'added',name:'Hello World!'}],exists:'Hello World!',retry:{budgetMs:10000,intervalMs:100}}"], "verdict": "pass", "semanticFindCalls": 1, "assertCalls": 1, "checks": 3, "latencyMs": 5055.1, "attempts": 42, "fullEnvelopeBytes": 2086, "structuredAssertBytes": 1684, "failureEnvelopeBytes": 556 }
+    },
+    {
+      "effect": "no-op",
+      "truth": "After the delayed result has settled, a 300 ms wait produces no semantic change.",
+      "alignment": "Same effect; Playwright compares two explicit body ARIA snapshots, SnapDOM asserts changed:false against its baseline.",
+      "playwrightTest": { "api": ["before=await locator('body').ariaSnapshot()", "wait 300ms", "after=await locator('body').ariaSnapshot()", "expect(after).toBe(before)"], "verdict": "pass", "outcomeLocators": 1, "assertions": 1, "explicitEvidenceCalls": 1, "latencyMs": 311.1, "automaticSuccessEvidenceBytes": 0, "explicitAriaEvidenceBytes": 881, "failureDiagnosticBytes": 3811, "failureHasAriaSnapshot": true },
+      "snapdom": { "api": ["wait 300ms", "assert {changed:false}"], "verdict": "pass", "semanticFindCalls": 0, "assertCalls": 1, "checks": 1, "latencyMs": 314.9, "attempts": 1, "fullEnvelopeBytes": 526, "structuredAssertBytes": 304, "failureEnvelopeBytes": 556 }
+    }
+  ],
+  "totals": {
+    "playwrightTest": { "verdictsPass": 6, "latencyMs": 16155.4, "outcomeLocators": 15, "assertions": 17, "explicitEvidenceCalls": 6, "automaticSuccessEvidenceBytes": 0, "explicitAriaEvidenceBytes": 1380, "failureDiagnosticBytes": 9697 },
+    "snapdom": { "verdictsPass": 6, "latencyMs": 15035.8, "semanticFindCalls": 5, "assertCalls": 6, "checks": 17, "fullEnvelopeBytes": 17886, "structuredAssertBytes": 15560, "failureEnvelopeBytes": 3324 }
+  },
+  "reproduction": {
+    "dry": "node experiment/value-focal.mjs --dry",
+    "networkSchema2PinnedRepoVersion": "node experiment/value-focal.mjs --network",
+    "networkSchema2DirectVersion": "install the desired Playwright version outside the repository, then set VALUE_FOCAL_PLAYWRIGHT_ROOT to that temporary package root and run node experiment/value-focal.mjs --network",
+    "schemaChange": "The runner now emits schema 2: precondition/baseline outside both timers; target lookup, action and aligned postconditions inside both timers; add checks It's back! in both arms. It intentionally does not reproduce the unfair schema 1 timer.",
+    "networkWarning": "Public pages and timing vary. A new run must be stored as a new observation, not silently treated as identical to this committed run."
+  }
+}

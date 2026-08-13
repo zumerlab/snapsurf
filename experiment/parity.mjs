@@ -10,29 +10,46 @@
  *   S1 library    — inspect() directly in the page
  *   S2 daemon     — browse.mjs serve + open/look over HTTP
  *   S3 MCP        — browser_open + browser_verify over stdio
- *   S4 Companion  — extensión MV3 real + postMessage
+ *   S4 Companion  — extensión MV3 real + cliente extension allowlisted
  *
  * Compares `changed` and the set of kinds. A disagreement is a bug in ONE mode, and
  * the report has to say which.
  *
  *   node experiment/parity.mjs
  *
- * LANDMINE: port 8377 is shared — S2 starts its own daemon and S3 makes the MCP server
- * start one. They run SEQUENTIALLY, with a verified stop in between.
+ * Every run owns a temporary daemon port/profile. S2 and S3 still run sequentially,
+ * with a verified stop in between, but never touch a developer's live daemon.
  */
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
-const { resolveHost } = await import('../tools/host-repo.mjs')
-const REPO = resolveHost()
 const CORPUS = join(AGENT, 'corpus')
-const TMP = '/tmp/snapdom-parity'
+const TMP = await mkdtemp(join(tmpdir(), 'snapdom-parity-'))
 await mkdir(TMP, { recursive: true })
+
+async function freePort() {
+  const server = createServer()
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const address = server.address()
+  if (!address || typeof address === 'string') throw new Error('failed to reserve parity daemon port')
+  await new Promise((resolve) => server.close(resolve))
+  return address.port
+}
+
+if (!process.env.SNAPDOM_AGENT_PORT) process.env.SNAPDOM_AGENT_PORT = String(await freePort())
+if (!process.env.SNAPDOM_AGENT_TOKEN_FILE) process.env.SNAPDOM_AGENT_TOKEN_FILE = join(TMP, 'daemon.token')
+if (!process.env.SNAPDOM_AGENT_LOGDIR) process.env.SNAPDOM_AGENT_LOGDIR = join(TMP, 'logs')
+const { daemonFetch } = await import('../tools/daemon-client.mjs')
 
 // 4 real changes + 4 noise: agreement has to hold in both directions — all of them say
 // "changed" and all of them say "the noise did not change anything".
@@ -49,8 +66,9 @@ const CASES = [
 
 // ── Fixtures: same setup as bench-qa and test/corpus.test.js ────────────────────────
 // mutate.js files are real ES modules → bundle with esbuild, never inline by regex.
-const esbuild = await import(join(REPO, 'node_modules/esbuild/lib/main.js'))
+const esbuild = await import('esbuild')
 const bundles = new Map()
+let serve = null
 async function bundleMutate(name) {
   if (!bundles.has(name)) {
     const out = await esbuild.build({
@@ -87,8 +105,6 @@ setTimeout(async () => {
 // Fixtures are served over HTTP, not file://: `history.pushState` to a new path
 // lanza SecurityError bajo origen opaco (file://), la URL no cambia y el caso SPA
 // produced a FALSE `navigated` alarm. Found on this phase's first run.
-const { createServer } = await import('node:http')
-const PORT = 8391
 const staticSrv = createServer(async (req, res) => {
   // leer ANTES de mandar headers: un 404 (favicon) después de writeHead(200)
   // throws ERR_HTTP_HEADERS_SENT and kills the runner at the end of the run
@@ -99,8 +115,15 @@ const staticSrv = createServer(async (req, res) => {
   res.writeHead(200, { 'content-type': 'text/html' })
   res.end(body)
 })
-await new Promise((r) => staticSrv.listen(PORT, '127.0.0.1', r))
-const serve = (name) => `http://127.0.0.1:${PORT}/${name}.html`
+let exitCode = 1
+try {
+await new Promise((resolve, reject) => {
+  staticSrv.once('error', reject)
+  staticSrv.listen(0, '127.0.0.1', resolve)
+})
+const staticAddress = staticSrv.address()
+if (!staticAddress || typeof staticAddress === 'string') throw new Error('failed to bind parity fixture server')
+serve = (name) => `http://127.0.0.1:${staticAddress.port}/${name}.html`
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const kindsOf = (changes) => [...new Set((changes || []).map((c) => c.kind))].sort().join('+') || '-'
@@ -134,7 +157,7 @@ const coveredOf = (delta) => ((delta && delta.becameCovered) || []).length
 
 // ── S1: SDK directo ──────────────────────────────────────────────────────────────────
 async function runSdk(urls) {
-  const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'))
+  const { chromium } = await import('playwright')
   const entry = join(TMP, 'sdk-entry.mjs')
   await writeFile(entry, `import { observe, buildUi } from '${join(AGENT, 'src/plugin.js')}'
 window.__observe = observe
@@ -145,136 +168,165 @@ window.__buildUi = buildUi
 
   const browser = await chromium.launch()
   const out = {}
-  for (const [name, url] of Object.entries(urls)) {
-    const page = await browser.newPage({ viewport: { width: 800, height: 600 } })
-    await page.goto(url)
-    await page.addScriptTag({ content: sdk })
-    await page.waitForTimeout(300)
-    // reference point → (the mutation fires by itself at +1500ms) → second reading
-    const res = await page.evaluate(async () => {
-      const first = await window.__observe(document.body, {})
-      const cp = window.__buildUi(first, {}).checkpoint()
-      await new Promise((r) => setTimeout(r, 2200))
-      const second = await window.__observe(document.body, { previous: cp })
-      const ui = window.__buildUi(second, {})
-      const d = ui.actionabilityDelta || {}
-      return {
-        changed: !!ui.changed,
-        changes: (ui.changes || []).map((c) => ({ kind: c.kind })),
-        covered: (d.becameCovered || []).length,
-      }
-    })
-    // navigated is not the library's business: modes that track a URL add it
-    out[name] = { changed: res.changed, kinds: kindsOf(res.changes), covered: res.covered, navigated: null }
-    await page.close()
+  try {
+    for (const [name, url] of Object.entries(urls)) {
+      const page = await browser.newPage({ viewport: { width: 800, height: 600 } })
+      await page.goto(url)
+      await page.addScriptTag({ content: sdk })
+      await page.waitForTimeout(300)
+      // reference point → (the mutation fires by itself at +1500ms) → second reading
+      const res = await page.evaluate(async () => {
+        const first = await window.__observe(document.body, {})
+        const cp = window.__buildUi(first, {}).checkpoint()
+        await new Promise((r) => setTimeout(r, 2200))
+        const second = await window.__observe(document.body, { previous: cp })
+        const ui = window.__buildUi(second, {})
+        const d = ui.actionabilityDelta || {}
+        return {
+          changed: !!ui.changed,
+          changes: (ui.changes || []).map((c) => ({ kind: c.kind })),
+          covered: (d.becameCovered || []).length,
+        }
+      })
+      // navigated is not the library's business: modes that track a URL add it
+      out[name] = { changed: res.changed, kinds: kindsOf(res.changes), covered: res.covered, navigated: null }
+      await page.close()
+    }
+    return out
+  } finally {
+    await browser.close()
   }
-  await browser.close()
-  return out
 }
 
 // ── S2: the daemon over HTTP ────────────────────────────────────────────────────────
 const daemonCmd = (cmd, args = []) =>
-  fetch('http://127.0.0.1:8377/cmd', {
+  daemonFetch({
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ cmd, args, envelope: true }),
   }).then((r) => r.json())
 
 async function runDaemon(urls) {
   const srv = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'serve'], { stdio: 'ignore', detached: false })
-  for (let i = 0; i < 40; i++) {
-    try { await daemonCmd('status'); break } catch { await sleep(500) }
-  }
   const out = {}
-  for (const [name, url] of Object.entries(urls)) {
-    await daemonCmd('open', [url])
-    await sleep(2200)
-    const look = await daemonCmd('look')
-    const meta = look.meta || {}
-    // the printed text is what a human or model reads; the kinds come from there
-    const text = look.text || ''
-    const kinds = [...new Set([...text.matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
-    const cov = text.match(/became covered: (.+)$/m)
-    out[name] = {
-      changed: !!meta.changed, kinds,
-      covered: cov ? cov[1].split(' · ').length : 0,
-      navigated: !!meta.navigated,
+  try {
+    for (let i = 0; i < 40; i++) {
+      try { await daemonCmd('status'); break } catch { await sleep(500) }
     }
+    for (const [name, url] of Object.entries(urls)) {
+      await daemonCmd('open', [url])
+      await sleep(2200)
+      const look = await daemonCmd('look')
+      const meta = look.meta || {}
+      // the printed text is what a human or model reads; the kinds come from there
+      const text = look.text || ''
+      const kinds = [...new Set([...text.matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
+      const cov = text.match(/became covered: (.+)$/m)
+      out[name] = {
+        changed: !!meta.changed, kinds,
+        covered: cov ? cov[1].split(' · ').length : 0,
+        navigated: !!meta.navigated,
+      }
+    }
+    return out
+  } finally {
+    await Promise.race([
+      new Promise((resolve) => {
+        const stop = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'stop'], { stdio: 'ignore' })
+        stop.once('error', resolve)
+        stop.once('exit', resolve)
+      }),
+      sleep(5000),
+    ])
+    if (srv.exitCode === null) srv.kill('SIGTERM')
   }
-  await new Promise((r) => { const s = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'stop'], { stdio: 'ignore' }); s.on('exit', r) })
-  try { srv.kill() } catch { /* ya murió */ }
-  await sleep(1200)
-  return out
 }
 
 // ── S3: MCP over stdio ──────────────────────────────────────────────────────────────
 async function runMcp(urls) {
   const srv = spawn(process.execPath, [join(AGENT, 'mcp/server.mjs')], { stdio: ['pipe', 'pipe', 'ignore'] })
+  const exited = new Promise((resolve) => srv.once('exit', resolve))
   const pending = new Map()
   let id = 1
   createInterface({ input: srv.stdout }).on('line', (l) => {
     try { const m = JSON.parse(l); pending.get(m.id)?.(m); pending.delete(m.id) } catch { /* ruido */ }
   })
   const call = (method, params) => new Promise((r) => { const i = id++; pending.set(i, r); srv.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: i, method, params }) + '\n') })
-  await call('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'parity', version: '1' } })
   const out = {}
-  for (const [name, url] of Object.entries(urls)) {
-    await call('tools/call', { name: 'browser_open', arguments: { url } })
-    await sleep(2200)
-    const v = await call('tools/call', { name: 'browser_verify', arguments: {} })
-    const sc = v.result?.structuredContent || {}
-    const text = v.result?.content?.[0]?.text || ''
-    const kinds = [...new Set([...text.matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
-    const cov = text.match(/became covered: (.+)$/m)
-    out[name] = {
-      changed: !!sc.changed, kinds,
-      covered: cov ? cov[1].split(' · ').length : 0,
-      navigated: !!sc.navigated,
+  try {
+    await call('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'parity', version: '1' } })
+    for (const [name, url] of Object.entries(urls)) {
+      await call('tools/call', { name: 'browser_open', arguments: { url } })
+      await sleep(2200)
+      const v = await call('tools/call', { name: 'browser_verify', arguments: {} })
+      const sc = v.result?.structuredContent || {}
+      const text = v.result?.content?.[0]?.text || ''
+      const kinds = [...new Set([...text.matchAll(/^\s{2}(\w+) /gm)].map((m) => m[1]))].sort().join('+') || '-'
+      const cov = text.match(/became covered: (.+)$/m)
+      out[name] = {
+        changed: !!sc.changed, kinds,
+        covered: cov ? cov[1].split(' · ').length : 0,
+        navigated: !!sc.navigated,
+      }
     }
+    return out
+  } finally {
+    if (srv.exitCode === null) srv.stdin.end()
+    const clean = await Promise.race([exited.then(() => true), sleep(5000).then(() => false)])
+    if (!clean && srv.exitCode === null) srv.kill('SIGTERM')
+    await Promise.race([exited, sleep(3000)])
   }
-  srv.kill()
-  await sleep(1500)
-  return out
 }
 
 // ── S4: companion MV3 real ───────────────────────────────────────────────────────────
 async function runCompanion(urls) {
-  const { chromium } = await import(join(REPO, 'node_modules/playwright/index.mjs'))
-  const PROFILE = '/tmp/parity-companion-profile'
-  await rm(PROFILE, { recursive: true, force: true })
+  const { chromium } = await import('playwright')
+  const PROFILE = await mkdtemp(join(tmpdir(), 'snapdom-parity-companion-'))
   const EXT = join(AGENT, 'companion')
-  const ctx = await chromium.launchPersistentContext(PROFILE, {
-    channel: 'chromium', viewport: { width: 800, height: 600 },
-    args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`],
-  })
-  const out = {}
-  for (const [name, url] of Object.entries(urls)) {
-    const page = await ctx.newPage()
-    await page.goto(url)
-    await page.waitForTimeout(400)
-    const ask = (msg) => page.evaluate(async (m) => {
-      const obsId = Date.now() + Math.random()
-      const res = new Promise((r) => {
-        const h = (e) => {
-          if (e.data && e.data.type === 'SNAPDOM_DIGEST_READY' && e.data.obsId === obsId) { removeEventListener('message', h); r(e.data.result) }
-        }
-        addEventListener('message', h)
-        setTimeout(() => r(null), 30000)
-      })
-      window.postMessage({ ...m, obsId }, '*')
-      return await res
-    }, msg)
-    await ask({ type: 'SNAPDOM_OBSERVE' }) // baseline
-    await page.waitForTimeout(2200)
-    const r2 = await ask({ type: 'SNAPDOM_OBSERVE' })
-    out[name] = {
-      changed: !!(r2 && r2.changed), kinds: kindsOf(r2 && r2.changes),
-      covered: coveredOf(r2 && r2.actionabilityDelta),
-      navigated: !!(r2 && r2.navigated),
+  const CLIENT = join(EXT, 'gate-client')
+  const CLIENT_ID = 'caajdlhkjophkdagpdchjbllohjojgml'
+  let ctx = null
+  try {
+    ctx = await chromium.launchPersistentContext(PROFILE, {
+      channel: 'chromium', viewport: { width: 800, height: 600 },
+      args: [`--disable-extensions-except=${EXT},${CLIENT}`, `--load-extension=${EXT},${CLIENT}`],
+    })
+    if (!ctx.serviceWorkers().some((w) => new URL(w.url()).host === CLIENT_ID)) {
+      const wake = await ctx.newPage()
+      await wake.goto(`chrome-extension://${CLIENT_ID}/worker.js`).catch(() => {})
+      await ctx.waitForEvent('serviceworker', { timeout: 10000 }).catch(() => null)
+      await wake.close()
     }
-    await page.close()
+    const clientWorker = ctx.serviceWorkers().find((w) => new URL(w.url()).host === CLIENT_ID)
+    if (!clientWorker) throw new Error('parity gate-client service worker did not start')
+
+    const out = {}
+    for (const [name, url] of Object.entries(urls)) {
+      const page = await ctx.newPage()
+      await page.goto(url)
+      await page.waitForTimeout(400)
+      const tabId = await clientWorker.evaluate((targetUrl) => chrome.tabs.query({}).then((tabs) => tabs.find((tab) => tab.url === targetUrl)?.id), page.url())
+      if (!Number.isInteger(tabId)) throw new Error(`could not resolve companion tab for ${name}`)
+      const ask = (request) => clientWorker.evaluate(
+        ({ id, request }) => globalThis.snapdomGateAsk(id, request),
+        { id: tabId, request },
+      )
+      await ask({ type: 'SNAPDOM_OBSERVE', obsId: `${name}-baseline` })
+      await page.waitForTimeout(2200)
+      const envelope = await ask({ type: 'SNAPDOM_OBSERVE', obsId: `${name}-after` })
+      if (envelope?.error) throw new Error(`companion ${name}: ${envelope.error}`)
+      const r2 = envelope?.result
+      out[name] = {
+        changed: !!r2?.changed, kinds: kindsOf(r2?.changes),
+        covered: coveredOf(r2?.actionabilityDelta),
+        navigated: !!r2?.navigated,
+      }
+      await page.close()
+    }
+    return out
+  } finally {
+    await ctx?.close()
+    await rm(PROFILE, { recursive: true, force: true })
   }
-  await ctx.close()
-  return out
 }
 
 // ── Run ──────────────────────────────────────────────────────────────────────────────
@@ -288,7 +340,6 @@ console.log('S3 MCP…');        const s3 = await runMcp(urls)
 console.log('S4 companion…');  const s4 = await runCompanion(urls)
 
 const surfaces = { S1: s1, S2: s2, S3: s3, S4: s4 }
-const CASE_NAMES = new Set(CASES.map((c) => c.name))
 console.log('\n| fixture | truth | S1 SDK | S2 CLI | S3 MCP | S4 extension | agree |')
 console.log('|---|:---:|---|---|---|---|:---:|')
 let disagreements = 0
@@ -322,5 +373,10 @@ console.log(`\nDisagreements on \`changed\`: ${disagreements}/${CASES.length} ·
 console.log(disagreements === 0 && wrong === 0
   ? 'MODES AGREE — all four give the same answers on this corpus'
   : 'MODES DISAGREE — identify WHICH mode diverges before showing this to anyone')
-staticSrv.close()
-process.exit(disagreements === 0 && wrong === 0 ? 0 : 1)
+exitCode = disagreements === 0 && wrong === 0 ? 0 : 1
+} finally {
+  staticSrv.closeAllConnections?.()
+  if (staticSrv.listening) await new Promise((resolve) => staticSrv.close(resolve))
+  await rm(TMP, { recursive: true, force: true })
+}
+process.exitCode = exitCode

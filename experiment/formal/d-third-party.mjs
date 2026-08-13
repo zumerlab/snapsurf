@@ -22,6 +22,7 @@ import { dirname, join } from 'node:path'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
+import { daemonFetch } from '../../tools/daemon-client.mjs'
 
 const require_ = createRequire('/tmp/x.js')
 const Anthropic = require_('@anthropic-ai/sdk').default || require_('@anthropic-ai/sdk')
@@ -64,7 +65,7 @@ const toolsFor = (arm) => TOOLS.filter((t) => arm === 'pixels' ? !ORACLE.has(t.n
 
 const visited = []
 const cmd = async (c, args = []) => {
-  const r = await fetch('http://127.0.0.1:8377/cmd', {
+  const r = await daemonFetch({
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ cmd: c, args, envelope: true }),
   }).then((x) => x.json()).catch((e) => ({ ok: false, text: String(e) }))

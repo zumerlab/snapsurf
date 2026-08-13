@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "status": "FROZEN_BEFORE_BROWSER_RUN",
+  "classification": "single-machine synthetic descriptive cost and composition probe; not a token, model-quality, production-site, or commercial-demand claim",
+  "question": "When SnapDOM already runs in the client, what local work and candidate agent-boundary bytes are observed for raw SnapDOM, the existing agent-map plugin, the new Sensor plugin, and both plugins sharing captures?",
+  "frozenDesign": {
+    "primaryRuntime": "vendored SnapDOM 3 beta used by @zumer/snapdom-sensor",
+    "attachedAntecedent": "SnapDOM 2.24.1 agent-map source from packages/plugins/agent-map.js",
+    "fixture": "one fixed target card plus 120 unrelated rows, each with three interactive controls; no external resources",
+    "action": "aria-pressed false to true, status Idle to Saved, and one new target link",
+    "scopes": [
+      "target card",
+      "whole fixture root"
+    ],
+    "arms": [
+      "raw SnapDOM",
+      "agent-map map-only",
+      "Sensor",
+      "agent-map plus Sensor on the same two SnapDOM captures"
+    ],
+    "warmupsPerCell": 1,
+    "measuredRepetitionsPerCell": 7,
+    "visualProfiles": [
+      { "name": "low", "scale": 0.5, "dpr": 1 },
+      { "name": "standard", "scale": 1, "dpr": 1 },
+      { "name": "equal-effective", "scale": 0.5, "dpr": 2 },
+      { "name": "retina", "scale": 1, "dpr": 2 }
+    ],
+    "agentMapImageWidths": [320, 640, 1024],
+    "network": "no external fixture resources; HTTP(S) requests are counted and must remain zero",
+    "browser": "headless isolated Playwright Chromium used only as the harness; no persistent profile and no personal Chrome"
+  },
+  "measurementBoundaries": {
+    "localCycleMs": "sum of pre-capture/export and post-capture/export wall time; authored action excluded",
+    "captureMs": "await snapdom(root, options)",
+    "exportMs": "toAgentMap and/or toSensor only",
+    "candidateBoundaryBytes": "UTF-8 bytes of the exact post SVG data URL, post map JSON, or post Sensor report JSON; no bytes are actually uploaded",
+    "transitionStateBytes": "two map or SVG endpoints versus one post-action Sensor delta",
+    "visualBytes": "PNG or agent-map image data URL UTF-8 bytes",
+    "svgBytes": "decoded SVG UTF-8 bytes, reported separately from encoded data URL bytes"
+  },
+  "qualityGates": {
+    "sensorExactAction": "every measured Sensor report contains the exact pressed transition, status transition, and added target link",
+    "sensorNoOp": "a quiet third capture reports no semantic or actionability delta",
+    "combinedExports": "one SnapDOM result exposes both toAgentMap and toSensor",
+    "noHttpRequests": true,
+    "syntheticSecret": "the Sensor output must not contain it; agent-map presence is recorded as a product finding, not accepted as safe"
+  },
+  "decisionRules": {
+    "agentBoundaryValue": "PASS only if quality gates pass and, for whole-root captures, median Sensor report bytes are at most 25% of one post SVG and at most 50% of one post agent-map JSON map",
+    "localCost": "PASS if median Sensor cycle is at most 1.25x raw SnapDOM and combined Sensor+agent-map is at most 1.35x agent-map alone; HELPER_ONLY through 1.5x; otherwise FAIL for the cheap-local-overhead claim",
+    "scopeValue": "PASS if target-scope combined cycle is at most 50% of whole-root combined cycle",
+    "visualKnobs": "PASS if lower effective raster resolution lowers PNG bytes and dimensions; raw SVG invariance is descriptive and expected for a fixture without raster assets",
+    "commercialInterpretation": "No commercial value gate passes from this experiment alone. It can establish a technically cheap local complement and identify remaining product defects."
+  }
+}

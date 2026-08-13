@@ -22,6 +22,7 @@ import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
+import { daemonFetch } from '../tools/daemon-client.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
@@ -31,7 +32,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 // ── What the documentation promises ──────────────────────────────────────────────────
 const desc = readFileSync(join(AGENT, 'mcp/server.mjs'), 'utf8')
 const promised = new Set()
-for (const m of desc.matchAll(/description: '(.*?)',\n/gs)) {
+// Only top-level tool descriptions promise response fields. The old unanchored,
+// dot-all regex could start at an inline input-property description (which does not end
+// with `',\n`) and consume arbitrary schema/implementation code until the next matching
+// line. That made a backticked implementation word such as `required` look like a
+// structuredContent promise. Tool descriptions are the four-space, whole-line entries in
+// TOOLS; property descriptions are nested or inline and intentionally excluded.
+for (const m of desc.matchAll(/^ {4}description: '([^\n]*)',$/gm)) {
   for (const f of m[1].matchAll(/`([a-zA-Z][a-zA-Z0-9_]*)`/g)) promised.add(f[1])
 }
 // Words that are values or parameters, not response fields. Listed explicitly so the
@@ -46,23 +53,29 @@ const PAGES = {
   '/page': { status: 200, headers: {}, body: '<!doctype html><html><head><title>Doc contract</title></head><body>' +
     '<h1>Contact</h1><a href="/security">disclosure</a><a href="mailto:jdoe@corp.com">write</a>' +
     '<form><input type="email" placeholder="john@company.com"></form>' +
-    `<p>${'padding '.repeat(30)}tail-token-here</p></body></html>` },
+    `<p>${'padding '.repeat(30)}tail-token-here</p>` +
+    '<button id="replace-card">Replace Gamma card</button>' +
+    '<div id="slot"><h3>Gamma</h3><p>Old offering</p><button>Open Gamma</button></div>' +
+    `<script>document.getElementById('replace-card').onclick=()=>{const fresh=document.createElement('div');fresh.id='slot';fresh.innerHTML='<h3>Omega</h3><p>New unrelated offering</p><button>Open Omega</button>';document.getElementById('slot').replaceWith(fresh)}</script>` +
+    '</body></html>' },
   '/cf': { status: 403, headers: { 'cf-mitigated': 'challenge' },
     body: '<!doctype html><html><head><title>Just a moment...</title></head><body><script src="/cdn-cgi/challenge-platform/x"></script><h1>DataDome CAPTCHA</h1><p>datadome verification</p></body></html>' },
   '/other': { status: 200, headers: {}, body: '<!doctype html><html><body><h1>Second page</h1><p>changed content</p></body></html>' },
 }
-const PORT = 8406
 const srv = createServer((req, res) => {
   const p = PAGES[req.url.split('?')[0]]
   if (!p) { res.writeHead(404); res.end('no'); return }
   res.writeHead(p.status, { 'content-type': 'text/html', ...p.headers })
   res.end(p.body)
 })
-await new Promise((r) => srv.listen(PORT, '127.0.0.1', r))
+await new Promise((r) => srv.listen(0, '127.0.0.1', r))
+const address = srv.address()
+if (!address || typeof address === 'string') throw new Error('fixture did not bind a TCP port')
+const PORT = address.port
 const U = (p) => `http://127.0.0.1:${PORT}${p}`
 
 const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
-const cmd = (c, args = [], sessionId) => fetch('http://127.0.0.1:8377/cmd', {
+const cmd = (c, args = [], sessionId) => daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true, sessionId }),
 }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }))
@@ -83,6 +96,15 @@ const idr = await run('find-id', 'find', ['Contact'])
 const nid = idr.meta?.matches?.[0]?.id
 if (nid) await run('text', 'text', [nid])
 await run('outline', 'outline', [])
+// Exercise a possible replacement explicitly. Its structured evidence must carry both
+// the current `name` and prior `beforeName`; merely naming the field in MCP docs is not
+// evidence that a real response can deliver it.
+const replaceFind = await run('find-replace', 'find', ['Replace Gamma card'])
+const replaceId = replaceFind.meta?.matches?.[0]?.id
+if (replaceId) {
+  await run('replace-click', 'click', [replaceId])
+  await run('replace-look', 'look', [])
+}
 await run('look-changed', 'open', [U('/other')])           // a second page → a real diff
 await run('look', 'look', [])
 await run('challenge', 'open', [U('/cf')])                 // blocked / challenge / vendors
