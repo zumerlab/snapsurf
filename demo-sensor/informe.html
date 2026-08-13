@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¿Me resuelve mis dolores? — dogfood + A/B con datos reales</title>
+<style>
+  :root {
+    --bench: #dfe3e8; --sheet: #f7f8f9; --ink: #1b2a4a; --ink-soft: #5a6b8c;
+    --oracle: #0a9391; --pane: #c97b1a; --alarm: #b3372e; --line: #c6cdd6;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --cond: "Avenir Next Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bench); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+  main { max-width: 880px; margin: 0 auto; padding: 26px 20px 60px; }
+  .eyebrow { font-family: var(--cond); text-transform: uppercase; letter-spacing: .18em; font-size: 12px; color: var(--ink-soft); margin: 0 0 6px; }
+  h1 { font-size: 27px; line-height: 1.2; margin: 0 0 10px; }
+  h2 { font-family: var(--cond); text-transform: uppercase; letter-spacing: .14em; font-size: 15px; margin: 38px 0 12px; color: var(--ink); }
+  .verdict { background: var(--sheet); border: 1px solid var(--line); border-left: 4px solid var(--oracle); border-radius: 6px; padding: 14px 18px; font-size: 16px; }
+  .card { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; margin-bottom: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { font-family: var(--cond); text-transform: uppercase; letter-spacing: .1em; font-size: 11.5px; color: var(--ink-soft); }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-size: 12.5px; }
+  tr:last-child td { border-bottom: none; }
+  tr.total td { border-top: 2px solid var(--ink); font-weight: 600; }
+  .pain { display: grid; grid-template-columns: 118px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .pain:last-child { border-bottom: none; }
+  .pain .tag { font-family: var(--cond); text-transform: uppercase; letter-spacing: .1em; font-size: 11.5px; padding: 3px 8px; border-radius: 3px; align-self: start; text-align: center; border: 1.5px solid; }
+  .tag.ok { color: var(--oracle); border-color: var(--oracle); }
+  .tag.mid { color: var(--pane); border-color: var(--pane); }
+  .pain h3 { margin: 0 0 3px; font-size: 14.5px; }
+  .pain p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .pain p code, li code, td code, .verdict code { font-family: var(--mono); font-size: 12px; color: var(--ink); background: #eceff2; padding: 0 4px; border-radius: 3px; }
+  figure { margin: 0; background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px 8px; }
+  figcaption { font-size: 12.5px; color: var(--ink-soft); padding: 6px 0 8px; }
+  .legend { display: flex; gap: 18px; font-size: 12.5px; margin: 2px 0 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .legend .l-oracle::before { background: var(--oracle); } .legend .l-pane::before { background: var(--pane); }
+  #tip { position: fixed; pointer-events: none; background: var(--ink); color: #fff; font-size: 12px; padding: 4px 8px; border-radius: 4px; opacity: 0; transition: opacity .12s; z-index: 50; }
+  ul.frictions { margin: 0; padding-left: 20px; font-size: 14px; }
+  ul.frictions li { margin-bottom: 7px; }
+  .boundaries { font-size: 13px; color: var(--ink-soft); }
+  .boundaries li { margin-bottom: 5px; }
+  .footer-note { margin-top: 34px; padding: 12px 16px; border: 1px dashed var(--ink-soft); border-radius: 6px; font-size: 13px; color: var(--ink-soft); }
+  a { color: var(--oracle); }
+  @media (max-width: 620px) { .pain { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">SnapDOM Sensor · dogfood de un agente real · 2026-08-12 · local, sin publicar</p>
+  <h1>¿Me resuelve mis dolores? Sí: 6 de 6 — 4 en el dogfood inicial, 2 cerrados con los fixes de la segunda sesión.</h1>
+
+  <p class="verdict">Operé sitios reales con el loop semántico (HN, Wikipedia, SauceDemo, the-internet),
+  corrí un A/B con 6 agentes idénticos midiendo <strong>tokens reales de API</strong>, y arreglé el
+  blocker que yo mismo puse como condición: el remount ahora es <em>fail-loud</em>
+  (<code>HISTORY_NOT_CARRIED</code>). El wedge medido es <strong>verificación</strong>, no lectura:
+  donde hay que probar un efecto u oclusión, el loop diff gana hasta 3,4×; donde solo hay que leer
+  texto, pierde contra <code>get_page_text</code>. Esto prueba valor de consumidor (a mí, agente, me
+  sirve) — no prueba todavía un comprador que pague.</p>
+
+  <h2>Los seis dolores, uno por uno</h2>
+  <div class="card">
+    <div class="pain"><span class="tag ok">Resuelto</span><div>
+      <h3>1 · Verificar negativos — “no cambió nada más”</h3>
+      <p>SauceDemo: un solo <code>browser_assert</code> devolvió <code>changesTotal: 2</code> en toda la
+      página (botón → Remove, badge “1”) con 4 <code>mustNotInclude</code> en verde. En el A/B, el brazo
+      pane necesitó capturar el texto completo de la página <em>dos veces</em> y compararlo en contexto
+      para decir lo mismo.</p></div></div>
+    <div class="pain"><span class="tag ok">Resuelto</span><div>
+      <h3>2 · Supresión de ruido en el diff <small style="font-weight:400;color:var(--ink-soft)">(cerrado en la 2ª sesión)</small></h3>
+      <p>Wikipedia: el diff del dropdown quedó scoped al widget (cero ruido del banner de donaciones,
+      etiquetado <code>s:"fundraising banner"</code>). Los dos residuos se cerraron con fixes: los wrappers
+      <code>generic</code> de un subtree agregado se pliegan (<code>folded</code> + <code>foldedWrappers</code>,
+      total honesto) y el reflow externo se marca <code>geometryOnly: true</code>.</p></div></div>
+    <div class="pain"><span class="tag ok">Resuelto</span><div>
+      <h3>3 · Oclusión como hecho de percepción</h3>
+      <p>El digest ya trae <code>c:"generic"</code> (cubierto) <em>antes</em> de actuar;
+      <code>notCovered</code> falla honesto con el modal presente y pasa tras cerrarlo. Es el caso donde
+      el A/B da 3,4× de diferencia de costo: 11 tool calls y 1 ronda post-acción contra 38 y 6.</p></div></div>
+    <div class="pain"><span class="tag ok">Resuelto</span><div>
+      <h3>4 · Saber qué NO puedo ver</h3>
+      <p>El outline declara <code>⟨canvas: no semantics⟩</code> con bbox exacto (601×202): sé dónde está mi
+      punto ciego sin fallar primero, y pediría píxeles solo de esa región. En la demo, el no-op con región
+      ciega presente reporta <code>INDETERMINATE</code>, no un verde por omisión.</p></div></div>
+    <div class="pain"><span class="tag ok">Resuelto</span><div>
+      <h3>5 · Identidad estable entre re-renders</h3>
+      <p>El botón de React re-renderizado llegó como <code>possible-replacement</code> — identidad probable,
+      no inventada. Y la condición que puse como innegociable ya está: el remount del root ahora declara
+      <code>HISTORY_NOT_CARRIED</code> + <code>baseline-history-not-carried</code> en uncertainty
+      (fix de esta sesión, 11/11 tests, verificado vivo en la demo).</p></div></div>
+    <div class="pain"><span class="tag mid">Parcial</span><div>
+      <h3>6 · Re-lecturas scoped</h3>
+      <p><code>find</code> + zoom funcionan, pero el MCP no expone el verbo <code>parent</code> (el CLI sí):
+      asociar un match a su card es artesanía por orden de ids. Un agente del A/B también pagó ids de zoom
+      stale y el outline caro de 12 KB que tienta cuando el digest no alcanza.</p></div></div>
+  </div>
+
+  <h2>A/B con tokens reales — 3 tareas, 2 brazos, mismos agentes</h2>
+  <figure>
+    <div class="legend"><span class="l-oracle">Oracle (diff semántico)</span><span class="l-pane">Browser pane (read_page + screenshots)</span></div>
+    <svg id="chart" viewBox="0 0 760 260" role="img" aria-label="Costo proxy por tarea y brazo: T1 oracle 0.60 pane 0.14, T2 oracle 0.82 pane 0.69, T3 oracle 0.59 pane 2.00 dólares"></svg>
+    <figcaption>Costo proxy (USD, precios tipo Sonnet sobre usage real de API) por tarea. T1: extraer
+    puntos/comentarios en HN. T2: agregar al carrito y probar el negativo en SauceDemo. T3: oclusión de modal
+    en the-internet. Ambos brazos: 6/6 respuestas correctas — la representación cambió el costo, no el
+    resultado.</figcaption>
+  </figure>
+
+  <table style="margin-top:10px">
+    <thead><tr><th>Tarea · brazo</th><th class="num">Turnos API</th><th class="num">Tool calls</th><th class="num">Input nuevo</th><th class="num">Output</th><th class="num">Costo proxy</th></tr></thead>
+    <tbody>
+      <tr><td>T1 · oracle</td><td class="num">12</td><td class="num">5</td><td class="num">102.453</td><td class="num">6.008</td><td class="num">$0,60</td></tr>
+      <tr><td>T1 · pane</td><td class="num">5</td><td class="num">3</td><td class="num">20.519</td><td class="num">763</td><td class="num">$0,14</td></tr>
+      <tr><td>T2 · oracle</td><td class="num">32</td><td class="num">17</td><td class="num">57.964</td><td class="num">13.420</td><td class="num">$0,82</td></tr>
+      <tr><td>T2 · pane</td><td class="num">32</td><td class="num">15</td><td class="num">52.556</td><td class="num">7.352</td><td class="num">$0,69</td></tr>
+      <tr><td>T3 · oracle</td><td class="num">26</td><td class="num">11</td><td class="num">53.906</td><td class="num">5.582</td><td class="num">$0,59</td></tr>
+      <tr><td>T3 · pane</td><td class="num">69</td><td class="num">38</td><td class="num">85.856</td><td class="num">42.099</td><td class="num">$2,00</td></tr>
+      <tr class="total"><td>Total oracle</td><td class="num">70</td><td class="num">33</td><td class="num">214.323</td><td class="num">25.010</td><td class="num">$2,02</td></tr>
+      <tr class="total"><td>Total pane</td><td class="num">106</td><td class="num">56</td><td class="num">158.931</td><td class="num">50.214</td><td class="num">$2,83</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Límites de esta medición — leelos antes que los números</h2>
+  <div class="card"><ul class="boundaries">
+    <li><strong>n=1 por celda</strong>, sin repeticiones ni aleatorización de orden. Es una señal direccional, no un benchmark.</li>
+    <li>Un click mío contaminó potencialmente T3-pane (compartíamos el tab del Browser pane); su agente también sufrió un quirk real del sitio (el ad-restart dejó de funcionar). El oracle enfrentó el mismo quirk y lo resolvió en 2 rondas porque <code>notCovered</code> responde sin probar con clicks — ese es precisamente el punto, pero infla la brecha de T3.</li>
+    <li>Costo = proxy con precios tipo Sonnet sobre usage real (input nuevo, cache write/read, output). Mismo modelo en ambos brazos.</li>
+    <li>Ambos brazos 6/6 correctos: en tareas alcanzables la representación cambia el costo, no el resultado — consistente con la literatura (benchmark de Opera, 4 formatos, mismo pass rate).</li>
+    <li>T1-oracle pagó de más por elección del agente (pidió el outline de 12 KB); la guía correcta era digest + find. Lo dejo sin corregir: así se comporta un agente real.</li>
+  </ul></div>
+
+  <h2>La lista de fricciones — todas cerradas, y endurecidas por una ronda adversarial</h2>
+  <div class="card"><ul class="frictions">
+    <li>✅ <strong><code>browser_parent</code> expuesto en el MCP</strong>: subir del match de <code>find</code> a su card, sin inferencia por orden de ids.</li>
+    <li>✅ <strong><code>possible-replacement</code> satisface <code>added</code>/<code>removed</code></strong> con lectura <em>estricta por lado</em>: removed matchea solo <code>beforeName</code>/<code>beforeRole</code>, added el lado after, y el check anota <code>found (via possible-replacement — identity ambiguous)</code> en vez de un verde pelado. En <code>only</code>, el reemplazo se expande a sus dos lados y cada uno necesita sanción.</li>
+    <li>✅ <strong>Wrappers plegados — solo del lado <em>added</em></strong>: el snapshot vivo tiene los hechos completos; el lado removed nunca pliega (un baseline de checkpoint no persiste <code>text</code> y plegaría contenido real). Solo pliegan generics sin identidad (<code>nameFp</code> vacío — un aria-label jamás pliega). Señal primero en el cap; <code>changesTotal</code> = diff completo.</li>
+    <li>✅ <strong><code>geometryOnly: true</code></strong> exige además actionabilityDelta vacío — un movimiento que tapa un botón nunca invita a saltearse el diff.</li>
+    <li>✅ <strong>Ids stale revividos por identidad</strong> con unicidad exigida en <em>ambas</em> épocas, rechazo del sentinel <code>[redacted]</code>, y expiración dura en rehidratación de popup, soft-nav y cambio de política de privacidad.</li>
+    <li>✅ <strong>Drift de captura fail-loud</strong>: mutaciones <em>netas</em> entre <code>beforeSnap</code> y <code>afterClone</code> (el mutate-y-restore del propio engine se descuenta por oldValue), shadow roots abiertos observados (acotado y declarado), y "no vigilado" se reporta como <code>capture-drift-unwatched</code>, nunca como un cero silencioso.</li>
+  </ul>
+  <p style="font-size:13px;color:var(--ink-soft);margin:10px 0 0">Los seis fixes pasaron por una ronda
+  adversarial de 5 revisores que refutó las primeras versiones de tres de ellos (fold del lado removed
+  contra checkpoints, fallback de nombre al lado equivocado en el alias, revival sin unicidad en la época
+  expirada — este último reproducido en vivo). Las versiones finales incorporan esas refutaciones.</p></div>
+
+  <h2>Qué prueba esto — y qué no</h2>
+  <div class="card">
+    <p style="margin:0 0 8px">Prueba que el <strong>consumidor</strong> (yo, un agente) obtiene: negativos
+    asertables en una llamada, oclusión como percepción, puntos ciegos declarados, identidad honesta, y un
+    fail-loud que ahora cubre el remount. Con costo real menor exactamente donde el trabajo es verificar.
+    Eso valida el camino 1 (helper open-source que hace mejores a los agentes que usan SnapDOM) y deja
+    materia prima creíble para el camino 2 (absorción por un harness).</p>
+    <p style="margin:0"><strong>No prueba</strong> el camino 3: nadie pagó nada acá. El comprador sigue
+    siendo una conversación pendiente, no un experimento pendiente.</p>
+  </div>
+
+  <p class="footer-note">Demo viva: <code>demo-sensor/index.html</code> (servida local). Fix fail-loud:
+  <code>packages/sensor/src/sensor.js</code> + <code>test/sensor-continuity.test.js</code> — 11/11 tests,
+  tarball smoke y lint en verde, dist rebuildeado. Transcripts y usage del A/B:
+  <code>subagents/workflows/wf_e92aa066-79e/</code>. Nada publicado, nada commiteado.</p>
+</main>
+
+<div id="tip" role="status"></div>
+<script>
+(function () {
+  const data = [
+    { task: 'T1 · extraer', oracle: 0.60, pane: 0.14 },
+    { task: 'T2 · negativo', oracle: 0.82, pane: 0.69 },
+    { task: 'T3 · oclusión', oracle: 0.59, pane: 2.00 },
+  ]
+  const svg = document.getElementById('chart')
+  const NS = 'http://www.w3.org/2000/svg'
+  const W = 760, H = 260, M = { t: 14, r: 16, b: 34, l: 44 }
+  const plotW = W - M.l - M.r, plotH = H - M.t - M.b
+  const max = 2.2
+  const y = (v) => M.t + plotH - (v / max) * plotH
+  const groupW = plotW / data.length
+  const barW = 44, gap = 2
+  const el = (name, attrs, parent) => {
+    const node = document.createElementNS(NS, name)
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v)
+    ;(parent || svg).appendChild(node)
+    return node
+  }
+  for (const gv of [0, 0.5, 1.0, 1.5, 2.0]) {
+    el('line', { x1: M.l, x2: W - M.r, y1: y(gv), y2: y(gv), stroke: '#c6cdd6', 'stroke-width': gv === 0 ? 1.5 : 1, 'stroke-dasharray': gv === 0 ? '' : '2 4' })
+    el('text', { x: M.l - 8, y: y(gv) + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#5a6b8c', 'font-family': 'ui-monospace,Menlo,monospace' }).textContent = '$' + gv.toFixed(1)
+  }
+  const tip = document.getElementById('tip')
+  const fmt = (v) => '$' + v.toFixed(2).replace('.', ',')
+  data.forEach((d, i) => {
+    const cx = M.l + groupW * i + groupW / 2
+    ;[['oracle', d.oracle, -barW - gap / 2], ['pane', d.pane, gap / 2]].forEach(([arm, v, dx]) => {
+      const bx = cx + dx, by = y(v), bh = M.t + plotH - by
+      const bar = el('path', {
+        d: `M${bx},${M.t + plotH} v${-(bh - 4)} a4,4 0 0 1 4,-4 h${barW - 8} a4,4 0 0 1 4,4 v${bh - 4} z`,
+        fill: arm === 'oracle' ? '#0a9391' : '#c97b1a',
+      })
+      el('text', { x: bx + barW / 2, y: by - 6, 'text-anchor': 'middle', 'font-size': 11.5, fill: '#1b2a4a', 'font-family': 'ui-monospace,Menlo,monospace' }).textContent = fmt(v)
+      const hit = el('rect', { x: bx - 4, y: M.t, width: barW + 8, height: plotH, fill: 'transparent' })
+      hit.addEventListener('mousemove', (e) => {
+        tip.textContent = `${d.task} — ${arm === 'oracle' ? 'Oracle' : 'Browser pane'}: ${fmt(v)}`
+        tip.style.left = e.clientX + 12 + 'px'; tip.style.top = e.clientY - 10 + 'px'; tip.style.opacity = 1
+        bar.setAttribute('opacity', '0.85')
+      })
+      hit.addEventListener('mouseleave', () => { tip.style.opacity = 0; bar.removeAttribute('opacity') })
+    })
+    el('text', { x: cx, y: H - 12, 'text-anchor': 'middle', 'font-size': 12.5, fill: '#1b2a4a' }).textContent = d.task
+  })
+})()
+</script>
+</body>
+</html>

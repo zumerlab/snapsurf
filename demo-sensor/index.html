@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SnapDOM Sensor — banco de pruebas local</title>
+<style>
+  :root {
+    --bench: #dfe3e8;        /* mesa de trabajo */
+    --sheet: #f7f8f9;        /* hoja del registrador */
+    --ink: #1b2a4a;          /* tinta azul de instrumento */
+    --ink-soft: #5a6b8c;
+    --signal: #0e7c7b;       /* teal: delta detectado */
+    --quiet: #6b7c93;        /* gris: sin delta */
+    --warn: #c97b1a;         /* ámbar: indeterminado / blind spot */
+    --alarm: #b3372e;        /* rojo sello: historia no transportada */
+    --line: #c6cdd6;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --cond: "Avenir Next Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bench); color: var(--ink);
+    font-family: var(--body); font-size: 15px; line-height: 1.45;
+    min-height: 100vh;
+  }
+  header.bench-label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 18px 28px 10px;
+  }
+  header.bench-label h1 {
+    font-family: var(--cond); font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; font-size: 17px; margin: 0;
+  }
+  header.bench-label .scope-tag {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+  }
+  .bench { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 20px; padding: 0 28px 12px; }
+  @media (max-width: 860px) { .bench { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; }
+  .panel > .panel-eyebrow {
+    font-family: var(--cond); text-transform: uppercase; letter-spacing: .18em;
+    font-size: 11.5px; color: var(--ink-soft); padding: 10px 16px 0;
+  }
+
+  /* ── espécimen ─────────────────────────────── */
+  #specimen-wrap { padding: 14px 16px 18px; }
+  #specimen-card {
+    position: relative; background: #fff; border: 1px solid var(--line);
+    border-radius: 8px; padding: 18px; width: 100%;
+  }
+  #specimen-card h2 { margin: 0 0 4px; font-size: 17px; }
+  #specimen-card .price { font-family: var(--mono); color: var(--ink-soft); font-size: 13px; }
+  #specimen-card .row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  #specimen-card button {
+    font: inherit; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--ink); background: var(--ink); color: #fff;
+  }
+  #specimen-card button[aria-pressed="true"] { background: var(--signal); border-color: var(--signal); }
+  #specimen-card button.ghost { background: #fff; color: var(--ink); }
+  #specimen-card [data-testid="status"] { margin: 12px 0 0; font-size: 13.5px; color: var(--ink-soft); }
+  #specimen-card .clock { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); position: absolute; top: 16px; right: 16px; }
+  #specimen-card canvas { display: block; margin-top: 12px; border: 1px dashed var(--line); border-radius: 4px; }
+
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+  .actions button {
+    font: inherit; font-size: 13.5px; text-align: left; padding: 9px 12px;
+    background: #fff; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; cursor: pointer;
+  }
+  .actions button:hover { border-color: var(--ink-soft); }
+  .actions button:focus-visible, #specimen-card button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+  .actions button strong { display: block; font-weight: 600; }
+  .actions button span { color: var(--ink-soft); font-size: 12px; }
+  .actions .danger strong { color: var(--alarm); }
+
+  /* ── registro ──────────────────────────────── */
+  #log-panel { display: flex; flex-direction: column; max-height: calc(100vh - 150px); }
+  #log { list-style: none; margin: 0; padding: 8px 16px 16px; overflow-y: auto; }
+  .tick {
+    position: relative; border-left: 2px solid var(--line);
+    margin: 0; padding: 10px 0 12px 18px;
+  }
+  .tick::before {
+    content: ""; position: absolute; left: -5px; top: 16px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--tickcolor, var(--quiet));
+  }
+  .tick .tick-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tick .n { font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); }
+  .tick .action-label { font-weight: 600; font-size: 14px; }
+  .stamp {
+    font-family: var(--cond); text-transform: uppercase; letter-spacing: .12em;
+    font-size: 11px; padding: 2px 8px; border-radius: 3px;
+    border: 1.5px solid var(--tickcolor, var(--quiet)); color: var(--tickcolor, var(--quiet));
+    transform: rotate(-1.2deg);
+  }
+  .tick .bytes { font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); margin-left: auto; }
+  .tick ul.delta { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13.5px; }
+  .tick ul.delta li { padding: 2px 0; }
+  .tick ul.delta .kind {
+    font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 3px;
+    background: var(--ink); color: #fff; margin-right: 7px;
+  }
+  .tick ul.delta .kind.state { background: var(--signal); }
+  .tick ul.delta .kind.added { background: #2e6b34; }
+  .tick ul.delta .kind.removed { background: #7a3a86; }
+  .tick ul.delta .kind.covered { background: var(--warn); }
+  .tick ul.delta .kind.blind { background: var(--warn); }
+  .tick ul.delta .kind.continuity { background: var(--alarm); }
+  .tick .fromto { font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); }
+  .tick details { margin-top: 6px; }
+  .tick summary { cursor: pointer; font-size: 12px; color: var(--ink-soft); }
+  .tick pre {
+    margin: 6px 0 0; padding: 10px; background: #10141b; color: #cdd6e4;
+    font-family: var(--mono); font-size: 11px; border-radius: 5px;
+    overflow-x: auto; max-height: 260px;
+  }
+
+  /* ── contrato ──────────────────────────────── */
+  footer.contract {
+    margin: 8px 28px 24px; padding: 12px 16px;
+    border: 1px dashed var(--ink-soft); border-radius: 6px;
+    font-size: 13px; color: var(--ink-soft); background: transparent;
+  }
+  footer.contract code { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+  /* diálogo de oclusión */
+  #overlay {
+    position: absolute; z-index: 40; background: #fff; border: 1px solid var(--line);
+    border-radius: 8px; box-shadow: 0 12px 30px rgba(27,42,74,.25);
+    padding: 14px 16px; width: 240px;
+  }
+  #overlay p { margin: 0 0 10px; font-size: 13.5px; }
+  #overlay button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 5px; border: 1px solid var(--ink); background: #fff; cursor: pointer; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .tick { animation: settle .25s ease-out; }
+    @keyframes settle { from { opacity: 0; transform: translateY(-4px); } }
+  }
+</style>
+</head>
+<body>
+
+<header class="bench-label">
+  <h1>SnapDOM Sensor · banco de pruebas</h1>
+  <span class="scope-tag">scope = #specimen-card · baseline privado en RAM · 0 requests</span>
+</header>
+
+<div class="bench">
+  <section class="panel" aria-label="Espécimen">
+    <p class="panel-eyebrow">Espécimen — actuá como quieras</p>
+    <div id="specimen-wrap">
+      <div id="specimen-card" data-testid="checkout-card">
+        <span class="clock" data-testid="clock">—</span>
+        <h2>Mochila de campo</h2>
+        <p class="price">$29.99 · envío 48h</p>
+        <div class="row">
+          <button data-testid="mode" aria-pressed="false">Prioritario</button>
+          <button data-testid="continue" class="ghost">Continuar</button>
+        </div>
+        <p data-testid="status" role="status">Listo</p>
+        <canvas data-testid="spark" width="360" height="46" aria-label="ventas de la semana"></canvas>
+      </div>
+
+      <div class="actions" role="group" aria-label="Acciones sobre el espécimen">
+        <button id="act-toggle"><strong>Alternar prioritario</strong><span>state delta en el botón</span></button>
+        <button id="act-save"><strong>Guardar</strong><span>content delta en el status</span></button>
+        <button id="act-modal"><strong>Abrir diálogo</strong><span>Continuar queda cubierto</span></button>
+        <button id="act-clock"><strong>Tick del reloj</strong><span>ruido: ¿qué reporta?</span></button>
+        <button id="act-noop"><strong>No hacer nada</strong><span>el negativo fiel</span></button>
+        <button id="act-remount" class="danger"><strong>Remount (SPA)</strong><span>la card se recrea — fail-loud</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="log-panel" aria-label="Registro del sensor">
+    <p class="panel-eyebrow">Registro del sensor — lo que un agente leería</p>
+    <ol id="log" reversed></ol>
+  </section>
+</div>
+
+<footer class="contract">
+  Lo que este reporte <strong>nunca</strong> dice: <code>taskAssessment: NOT_ASSESSED</code> ·
+  <code>causality: NOT_ESTABLISHED</code>. El sensor describe el efecto renderizado; el
+  veredicto de la tarea es del host. Cuando no puede saber, lo declara:
+  <code>uncertainty.reasons</code>, nunca un verde por omisión.
+</footer>
+
+<script type="module">
+import { snapdom } from '../vendor/snapdom/dist/snapdom.mjs'
+import { sensor } from '../packages/sensor/dist/snapdom-sensor.js'
+
+const watch = sensor()
+let tick = 0
+
+const $ = (sel) => document.querySelector(sel)
+const log = $('#log')
+
+function drawSpark() {
+  const canvas = $('#specimen-card canvas')
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.strokeStyle = '#0e7c7b'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  const pts = [30, 22, 34, 18, 26, 12, 20, 8]
+  pts.forEach((y, i) => { const x = 10 + i * 48; i ? ctx.lineTo(x, y + 8) : ctx.moveTo(x, y + 8) })
+  ctx.stroke()
+}
+
+const KIND_CLASS = { state: 'state', added: 'added', removed: 'removed', content: '', style: '', moved: '', resized: '', 'possible-replacement': 'removed' }
+
+function stampFor(report) {
+  const st = report.observation.status
+  const cont = report.localState.rootContinuity?.status
+  if (cont === 'HISTORY_NOT_CARRIED') return { text: 'HISTORY_NOT_CARRIED', color: 'var(--alarm)' }
+  if (st === 'DELTA_DETECTED') return { text: 'DELTA_DETECTED', color: 'var(--signal)' }
+  if (st === 'INDETERMINATE') return { text: 'INDETERMINATE', color: 'var(--warn)' }
+  if (st === 'BASELINE_ESTABLISHED') return { text: 'BASELINE_ESTABLISHED', color: 'var(--ink-soft)' }
+  return { text: 'SIN DELTA SOPORTADO', color: 'var(--quiet)' }
+}
+
+function fmtState(state) {
+  if (!state || typeof state !== 'object') return ''
+  return Object.entries(state).map(([k, v]) => `${k}:${JSON.stringify(v)}`).join(' ')
+}
+
+function describeChange(item) {
+  const name = item.name || item.beforeName || item.afterNode?.name || item.beforeNode?.name || item.role || '—'
+  let detail = ''
+  if (item.kind === 'state') {
+    detail = `<span class="fromto">${fmtState(item.beforeNode?.state)} → ${fmtState(item.afterNode?.state)}</span>`
+  } else if (item.kind === 'content') {
+    detail = `<span class="fromto">“${item.beforeNode?.name ?? item.beforeNode?.text ?? ''}” → “${item.afterNode?.name ?? item.afterNode?.text ?? ''}”</span>`
+  } else if (item.match === 'ambiguous') {
+    detail = '<span class="fromto">identidad probable, no segura</span>'
+  }
+  return `<li><span class="kind ${KIND_CLASS[item.kind] ?? ''}">${item.kind}</span>${item.role ?? ''} “${name}” ${detail}</li>`
+}
+
+function record(label, report, reportBytes, svgBytes, error) {
+  tick += 1
+  const li = document.createElement('li')
+  li.className = 'tick'
+  if (error) {
+    li.style.setProperty('--tickcolor', 'var(--alarm)')
+    li.innerHTML = `<div class="tick-head"><span class="n">#${tick}</span>
+      <span class="action-label">${label}</span>
+      <span class="stamp" style="--tickcolor:var(--alarm)">ERROR</span></div>
+      <ul class="delta"><li>${error.message}</li></ul>`
+    log.prepend(li)
+    return
+  }
+  const stamp = stampFor(report)
+  li.style.setProperty('--tickcolor', stamp.color)
+  const rows = []
+  for (const item of report.observation.semanticDelta.items) rows.push(describeChange(item))
+  for (const item of report.observation.renderedActionabilityDelta.lost.items) {
+    const by = item.coveredBy ? (item.coveredBy.externalToScope ? 'algo externo al scope' : `${item.coveredBy.role ?? ''} “${item.coveredBy.name ?? ''}”`) : '—'
+    rows.push(`<li><span class="kind covered">cubierto</span>${item.role} “${item.name}” quedó tapado por ${by}</li>`)
+  }
+  for (const item of report.observation.renderedActionabilityDelta.gained.items) {
+    rows.push(`<li><span class="kind added">accionable</span>${item.role} “${item.name}” volvió a ser clickeable</li>`)
+  }
+  const cont = report.localState.rootContinuity
+  if (cont?.status === 'HISTORY_NOT_CARRIED') {
+    rows.push(`<li><span class="kind continuity">continuidad</span>el root trackeado desapareció (${cont.disconnectedPriorRoots}); ${cont.possibleRemount ? 'misma forma: probable remount' : 'sucesor de otra forma'} — la historia NO se transportó</li>`)
+  }
+  const blind = report.coverage.knownSemanticBlindSpots
+  if (blind.total) {
+    const names = blind.items.map((b) => `${b.sourceType ?? b.role ?? '?'}${b.name ? ` “${b.name}”` : ''}`).join(', ')
+    rows.push(`<li><span class="kind blind">región ciega</span>${blind.total} declarada${blind.total > 1 ? 's' : ''}: ${names} — raster disponible sólo ahí</li>`)
+  }
+  if (report.observation.semanticDelta.geometryOnly) {
+    rows.push('<li><span class="kind">rollup</span>sólo geometría — probable reflow externo al scope; ignorable de un vistazo</li>')
+  }
+  if (report.observation.semanticDelta.foldedWrappers) {
+    rows.push(`<li><span class="kind">rollup</span>${report.observation.semanticDelta.foldedWrappers} wrapper${report.observation.semanticDelta.foldedWrappers > 1 ? 's' : ''} plegado${report.observation.semanticDelta.foldedWrappers > 1 ? 's' : ''} (contados en el total, fuera de los items)</li>`)
+  }
+  if (report.uncertainty.reasons.length) {
+    rows.push(`<li><span class="kind blind">incertidumbre</span>${report.uncertainty.reasons.join(' · ')}</li>`)
+  }
+  if (!rows.length) rows.push('<li>nada cambió — y eso es un dato afirmado, no una suposición</li>')
+
+  const pct = ((reportBytes / svgBytes) * 100).toFixed(1)
+  li.innerHTML = `<div class="tick-head"><span class="n">#${tick}</span>
+      <span class="action-label">${label}</span>
+      <span class="stamp" style="--tickcolor:${stamp.color}">${stamp.text}</span>
+      <span class="bytes">reporte ${(reportBytes / 1024).toFixed(1)} KB · svg ${(svgBytes / 1024).toFixed(0)} KB · ${pct}%</span></div>
+    <ul class="delta">${rows.join('')}</ul>
+    <details><summary>reporte JSON completo</summary><pre>${JSON.stringify(report, null, 1).replace(/</g, '&lt;')}</pre></details>`
+  log.prepend(li)
+}
+
+async function observe(label) {
+  const scope = $('#specimen-card')
+  try {
+    const result = await snapdom(scope, { plugins: [watch], embedFonts: false, cache: 'disabled' })
+    const report = await result.toSensor()
+    record(label, report, JSON.stringify(report).length, result.url.length)
+  } catch (error) {
+    record(label, null, 0, 0, error)
+  }
+}
+
+// ── acciones reales sobre el DOM ──────────────────────────────
+$('#act-toggle').addEventListener('click', async () => {
+  const btn = $('[data-testid="mode"]')
+  btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') !== 'true')
+  await observe('Alternar prioritario')
+})
+
+$('#act-save').addEventListener('click', async () => {
+  $('[data-testid="status"]').textContent = 'Guardado ✓'
+  await observe('Guardar')
+})
+
+$('#act-modal').addEventListener('click', async () => {
+  let overlay = document.getElementById('overlay')
+  if (overlay) {
+    overlay.remove()
+    await observe('Cerrar diálogo')
+    return
+  }
+  const target = $('[data-testid="continue"]')
+  const rect = target.getBoundingClientRect()
+  overlay = document.createElement('div')
+  overlay.id = 'overlay'
+  overlay.setAttribute('role', 'dialog')
+  overlay.setAttribute('aria-label', 'Confirmación de envío')
+  overlay.style.left = `${rect.left + window.scrollX - 20}px`
+  overlay.style.top = `${rect.top + window.scrollY - 12}px`
+  overlay.innerHTML = '<p>¿Confirmás el envío prioritario?</p><button type="button">Entendido</button>'
+  overlay.querySelector('button').addEventListener('click', async () => {
+    overlay.remove()
+    await observe('Cerrar diálogo')
+  })
+  document.body.appendChild(overlay)
+  await observe('Abrir diálogo')
+})
+
+$('#act-clock').addEventListener('click', async () => {
+  const now = new Date()
+  $('[data-testid="clock"]').textContent = now.toTimeString().slice(0, 8)
+  await observe('Tick del reloj')
+})
+
+$('#act-noop').addEventListener('click', async () => {
+  await observe('No hacer nada')
+})
+
+$('#act-remount').addEventListener('click', async () => {
+  const card = $('#specimen-card')
+  const clone = card.cloneNode(true)
+  card.replaceWith(clone)
+  drawSpark()
+  await observe('Remount de la card')
+})
+
+// ── arranque ─────────────────────────────────────────────────
+drawSpark()
+$('[data-testid="clock"]').textContent = new Date().toTimeString().slice(0, 8)
+observe('Carga inicial (baseline)')
+</script>
+</body>
+</html>
