@@ -20,12 +20,19 @@ export async function buildSdk(AGENT) {
   const esbuild = await import('esbuild')
   const snapdomRuntime = join(AGENT, 'vendor', 'snapdom', 'dist', 'snapdom.mjs')
   const contents = `import { observe, observeChunked, buildUi, agentOracle, redactString } from '${join(AGENT, 'src/plugin.js')}'
+import { carriedIndex, carriedDiff } from '${join(AGENT, 'src/carried.js')}'
 import { snapdom } from '${snapdomRuntime}'
 import { videoExport } from '${join(AGENT, 'vendor/snapdom/plugins/video-export.js')}'
 import { gifExport } from '${join(AGENT, 'vendor/snapdom/plugins/gif-export.js')}'
 window.__agentObserve = observe
 window.__agentObserveChunked = observeChunked
 window.__agentBuildUi = buildUi
+window.__agentCarriedIndex = carriedIndex
+window.__agentCarriedDiff = (base) => {
+  const ui = window.__lastUi
+  if (!ui || !base) return null
+  return carriedDiff(base, carriedIndex(ui.__view || ui.__snapshot))
+}
 window.__agentOracle = agentOracle
 window.__agentRedact = (s) => redactString(s, window.__SD_PRIVACY || null)
 window.__agentRedactUrl = (s) => {
@@ -55,7 +62,7 @@ window.__snapdomGif = gifExport
   })).outputFiles[0].text
   // A bundle missing one of these globals is a silent breakage: the daemon starts,
   // `open` may even work, and the verb that needs it throws in the page instead.
-  for (const g of ['__agentObserveChunked', '__agentBuildUi', '__agentRedact', '__agentRedactUrl', '__snapdom']) {
+  for (const g of ['__agentObserveChunked', '__agentBuildUi', '__agentCarriedIndex', '__agentRedact', '__agentRedactUrl', '__snapdom']) {
     if (!out.includes(g)) throw new Error(`[sdk-bundle] built bundle does not define window.${g}`)
   }
   return out

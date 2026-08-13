@@ -120,8 +120,11 @@ log path.
    failure on eBay): instead `parent <id>` from something you DID find inside the
    card, or `map <offset>` to page through actionables. Coordinates only for positions
    you actually saw in a snap/shot.
-3. **A navigation resets the protocol**: the following `look` returns a fresh digest
-   (there is no diff across different pages).
+3. **A navigation resets the protocol** — the following `look` returns a fresh digest —
+   but a SAME-ORIGIN navigation also prints a `CARRIED` block: which strong-identity
+   elements (data-testid / authored names) persisted from the previous page and how
+   their state/content moved (the cart badge "1"→"2"). only-before/only-after are
+   COUNTS of page-specific content: a different page is different, never "removed".
 4. **`⊘covered by X` in the map is literal**: that click will NOT reach the element;
    clear X first (the experiments measured this as blind agents' #1 failure).
 5. The trimmed outline ALWAYS declares what it omitted — never assume that what is

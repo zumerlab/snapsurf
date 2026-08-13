@@ -849,6 +849,12 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
     unobservable: ui.unobservable.length,
     unobservableDetails: ui.unobservable.slice(0, 40),
     privacy: ui.privacy,
+    // Cross-navigation continuity: the strong-identity slice of this FULL observation
+    // (testid / authored-name nodes, privacy view). The daemon keeps it across the
+    // navigation — this realm dies with the document.
+    identityIndex: (!scoped && window.__agentCarriedIndex)
+      ? window.__agentCarriedIndex(ui.__view || ui.__snapshot)
+      : undefined,
     walkDetail: { slices: window.__SD_SLICES.slices || 0, maxSliceMs: Math.round(window.__SD_SLICES.maxSliceMs || 0) },
   }
 }
@@ -1188,6 +1194,39 @@ async function invalidatePageBaselines(S) {
 // page before such a command; this also creates fresh public ids and expires the previous
 // realm's resolver strings. Status/session/help/stop remain cheap and do not need a view.
 const VIEW_COMMANDS = new Set(['look', 'find', 'parent', 'outline', 'map', 'click', 'text', 'snap', 'cp', 'rec', 'assert'])
+// ── Carried identity across navigations ──────────────────────────────────────────────
+// The page realm dies with the document, so the strong-identity slice of every FULL
+// observation is retained HERE, in the daemon. On the first full observation after a
+// same-origin navigation, the slices are compared in-page (single definition of the
+// comparison lives in the SDK): which testid/authored-name elements persisted, and how
+// their state/content moved (the cart badge "1" → "2"). Different-page content is
+// counted, never described — a different page is different, not "changed".
+async function noteCarried(S, o) {
+  if (!o || !o.identityIndex) return null
+  const url = S.page.url()
+  let origin = null
+  try { origin = new URL(url).origin } catch { /* about:blank etc. — no carried */ }
+  const prev = S.carried
+  S.carried = { url, origin, index: o.identityIndex, policyRev: S.policyRev }
+  if (!prev || prev.policyRev !== S.policyRev) return null
+  // Cross-origin "matches" would be coincidences wearing the same name: reset silently.
+  if (!origin || !prev.origin || prev.origin !== origin) return null
+  if (prev.url === url) return null // same page: the ordinary diff owns this
+  const diff = await inPage(S, (base) => (window.__agentCarriedDiff ? window.__agentCarriedDiff(base) : null), prev.index)
+  if (!diff || (!diff.matches && !diff.onlyBefore)) return null
+  return { fromUrl: safeUrl(prev.url, S.redact), ...diff }
+}
+
+function fmtCarried(carried) {
+  if (!carried) return ''
+  const lines = carried.changed.slice(0, 10).map((c) =>
+    `  ${c.kinds.join('+')} ${c.role}${c.name ? ` "${String(c.name).slice(0, 50)}"` : ''}` +
+    `${c.from?.text !== c.to?.text && (c.from?.text || c.to?.text) ? ` “${c.from?.text ?? ''}” → “${c.to?.text ?? ''}”` : ''} (${c.by})`)
+  return `\nCARRIED across navigation from ${carried.fromUrl} (strong identity only — unmatched content is a different page, not a change):` +
+    `\n  persisted: ${carried.matches} (${carried.unchanged} unchanged, ${carried.changed.length} changed) · only-before: ${carried.onlyBefore} · only-after: ${carried.onlyAfter}` +
+    (lines.length ? `\n${lines.join('\n')}` : '')
+}
+
 async function ensureActivePageObservation(S, cmd, args) {
   if (!S.pageNeedsObservation || !VIEW_COMMANDS.has(cmd)) return null
   if (cmd === 'look' && !args[0]) {
@@ -1200,12 +1239,14 @@ async function ensureActivePageObservation(S, cmd, args) {
   const o = await inPage(S, observe, { rehydrated: true })
   S.epoch++
   S.pageNeedsObservation = false
+  const carried = await noteCarried(S, o)
   return {
     pageSwitched: true,
     mapTotal: o.mapTotal,
     torn: o.torn,
     unobservable: o.unobservable,
     unobservableDetails: o.unobservableDetails,
+    ...(carried ? { carried } : {}),
   }
 }
 
@@ -1544,16 +1585,17 @@ const HANDLERS = {
     const o = await inPage(S, observe, { compact })
     S.epoch++
     S.pageNeedsObservation = false
+    const carried = await noteCarried(S, o)
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
-    S.meta = { mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    S.meta = { mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(carried ? { carried } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
       ? `⛔ BLOCKED by bot mitigation (${challenge.vendor}, ${challenge.signal}, HTTP ${challenge.status}). This is NOT an empty page — the content was withheld. Fall back to another fetcher, or retry with waitForChallenge.\n`
       : ''
-    return banner + fmtFirst(o, S.page.url(), S.epoch, compact, S)
+    return banner + fmtFirst(o, S.page.url(), S.epoch, compact, S) + fmtCarried(carried)
   },
   async look([id], S) {
     if (id) {
@@ -1574,11 +1616,12 @@ const HANDLERS = {
     const o = await inPage(S, observe, { previous: prev })
     S.epoch++
     S.pageNeedsObservation = false
+    const carried = await noteCarried(S, o)
     // enough summary that the JSONL alone says WHAT was seen, not just that a look ran
     // `changes` is now the LIST (kind/role/name/id), with the count in `changesTotal` —
     // same shape `assert` already publishes, so a consumer learns one contract, not two.
-    S.meta = { mapTotal: o.mapTotal, changed: o.changed, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, walkDetail: o.walkDetail, ...(o.delta ? { actionabilityDelta: o.delta } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(o.changes ? { changesTotal: o.changesTotal ?? o.changes.length, ...(o.foldedWrappers ? { foldedWrappers: o.foldedWrappers } : {}), ...(o.geometryOnly ? { geometryOnly: true } : {}), changes: o.changes.filter((c) => !c.folded).slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: c.name, beforeName: c.beforeName, id: c.id })) } : {}), ...(navigated ? { navigated: true, baselineUrl: safeUrl(baseUrl, S.redact) } : {}), ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
-    return (navigated ? `⚠ navigated since baseline (${safeUrl(baseUrl, S.redact)}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, S.page.url(), S.epoch, S)
+    S.meta = { mapTotal: o.mapTotal, changed: o.changed, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, walkDetail: o.walkDetail, ...(o.delta ? { actionabilityDelta: o.delta } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(o.changes ? { changesTotal: o.changesTotal ?? o.changes.length, ...(o.foldedWrappers ? { foldedWrappers: o.foldedWrappers } : {}), ...(o.geometryOnly ? { geometryOnly: true } : {}), changes: o.changes.filter((c) => !c.folded).slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: c.name, beforeName: c.beforeName, id: c.id })) } : {}), ...(navigated ? { navigated: true, baselineUrl: safeUrl(baseUrl, S.redact) } : {}), ...(carried ? { carried } : {}), ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    return (navigated ? `⚠ navigated since baseline (${safeUrl(baseUrl, S.redact)}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, S.page.url(), S.epoch, S) + fmtCarried(carried)
   },
   async find(args, S) {
     const query = args.join(' ')
