@@ -149,12 +149,23 @@ async function callDaemon(token, payload, signal) {
 // server still logs one JSONL entry per verb. Aborts at the first failed command.
 if (CMD !== 'serve') {
   const t0 = Date.now()
-  const cmds = CMD === 'run' ? ARGS.map((s) => s.trim().split(/\s+/)) : [[CMD, ...ARGS]]
+  // --session s_x (any position): address a session opened with `session open`.
+  // Without it every CLI client shares s_default — a commons that a SECOND agent on
+  // the same machine will stomp mid-task (field-measured: a parity run lost its page
+  // and its scoped ids to a concurrent consumer). MCP always had per-call sessionId;
+  // this closes the same gap for the CLI. Applies to every verb in a `run` batch.
+  let sessionId
+  const cliArgs = []
+  for (let i = 0; i < ARGS.length; i++) {
+    if (ARGS[i] === '--session') { sessionId = ARGS[++i]; continue }
+    cliArgs.push(ARGS[i])
+  }
+  const cmds = CMD === 'run' ? cliArgs.map((s) => s.trim().split(/\s+/)) : [[CMD, ...cliArgs]]
   try {
     const authToken = await clientAuthToken()
     let stopPid = null
     for (const [cmd, ...args] of cmds) {
-      const { response: res, text } = await callDaemon(authToken, { cmd, args })
+      const { response: res, text } = await callDaemon(authToken, { cmd, args, ...(sessionId ? { sessionId } : {}) })
       if (cmds.length > 1) process.stdout.write(`── ${cmd} ${args.join(' ')}\n`)
       process.stdout.write(text)
       if (cmd === 'stop') stopPid = (text.match(/pid (\d+)/) || [])[1] || null
@@ -1603,7 +1614,9 @@ const HANDLERS = {
       // global look baseline is untouched (next full look still diffs the whole page).
       const o = await inPage(S, observe, { scopeId: id })
       if (o.badScope) throw new Error(`unknown or detached id: ${id} — re-observe and retry`)
-      S.meta = { scope: id }
+      // Same field-parity rule as parent: the zoomed subtree must be readable from
+      // structuredContent, not only from the prose.
+      S.meta = { scope: id, mapTotal: o.mapTotal, map: o.map }
       return `SCOPE ${id} (global baseline untouched)\n${fmtFirst(o, S.page.url(), S.epoch, undefined, S)}`
     }
     const prev = await inPage(S, () => window.__lastCp || null)
@@ -1649,7 +1662,10 @@ const HANDLERS = {
     const o = await inPage(S, observe, { parentOfId: id })
     if (o.badScope) throw new Error(`unknown or detached id: ${id} — re-observe and retry`)
     if (o.noParent) return `no container with ≥2 actionables above ${id} (reached body)`
-    S.meta = { parentOf: id }
+    // The card travels as FIELDS too: a structuredContent consumer told to read fields
+    // saw {parentOf} alone and honestly concluded the card was missing (Codex parity
+    // run) while the prose had it all along.
+    S.meta = { parentOf: id, mapTotal: o.mapTotal, map: o.map }
     return `CARD around ${id} (global baseline untouched)\n${fmtFirst(o, S.page.url(), S.epoch, undefined, S)}`
   },
   async outline(_args, S) {
@@ -2335,6 +2351,8 @@ const HANDLERS = {
       '  cp save|list|diff <name>   named observation baselines (not undo)',
       '  rec <secs> [id] [file.gif|.mp4]   record body or one element',
       '  session list|open|close <id>   parallel isolated browser contexts (cookies/storage private)',
+      '  --session <id>   on ANY verb (or run batch): address that session instead of the shared',
+      '                   s_default — REQUIRED when more than one agent uses this daemon',
       '  status · stop    (stop verifies the daemon actually died)',
       '',
       'BASELINE = the last full open/look observation; each look diffs against it.',

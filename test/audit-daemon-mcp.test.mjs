@@ -413,6 +413,16 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
       assert.equal(parent.ok, true, parent.error)
       assert.match(parent.text, /View detail/)
       assert.match(parent.text, /Buy now/)
+      // The card must travel as FIELDS, not only prose: a structuredContent consumer
+      // (Codex parity run) read {parentOf} alone and concluded the card was missing.
+      assert.ok(Array.isArray(parent.meta.map) && parent.meta.map.length >= 2,
+        'parent must publish the card map in meta')
+      assert.ok(parent.meta.map.some((entry) => /Buy now/.test(entry.n || '')),
+        'the card map must carry the actionables')
+
+      const zoomed = await post('look', [parent.meta.map[0].id])
+      assert.equal(zoomed.ok, true, zoomed.error)
+      assert.ok(Array.isArray(zoomed.meta.map), 'zoom must publish its subtree map in meta')
     })
 
     await t.test('invalidates old-policy resolvers and blocks private find probes', async () => {
