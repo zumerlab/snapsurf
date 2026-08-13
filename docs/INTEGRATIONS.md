@@ -22,6 +22,17 @@ clients — check yours if a snippet below has moved.
 claude mcp add --scope user snapdom-agent -- node /ABS/PATH/snapdom-agent/mcp/server.mjs
 ```
 
+**Codex CLI** (registers globally in `~/.codex/config.toml` under
+`[mcp_servers.snapdom-agent]`; verify with `codex mcp list`):
+
+```bash
+codex mcp add snapdom-agent -- node /ABS/PATH/snapdom-agent/mcp/server.mjs
+```
+
+Codex also reads `AGENTS.md` — this repo ships one with the browsing playbook, and a
+compact global block for `~/.codex/AGENTS.md` is a good reinforcement for clients that
+truncate long tool descriptions.
+
 **Cursor** — `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
 
 ```json
