@@ -45,7 +45,7 @@
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { writeFile, appendFile, mkdir, readFile, chmod, rename, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -63,18 +63,31 @@ try {
 }
 const PORT = Number(process.env.SNAPDOM_AGENT_PORT || 8377)
 const [, , CMD, ...ARGS] = process.argv
-const TOKEN_FILE = process.env.SNAPDOM_AGENT_TOKEN_FILE || join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`)
+// Canonical discovery path in the HOME directory, not tmpdir(): TMPDIR is per-process
+// environment, so a daemon spawned by one app published its token on an island another
+// consumer's tmpdir() never named — measured 2026-08-13 as a 401→EADDRINUSE→20s-timeout
+// deadlock between a CLI session's MCP server and a desktop-app server's daemon. The
+// home directory is the one path every same-user process resolves identically. The old
+// tmpdir path remains a READ fallback so a still-running old daemon stays discoverable.
+const TOKEN_FILE = process.env.SNAPDOM_AGENT_TOKEN_FILE || join(homedir(), '.claude', 'snapdom-agent', `daemon-${PORT}.token`)
+const LEGACY_TOKEN_FILE = join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`)
 const SERVER_AUTH_TOKEN = process.env.SNAPDOM_AGENT_TOKEN || randomBytes(32).toString('hex')
+const DAEMON_STARTED_AT = new Date().toISOString()
 let tokenFilePublished = false
 
 async function clientAuthToken() {
   if (process.env.SNAPDOM_AGENT_TOKEN) return process.env.SNAPDOM_AGENT_TOKEN
-  const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
+  try {
+    const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
+    if (token) return token
+  } catch { /* fall through to legacy */ }
+  const token = (await readFile(LEGACY_TOKEN_FILE, 'utf8')).trim()
   if (!token) throw new Error('daemon token is empty')
   return token
 }
 
 async function publishServerToken() {
+  await mkdir(dirname(TOKEN_FILE), { recursive: true, mode: 0o700 }).catch(() => { /* exists */ })
   const temporary = `${TOKEN_FILE}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`
   try {
     await writeFile(temporary, SERVER_AUTH_TOKEN + '\n', { flag: 'wx', mode: 0o600 })
@@ -143,6 +156,57 @@ async function callDaemon(token, payload, signal) {
   return { response, text }
 }
 
+// ── Multi-server coexistence (finding 2026-08-13) ────────────────────────────────────
+// Several MCP servers/CLIs of one user share the single port. A client whose token does
+// not match the live daemon must not read that as "daemon down": it re-reads the token
+// from the FIXED canonical 0600 same-uid file (which the move to homedir now guarantees
+// every same-uid process resolves identically, TMPDIR notwithstanding) and ADOPTS the
+// running daemon. Only when no locally-readable token authenticates does it fail — and
+// then it names WHO owns the port and since when, never silence.
+//
+// SECURITY: the trust root is "only a same-uid reader of the 0600 token file is
+// trusted". Adoption candidates are therefore ONLY the client-resolved TOKEN_FILE /
+// LEGACY_TOKEN_FILE — never a path named by the /owner response. /owner is an
+// UNAUTHENTICATED card served by whatever holds the port; trusting a path it supplies
+// would let a different-uid port squatter point us at a world-readable file whose token
+// it chose, defeating the boundary. /owner is used ONLY to name the owner in diagnostics
+// and to tell "another snapdom daemon" apart from an alien/absent listener.
+const AUTH_MISMATCH = /identity verification failed|response authentication failed/
+// Classify the port holder in one request: an `owner` card (a genuine snapdom daemon),
+// `stale` (answers HTTP but not /owner — likely a pre-upgrade daemon), `alien` (answers
+// but is not snapdom), or `down` (nothing accepted the connection).
+async function ownerProbe(signal) {
+  let r
+  try {
+    r = await fetch(`http://127.0.0.1:${PORT}/owner`, { signal: signal || AbortSignal.timeout(1500) })
+  } catch { return { reach: 'down' } }
+  if (r.status === 404) { await r.text().catch(() => {}); return { reach: 'stale' } }
+  let o = null
+  try { o = await r.json() } catch { return { reach: 'alien' } }
+  if (o && o.daemon === 'snapdom-agent' && o.v === 1 && typeof o.pid === 'number') return { reach: 'owner', card: o }
+  return { reach: 'alien' }
+}
+function foreignDaemonError(probe) {
+  const c = probe && probe.card
+  if (c) return new Error(`⛔ 127.0.0.1:${PORT} is owned by another snapdom daemon (pid ${c.pid}, since ${c.startedAt}, log session ${c.logSession}) and this client's credentials do not match its published token — stop it (node tools/browse.mjs stop) or set SNAPDOM_AGENT_PORT elsewhere`)
+  if (probe && probe.reach === 'stale') return new Error(`⛔ 127.0.0.1:${PORT} answers HTTP but not /owner — likely an older snapdom daemon; stop it (node tools/browse.mjs stop) or set SNAPDOM_AGENT_PORT elsewhere`)
+  if (probe && probe.reach === 'down') return new Error('daemon not running — start it with:\n  node tools/browse.mjs serve')
+  return new Error(`⛔ 127.0.0.1:${PORT} is bound by a process that does not speak the snapdom daemon protocol — free the port or set SNAPDOM_AGENT_PORT elsewhere`)
+}
+async function adoptDaemonToken(currentToken) {
+  const probe = await ownerProbe()
+  for (const file of [...new Set([TOKEN_FILE, LEGACY_TOKEN_FILE])]) {
+    let token
+    try { token = (await readFile(file, 'utf8')).trim() } catch { continue }
+    if (!token || token === currentToken) continue
+    try {
+      await callDaemon(token, { cmd: 'status', args: [], internal: true })
+      return token
+    } catch { /* next candidate */ }
+  }
+  throw foreignDaemonError(probe)
+}
+
 // ── Client mode: every command except `serve` is one HTTP call ───────────────────────
 // Batch (codex v4): `run "open X" "find Y" "click Z"` executes each quoted arg as one
 // full command from a SINGLE node process — kills the ~80ms launch per verb while the
@@ -167,10 +231,34 @@ if (CMD !== 'serve') {
   const cmds = (CMD === 'run' ? cliArgs.map((s) => s.trim().split(/\s+/)) : [[CMD, ...cliArgs]])
     .map(([c, ...rest]) => [VERB_ALIASES[c] || c, ...rest])
   try {
-    const authToken = await clientAuthToken()
+    let authToken
+    try {
+      authToken = await clientAuthToken()
+    } catch (tokenErr) {
+      // No local token to present (both files ENOENT/empty). This is NOT proof the
+      // daemon is down: it may own the port with a token file we cannot read — a custom
+      // SNAPDOM_AGENT_TOKEN_FILE, a wiped ~/.claude, or a pre-upgrade daemon on another
+      // TMPDIR island. Diagnose via the unauthenticated /owner card before concluding
+      // "not running"; a live foreign owner surfaces its name instead of misleading the
+      // user into `serve` (which then dies in EADDRINUSE).
+      const probe = await ownerProbe()
+      if (probe.reach !== 'down') throw foreignDaemonError(probe)
+      throw tokenErr
+    }
+    // One adoption per invocation: an auth mismatch means a LIVE daemon with another
+    // owner, not a dead one — re-discover via the canonical token file.
+    let adopted = false
+    const call = async (payload) => {
+      try { return await callDaemon(authToken, payload) } catch (e) {
+        if (adopted || !AUTH_MISMATCH.test(String(e && e.message || e))) throw e
+        adopted = true
+        authToken = await adoptDaemonToken(authToken)
+        return callDaemon(authToken, payload)
+      }
+    }
     let stopPid = null
     for (const [cmd, ...args] of cmds) {
-      const { response: res, text } = await callDaemon(authToken, { cmd, args, ...(sessionId ? { sessionId } : {}) })
+      const { response: res, text } = await call({ cmd, args, ...(sessionId ? { sessionId } : {}) })
       if (cmds.length > 1) process.stdout.write(`── ${cmd} ${args.join(' ')}\n`)
       process.stdout.write(text)
       if (cmd === 'stop') stopPid = (text.match(/pid (\d+)/) || [])[1] || null
@@ -198,8 +286,14 @@ if (CMD !== 'serve') {
       process.exit(dead ? 0 : 1)
     }
     process.exit(0)
-  } catch {
-    console.error('daemon not running — start it with:\n  node tools/browse.mjs serve')
+  } catch (e) {
+    // "not running" was the ONLY message this catch ever printed, which silently
+    // mislabelled a live-but-foreign daemon (the exact confusion the ⛔ errors above
+    // exist to prevent). Print the specific diagnosis when there is one.
+    const msg = String((e && e.message) || e)
+    console.error(msg.startsWith('⛔') || AUTH_MISMATCH.test(msg)
+      ? msg
+      : 'daemon not running — start it with:\n  node tools/browse.mjs serve')
     process.exit(1)
   }
 }
@@ -2596,6 +2690,20 @@ createServer((req, res) => {
   if (!LOCAL_HOST.test(String(req.headers.host || ''))) {
     res.statusCode = 403
     res.end('forbidden host\n')
+    return
+  }
+  // /owner: the daemon's identity card, unauthenticated on purpose (loopback + Host
+  // gated like everything else). It exists so a client whose token does not match can
+  // (1) learn WHERE this daemon published its real token — tmpdir()-island clients had
+  // no way to find it — and (2) name the owner in an error instead of "did not
+  // respond". Only same-uid-visible facts travel (pid, start time, paths); the token
+  // itself never does, and adoption still requires the /auth challenge to pass.
+  if (req.method === 'GET' && req.url === '/owner') {
+    res.setHeader('content-type', 'application/json')
+    res.end(JSON.stringify({
+      v: 1, daemon: 'snapdom-agent', pid: process.pid, startedAt: DAEMON_STARTED_AT,
+      logSession: SESSION, port: PORT, tokenFile: TOKEN_FILE,
+    }) + '\n')
     return
   }
   if (req.method === 'POST' && req.url === '/auth') {

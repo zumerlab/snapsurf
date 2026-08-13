@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createServer, request } from 'node:http'
 import { createInterface } from 'node:readline'
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
@@ -54,6 +54,43 @@ function rawRequest(port, { method = 'POST', path = '/cmd', headers = {}, body =
     req.once('error', reject)
     req.end(body)
   })
+}
+
+// A hostile listener that pre-binds the daemon port. It serves whatever /owner card the
+// test names (to model a squatter forging an identity), and — when signToken is given —
+// answers /auth with a correct HMAC over that token, so that IF a victim were tricked
+// into reading the attacker-controlled token file it WOULD complete the handshake. The
+// security guarantee under test is that the victim never reads that file, so the forged
+// /auth is never exercised and cmdServed stays 0.
+function fakeHttpDaemon({ ownerBody, signToken = null }) {
+  let cmdServed = 0
+  const server = createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/owner') {
+      res.setHeader('content-type', 'application/json')
+      res.end(typeof ownerBody === 'string' ? ownerBody : JSON.stringify(ownerBody))
+      return
+    }
+    let body = ''
+    req.on('data', (c) => { body += c })
+    req.on('end', () => {
+      if (req.url === '/auth') {
+        if (!signToken) { res.statusCode = 401; res.end('nope\n'); return }
+        const { nonce } = JSON.parse(body || '{}')
+        res.setHeader('x-snapdom-auth', hmac(signToken, `auth-v1\n${nonce}`))
+        res.end('ok\n')
+        return
+      }
+      if (req.url === '/cmd') {
+        cmdServed += 1
+        res.statusCode = 500
+        res.end('should-never-be-reached\n')
+        return
+      }
+      res.statusCode = 404
+      res.end('not found\n')
+    })
+  })
+  return { server, get cmdServed() { return cmdServed } }
 }
 
 function mcpClient(child) {
@@ -1284,6 +1321,187 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         assert.equal(JSON.stringify(verified.meta).includes('/users/'), false, 'baseline URL must be fully redacted')
       } finally {
         await new Promise((done) => fixture.close(done))
+      }
+    })
+
+    await t.test('a foreign-token MCP server adopts the running daemon instead of deadlocking', async () => {
+      // Two servers, one port (finding 2026-08-13): server B holds a token that does
+      // NOT match daemon A but CAN read the canonical token file A published. The old
+      // behaviour probed with the env token only, spawned a child doomed to EADDRINUSE
+      // and burned 40×500ms into a mute timeout — per call. Now it re-reads the token
+      // from the fixed same-uid file and adopts the running daemon.
+      const foreign = spawn(process.execPath, [MCP], {
+        cwd: ROOT,
+        env: { ...env, SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex') }, // wrong token, shared token file
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      const client = mcpClient(foreign)
+      try {
+        await client.call('initialize', { protocolVersion: '2024-11-05' })
+        const t0 = Date.now()
+        const verified = await client.call('tools/call', { name: 'browser_verify', arguments: {} })
+        assert.equal(verified.isError ?? false, false, JSON.stringify(verified.content ?? verified))
+        assert.ok(Date.now() - t0 < 10_000, 'adoption must not burn the old 20s spawn timeout')
+      } finally {
+        client.close()
+        try { foreign.stdin.end() } catch { /* closed */ }
+        try { await waitForExit(foreign, 2000) } catch { try { foreign.kill('SIGKILL') } catch { /* gone */ } }
+      }
+    })
+
+    await t.test('SECURITY: a port squatter advertising a malicious /owner.tokenFile is NOT adopted', async () => {
+      // The regression that the whole coexistence review turned on: /owner is served by
+      // whoever holds the port and is UNAUTHENTICATED. An earlier draft put the path it
+      // names first in the readFile candidate list, so a different-uid squatter could
+      // point the victim at a world-readable file holding a token the squatter chose and
+      // be adopted as the trusted daemon. The fix: adoption only ever reads the fixed
+      // same-uid TOKEN_FILE/LEGACY_TOKEN_FILE, never a wire-supplied path. Here the
+      // attacker even KNOWS the token in its advertised file (signToken) so that if the
+      // victim read it the handshake would succeed — proving the victim never reads it.
+      const attackerToken = randomBytes(32).toString('hex')
+      const attackerTokenFile = join(logDir, 'attacker.token')
+      await writeFile(attackerTokenFile, attackerToken + '\n')
+      const squatPort = await freePort()
+      const attacker = fakeHttpDaemon({
+        ownerBody: { v: 1, daemon: 'snapdom-agent', pid: 31337, startedAt: '2001-01-01T00:00:00.000Z', logSession: 'evil', port: squatPort, tokenFile: attackerTokenFile },
+        signToken: attackerToken,
+      })
+      await new Promise((done, reject) => { attacker.server.once('error', reject); attacker.server.listen(squatPort, '127.0.0.1', done) })
+      const victim = spawn(process.execPath, [MCP], {
+        cwd: ROOT,
+        env: {
+          ...env,
+          SNAPDOM_AGENT_PORT: String(squatPort),
+          SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex'), // victim's real token != attackerToken
+          SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'victim-absent.token'), // victim's own file is absent
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      const client = mcpClient(victim)
+      try {
+        await client.call('initialize', { protocolVersion: '2024-11-05' })
+        const result = await client.call('tools/call', { name: 'browser_verify', arguments: {} })
+        assert.equal(result.isError, true, 'the victim must NOT adopt an attacker-named token file')
+        assert.match(result.content[0].text, /owned by another snapdom daemon/)
+        assert.equal(attacker.cmdServed, 0, 'the victim must never send a command to the squatter')
+      } finally {
+        client.close()
+        try { victim.stdin.end() } catch { /* closed */ }
+        try { await waitForExit(victim, 2000) } catch { try { victim.kill('SIGKILL') } catch { /* gone */ } }
+        attacker.server.closeAllConnections?.()
+        await new Promise((done) => attacker.server.close(done))
+      }
+    })
+
+    await t.test('HONESTY: an /owner with a numeric pid but no snapdom identity is called alien, not "another snapdom daemon"', async () => {
+      // ownerProbe must validate the identity fields (daemon:'snapdom-agent', v:1), not
+      // just typeof pid === 'number' — else any health endpoint returning {pid:N} gets
+      // mislabelled "another snapdom daemon (pid N, since undefined)" and the user is
+      // told to `browse.mjs stop` a process it cannot stop.
+      const squatPort = await freePort()
+      const alien = fakeHttpDaemon({ ownerBody: { pid: 4242, uptime: 99 }, signToken: null })
+      await new Promise((done, reject) => { alien.server.once('error', reject); alien.server.listen(squatPort, '127.0.0.1', done) })
+      const foreign = spawn(process.execPath, [MCP], {
+        cwd: ROOT,
+        env: {
+          ...env,
+          SNAPDOM_AGENT_PORT: String(squatPort),
+          SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex'),
+          SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'absent-alien.token'),
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      const client = mcpClient(foreign)
+      try {
+        await client.call('initialize', { protocolVersion: '2024-11-05' })
+        const result = await client.call('tools/call', { name: 'browser_verify', arguments: {} })
+        assert.equal(result.isError, true, JSON.stringify(result))
+        assert.match(result.content[0].text, /does not speak the snapdom daemon protocol/)
+        assert.doesNotMatch(result.content[0].text, /4242|undefined/, 'must not leak the alien pid or print undefined fields')
+      } finally {
+        client.close()
+        try { foreign.stdin.end() } catch { /* closed */ }
+        try { await waitForExit(foreign, 2000) } catch { try { foreign.kill('SIGKILL') } catch { /* gone */ } }
+        alien.server.closeAllConnections?.()
+        await new Promise((done) => alien.server.close(done))
+      }
+    })
+
+    await t.test('the CLI with no readable token names the live foreign owner instead of "daemon not running"', async () => {
+      // finding #4: when both token files are unreadable, clientAuthToken() throws
+      // BEFORE any request, so the old catch-all printed "daemon not running" even though
+      // a live daemon holds the port (custom token file / wiped ~/.claude / TMPDIR
+      // island). It must fall into /owner discovery and name the owner instead.
+      const envNoToken = { ...env }
+      delete envNoToken.SNAPDOM_AGENT_TOKEN
+      const result = await new Promise((done) => {
+        const child = spawn(process.execPath, [BROWSE, 'status'], {
+          cwd: ROOT,
+          env: { ...envNoToken, SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'cli-absent.token') },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        })
+        let out = '', errOut = ''
+        child.stdout.on('data', (chunk) => { out += chunk })
+        child.stderr.on('data', (chunk) => { errOut += chunk })
+        child.once('exit', (code) => done({ code, out, errOut }))
+      })
+      assert.equal(result.code, 1, result.out)
+      assert.match(result.errOut, /owned by another snapdom daemon/)
+      assert.doesNotMatch(result.errOut, /daemon not running/)
+    })
+
+    await t.test('a non-daemon squatter on the port produces a named diagnosis, not a mute timeout', async () => {
+      const squatPort = await freePort()
+      const squatter = createServer((_req, response) => { response.end('not snapdom\n') })
+      await new Promise((done, reject) => { squatter.once('error', reject); squatter.listen(squatPort, '127.0.0.1', done) })
+      const foreign = spawn(process.execPath, [MCP], {
+        cwd: ROOT,
+        env: {
+          ...env,
+          SNAPDOM_AGENT_PORT: String(squatPort),
+          SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex'),
+          SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'missing.token'),
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      const client = mcpClient(foreign)
+      try {
+        await client.call('initialize', { protocolVersion: '2024-11-05' })
+        const t0 = Date.now()
+        const result = await client.call('tools/call', { name: 'browser_verify', arguments: {} })
+        assert.equal(result.isError, true, JSON.stringify(result))
+        assert.match(result.content[0].text, /does not speak the snapdom daemon protocol/)
+        assert.ok(Date.now() - t0 < 10_000, 'the diagnosis must arrive fast, not after a 20s burn')
+      } finally {
+        client.close()
+        try { foreign.stdin.end() } catch { /* closed */ }
+        try { await waitForExit(foreign, 2000) } catch { try { foreign.kill('SIGKILL') } catch { /* gone */ } }
+        squatter.closeAllConnections?.()
+        await new Promise((done) => squatter.close(done))
+      }
+    })
+
+    await t.test('concurrent first calls through a foreign-token server all adopt without spurious foreign-owner failures', async () => {
+      // finding #2: at a handover every in-flight call hits AUTH_MISMATCH at once. The
+      // old adoption used the module-global token as an unsynchronised trial slot, so
+      // concurrent adoptions clobbered each other and some calls failed against a
+      // perfectly adoptable daemon. Adoption is now serialized behind one shared promise
+      // and verifies candidates with an explicit token before publishing the global.
+      const foreign = spawn(process.execPath, [MCP], {
+        cwd: ROOT,
+        env: { ...env, SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex') }, // wrong token, shared token file
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      const client = mcpClient(foreign)
+      try {
+        await client.call('initialize', { protocolVersion: '2024-11-05' })
+        const calls = await Promise.all(Array.from({ length: 6 }, () =>
+          client.call('tools/call', { name: 'browser_verify', arguments: {} })))
+        for (const r of calls) assert.equal(r.isError ?? false, false, JSON.stringify(r.content ?? r))
+      } finally {
+        client.close()
+        try { foreign.stdin.end() } catch { /* closed */ }
+        try { await waitForExit(foreign, 2000) } catch { try { foreign.kill('SIGKILL') } catch { /* gone */ } }
       }
     })
 

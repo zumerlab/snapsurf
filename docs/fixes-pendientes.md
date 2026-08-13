@@ -118,6 +118,73 @@ extendido para ENTREGAR las tres promesas (fixtures `/split` y `/hung`, nodo
 reiniciar el cliente MCP, o el registro viejo genera reportes fantasma (fue la
 causa del falso hallazgo de `browser_session_open`).
 
+## P7 — Convivencia multi-server en el puerto único — RESUELTO (2026-08-13, tarde)
+
+**Hallazgo** (salido del propio reinicio del daemon): varios servers MCP del mismo
+usuario (sesiones CLI, app de escritorio) comparten el puerto 8377, y un cliente con
+`SNAPDOM_AGENT_TOKEN` en env nunca leía el token file — no podía autenticarse contra
+el daemon de OTRO server: 401 → intento de criar hijo propio → EADDRINUSE → 40×500ms
+→ *"daemon did not respond within 20s"*, mudo, por llamada. Peor: el path de
+descubrimiento por defecto vivía en `tmpdir()`, que es entorno por-proceso — un daemon
+criado por una app publicaba su token en una isla que el `tmpdir()` de otro consumidor
+jamás nombraba. Ni `stop` lo veía ("daemon not running" con el puerto tomado).
+
+**Resolución** (endurecida tras una ronda de revisión adversarial de 28 agentes —
+ver más abajo; el token nunca viaja por el wire):
+
+1. **Path canónico estable**: `~/.claude/snapdom-agent/daemon-<port>.token` — el home
+   es el único path que todo proceso del mismo usuario resuelve igual (TMPDIR no).
+   Ese cambio SOLO ya cierra el deadlock de islas: daemon y clientes computan el mismo
+   path. El path viejo de tmpdir queda como fallback de LECTURA para daemons viejos aún
+   corriendo. `SNAPDOM_AGENT_TOKEN_FILE` sigue mandando. (`tools/daemon-client.mjs`,
+   `browse.mjs`, `mcp/server.mjs`.)
+2. **`GET /owner`**: cédula de identidad del daemon, sin auth (loopback + Host, como
+   todo), con `{v, daemon, pid, startedAt, logSession, port, tokenFile}`. Es
+   **puramente diagnóstica**: nombra al dueño en el error y distingue "otro daemon
+   snapdom" de un listener ajeno/ausente. **NO es fuente de descubrimiento de token.**
+3. **Adopción segura + errores con nombre**: ante mismatch de HMAC contra un daemon
+   vivo, CLI y MCP server releen el token SOLO de los archivos canónico/legacy que el
+   propio cliente resuelve (0600 del mismo uid) y ADOPTAN el daemon corriendo. Si nada
+   autentica: *"owned by another snapdom daemon (pid X, since Y…)"*, *"answers HTTP but
+   not /owner — likely an older snapdom daemon"*, o *"does not speak the snapdom daemon
+   protocol"*. `ensureDaemonOnce` clasifica adoptable / ajeno-inadoptable / puerto
+   cerrado; el loop de espera trata el fallo de adopción como TRANSITORIO (la ventana
+   bind→publish del ganador) y sólo nombra al dueño si se agota el presupuesto. Un hijo
+   que muere antes de servir reporta su exit code. Watchdog `ppid === 1` en el server
+   MCP (15 servers huérfanos de sesiones muertas observados en una tarde).
+
+**Frontera de seguridad (lo que la revisión corrigió).** Un borrador previo metía el
+`tokenFile` que nombra `/owner` —una respuesta SIN autenticar servida por quien tenga el
+puerto— primero en la lista de candidatos a leer. Un usuario de OTRO uid que ocupe el
+puerto podía apuntar ese path a un archivo world-readable con un token elegido por él y
+ser adoptado como daemon de confianza (recibiendo URLs, texto tipeado, reglas de
+`--redact`, y devolviendo diffs forjados). La raíz de confianza es *"sólo un lector
+same-uid del archivo 0600 es de fiar"*: por eso la adopción NUNCA lee un path venido del
+wire, sólo `TOKEN_FILE`/`LEGACY_TOKEN_FILE` client-resueltos. Además: adopción
+serializada tras una promesa compartida y verificación de cada candidato con token
+EXPLÍCITO (se publica al global recién tras verificar) — antes el trial mutaba el global
+y llamadas concurrentes se corrompían; `/owner` se valida por identidad
+(`daemon==='snapdom-agent' && v===1`), no por "tiene un pid numérico"; y un fallo de
+lectura de token en el CLI cae a discovery `/owner` en vez de mentir "not running".
+
+Tests ("dos servers, un puerto", en `audit-daemon-mcp`, 42/42): adopción con token
+ajeno (~120ms donde antes había 20s), **squatter con `/owner.tokenFile` malicioso NO
+adoptado** (regresión de seguridad, `cmdServed===0`), `/owner` con pid numérico sin
+identidad ⇒ "alien", CLI sin token legible ⇒ nombra al dueño (no "not running"),
+squatter no-daemon ⇒ diagnóstico veloz, y N llamadas concurrentes adoptan sin fallos
+espurios.
+
+**Revisión adversarial (28 agentes, 4 lentes).** Confirmó 8 hallazgos sobre el borrador
+inicial: 2×HIGH de impersonación cross-uid vía `/owner.tokenFile` (seguridad y compat),
+1×HIGH de corrupción por concurrencia en el global de trial, 1×HIGH de deshonestidad
+("not running" con daemon vivo), y 4×MEDIUM (races bind→publish, `/owner` medio-válido
+mal etiquetado, `foreignDaemonError(null)` sobre-afirmando, tests que no fijaban el
+discovery). Todos aplicados.
+
+**Nota operativa:** los gates que comparten el 8377 (contract-gates, doc-contract)
+fallan en cascada si un daemon-isla pre-fix pisa el puerto — así se re-descubrió este
+bug. Con el path canónico esa clase de entorno deja de poder existir.
+
 ## Contexto original de las mediciones
 
 Fixtures y protocolos: `docs/ronda5-protocolo.md`, `docs/ronda5-resultados.md`,

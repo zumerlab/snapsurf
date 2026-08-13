@@ -18,22 +18,99 @@
 import { createInterface } from 'node:readline'
 import { spawn } from 'node:child_process'
 import { readFile, access, mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.SNAPDOM_AGENT_PORT || 8377)
-const TOKEN_FILE = process.env.SNAPDOM_AGENT_TOKEN_FILE || join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`)
+// Canonical discovery path in the HOME directory — tmpdir() is per-process environment
+// and left daemons published on islands other consumers never named (the measured
+// 401→EADDRINUSE→20s deadlock, 2026-08-13). Legacy tmpdir path kept as READ fallback.
+const TOKEN_FILE = process.env.SNAPDOM_AGENT_TOKEN_FILE || join(homedir(), '.claude', 'snapdom-agent', `daemon-${PORT}.token`)
+const LEGACY_TOKEN_FILE = join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`)
 const log = (...a) => console.error('[snapdom-agent-mcp]', ...a)
 let daemonAuthToken = process.env.SNAPDOM_AGENT_TOKEN || null
 
 async function authToken() {
   if (daemonAuthToken) return daemonAuthToken
-  const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
+  try {
+    const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
+    if (token) return token
+  } catch { /* fall through to legacy */ }
+  const token = (await readFile(LEGACY_TOKEN_FILE, 'utf8')).trim()
   if (!token) throw new Error(`daemon token is empty: ${TOKEN_FILE}`)
   return token
+}
+
+// ── Multi-server coexistence (finding 2026-08-13) ────────────────────────────────────
+// Several MCP servers (CLI sessions, desktop app) share the single daemon port. A token
+// mismatch means a LIVE daemon owned by another server — treating it as "down" spawned
+// a child guaranteed to die in EADDRINUSE and burned 40×500ms into a mute timeout, per
+// call. Instead re-read the token from the FIXED canonical 0600 same-uid file (the move
+// to homedir now guarantees every same-uid process resolves it identically) and ADOPT
+// the running daemon.
+//
+// SECURITY: the trust root is "only a same-uid reader of the 0600 token file is
+// trusted". Adoption candidates are therefore ONLY the client-resolved TOKEN_FILE /
+// LEGACY_TOKEN_FILE — NEVER a path named by the /owner response. /owner is an
+// UNAUTHENTICATED card served by whatever holds the port; trusting a path it supplies
+// would let a different-uid squatter point us at a world-readable file whose token it
+// chose. /owner is used ONLY to name the owner in diagnostics and to tell "another
+// snapdom daemon" apart from an alien/absent listener.
+const AUTH_MISMATCH = /identity verification failed|response authentication failed/
+// Classify the port holder in one request: an `owner` card (a genuine snapdom daemon,
+// validated by its identity fields, not merely a numeric pid), `stale` (answers HTTP
+// but not /owner — likely a pre-upgrade daemon), `alien` (answers but is not snapdom),
+// or `down` (nothing accepted the connection).
+async function ownerProbe() {
+  let r
+  try {
+    r = await fetch(`http://127.0.0.1:${PORT}/owner`, { signal: AbortSignal.timeout(1500) })
+  } catch { return { reach: 'down' } }
+  if (r.status === 404) { await r.text().catch(() => {}); return { reach: 'stale' } }
+  let o = null
+  try { o = await r.json() } catch { return { reach: 'alien' } }
+  if (o && o.daemon === 'snapdom-agent' && o.v === 1 && typeof o.pid === 'number') return { reach: 'owner', card: o }
+  return { reach: 'alien' }
+}
+function foreignDaemonError(probe) {
+  const c = probe && probe.card
+  if (c) return new Error(`port ${PORT} is owned by another snapdom daemon (pid ${c.pid}, since ${c.startedAt}, log session ${c.logSession}) and its published token does not authenticate from here — stop it with \`node tools/browse.mjs stop\`, or set SNAPDOM_AGENT_PORT for this server`)
+  if (probe && probe.reach === 'stale') return new Error(`port ${PORT} answers HTTP but not /owner — likely an older snapdom daemon; stop it with \`node tools/browse.mjs stop\`, or set SNAPDOM_AGENT_PORT for this server`)
+  if (probe && probe.reach === 'down') return new Error(`daemon on port ${PORT} is not responding`)
+  return new Error(`port ${PORT} is bound by a process that does not speak the snapdom daemon protocol — free the port or set SNAPDOM_AGENT_PORT for this server`)
+}
+// Concurrent MCP tool calls (rl.on('line') handlers are unserialized) all hit
+// AUTH_MISMATCH at a handover. Serialize adoption behind ONE shared in-flight promise so
+// only one trial runs; the rest await it and retry against the freshly-published global.
+// The trial probes each candidate with an EXPLICIT token and writes daemonAuthToken only
+// AFTER that token verifies — never leaving an unverified value in the global for another
+// call to sign with.
+let adoptionPromise = null
+async function adoptRunningDaemon() {
+  if (adoptionPromise) return adoptionPromise
+  const attempt = adoptRunningDaemonOnce()
+  adoptionPromise = attempt
+  try { return await attempt }
+  finally { if (adoptionPromise === attempt) adoptionPromise = null }
+}
+async function adoptRunningDaemonOnce() {
+  const probe = await ownerProbe()
+  const before = daemonAuthToken
+  for (const file of [...new Set([TOKEN_FILE, LEGACY_TOKEN_FILE])]) {
+    let token
+    try { token = (await readFile(file, 'utf8')).trim() } catch { continue }
+    if (!token || token === before) continue
+    try {
+      await cmdOnce('status', [], { internal: true, token })   // verify WITHOUT mutating the global
+      daemonAuthToken = token                                   // publish only after it verifies
+      log(`adopted running daemon${probe.card ? ` pid ${probe.card.pid} (since ${probe.card.startedAt})` : ''} via ${file}`)
+      return true
+    } catch { /* next candidate */ }
+  }
+  throw foreignDaemonError(probe)
 }
 
 const hmac = (token, message) => createHmac('sha256', token).update(message).digest('hex')
@@ -59,7 +136,22 @@ async function browsePath() {
 // Daemon envelope v1: {ok, text, error, epoch, url, meta} — a machine contract
 // instead of parsed prose (codex-mcp ask).
 async function cmd(name, args = [], { internal = false, sessionId } = {}) {
-  const token = await authToken()
+  try {
+    return await cmdOnce(name, args, { internal, sessionId })
+  } catch (e) {
+    // An auth mismatch mid-session means the port changed owners (our child died and
+    // another server's daemon took over). Adopt once and retry; adoption throwing the
+    // named-owner error is the honest terminal state, never a mute retry loop.
+    if (!AUTH_MISMATCH.test(String(e && e.message || e))) throw e
+    await adoptRunningDaemon()
+    return cmdOnce(name, args, { internal, sessionId })
+  }
+}
+
+async function cmdOnce(name, args = [], { internal = false, sessionId, token } = {}) {
+  // token may be passed explicitly by the adoption trial to verify a candidate WITHOUT
+  // mutating the shared daemonAuthToken; every other caller resolves it from the global.
+  if (!token) token = await authToken()
   // Prove the listener knows the private token before sending a URL, typed text or
   // privacy rule. Merely signing the later request would still hand its clear body to a
   // process that pre-bound the port, even though that process could not forge a reply.
@@ -148,11 +240,22 @@ process.on('SIGINT', () => shutdown(0))
 process.on('SIGTERM', () => shutdown(0))
 process.stdin.on('end', () => shutdown(0))
 process.stdin.on('close', () => shutdown(0))
+// Belt and braces for clients that die without closing our stdin: 15 idle servers from
+// one afternoon of dead sessions were observed squatting (finding 2026-08-13). Being
+// reparented to init IS the signal the client is gone — no client, no reason to live.
+setInterval(() => { if (process.ppid === 1) { log('parent gone (ppid 1) — exiting'); shutdown(0) } }, 30_000).unref()
 
 async function ensureDaemonOnce() {
   // internal: the liveness probe before every tool call must not pollute the JSONL
   // (codex v5: 13 zero-ms status entries made per-verb suite reconstruction noisy)
-  try { await cmd('status', [], { internal: true }); return } catch { /* spawn it */ }
+  // The probe (with cmd's built-in adoption) distinguishes the three states that were
+  // previously one mute "spawn it": daemon ours/adoptable → serve; daemon foreign and
+  // unadoptable → named-owner error (spawning would only die in EADDRINUSE); port
+  // closed → spawn.
+  try { await cmd('status', [], { internal: true }); return } catch (e) {
+    if (String(e && e.message || e).startsWith('port ' + PORT)) throw e   // named-owner diagnosis
+    /* connection refused → spawn it */
+  }
   const p = await browsePath()
   log('spawning daemon (own child):', p)
   const ownedToken = randomBytes(32).toString('hex')
@@ -170,11 +273,31 @@ async function ensureDaemonOnce() {
       if (daemonAuthToken === ownedToken) daemonAuthToken = process.env.SNAPDOM_AGENT_TOKEN || null
     }
   })
+  let lastForeign = null
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500))
-    try { await cmd('status', [], { internal: true }); return } catch { /* not yet */ }
+    try { await cmdOnce('status', [], { internal: true }); return } catch (err) {
+      // Our child cannot 401 us (it holds ownedToken): a mismatch here means another
+      // server won the port race. Try to adopt the winner — but a mismatch can also be
+      // the winner's OWN bind-to-publish gap (it answers /auth with its token before its
+      // token file lands), so adoption failing here is TRANSIENT: remember the named
+      // error and keep polling; the winner publishes within a few ms. Only if the whole
+      // budget expires do we surface it — never burn the loop, never abort early on a gap.
+      if (AUTH_MISMATCH.test(String(err && err.message || err))) {
+        try { await adoptRunningDaemon(); return } catch (adoptErr) { lastForeign = adoptErr }
+        continue
+      }
+      // Child died before serving (port still closed): report its exit instead of a
+      // generic timeout — this is how a broken launch (missing browser build, bad
+      // install) surfaces as a diagnosis rather than 20 more seconds of silence.
+      if (child.exitCode !== null && (await ownerProbe()).reach === 'down') {
+        throw new Error(`daemon child exited with code ${child.exitCode} before serving — run \`node ${p} serve\` manually to see why`)
+      }
+    }
   }
-  throw new Error('daemon did not respond within 20s')
+  // Budget exhausted. If a foreign owner was seen along the way, its named error is the
+  // honest diagnosis; otherwise the child simply never came up.
+  throw lastForeign || new Error(`daemon did not respond within 20s (child pid ${child.pid}, exit code ${child.exitCode}) — run \`node ${p} serve\` manually to see why`)
 }
 
 async function ensureDaemon() {
