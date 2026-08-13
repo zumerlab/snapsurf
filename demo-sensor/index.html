@@ -145,7 +145,9 @@
 
 <header class="bench-label">
   <h1>SnapDOM Sensor · banco de pruebas</h1>
-  <span class="scope-tag">scope = #specimen-card · baseline privado en RAM · 0 requests</span>
+  <span class="scope-tag">scope = #specimen-card · baseline privado en RAM · 0 requests ·
+    <button id="stage-toggle" type="button" style="font:inherit;cursor:pointer;border:1px solid var(--ink-soft);border-radius:4px;background:transparent;color:var(--ink);padding:1px 8px">needs: render</button>
+  </span>
 </header>
 
 <div class="bench">
@@ -192,7 +194,8 @@
 import { snapdom } from '../vendor/snapdom/dist/snapdom.mjs'
 import { sensor } from '../packages/sensor/dist/snapdom-sensor.js'
 
-const watch = sensor()
+let mode = 'render'
+let watch = sensor({ needs: mode })
 let tick = 0
 
 const $ = (sel) => document.querySelector(sel)
@@ -284,11 +287,13 @@ function record(label, report, reportBytes, svgBytes, error) {
   }
   if (!rows.length) rows.push('<li>nada cambió — y eso es un dato afirmado, no una suposición</li>')
 
-  const pct = ((reportBytes / svgBytes) * 100).toFixed(1)
+  const bytesLine = svgBytes === null
+    ? `reporte ${(reportBytes / 1024).toFixed(1)} KB · <strong>sin clone, sin svg</strong> (stage live)`
+    : `reporte ${(reportBytes / 1024).toFixed(1)} KB · svg ${(svgBytes / 1024).toFixed(0)} KB · ${((reportBytes / svgBytes) * 100).toFixed(1)}%`
   li.innerHTML = `<div class="tick-head"><span class="n">#${tick}</span>
       <span class="action-label">${label}</span>
       <span class="stamp" style="--tickcolor:${stamp.color}">${stamp.text}</span>
-      <span class="bytes">reporte ${(reportBytes / 1024).toFixed(1)} KB · svg ${(svgBytes / 1024).toFixed(0)} KB · ${pct}%</span></div>
+      <span class="bytes">${bytesLine}</span></div>
     <ul class="delta">${rows.join('')}</ul>
     <details><summary>reporte JSON completo</summary><pre>${JSON.stringify(report, null, 1).replace(/</g, '&lt;')}</pre></details>`
   log.prepend(li)
@@ -299,11 +304,21 @@ async function observe(label) {
   try {
     const result = await snapdom(scope, { plugins: [watch], embedFonts: false, cache: 'disabled' })
     const report = await result.toSensor()
-    record(label, report, JSON.stringify(report).length, result.url.length)
+    // At stage 'live' no picture exists — accessing result.url would (rightly) throw.
+    const svgBytes = result.stage === 'render' ? result.url.length : null
+    record(label, report, JSON.stringify(report).length, svgBytes)
   } catch (error) {
     record(label, null, 0, 0, error)
   }
 }
+
+$('#stage-toggle').addEventListener('click', async () => {
+  mode = mode === 'render' ? 'live' : 'render'
+  $('#stage-toggle').textContent = `needs: ${mode}`
+  watch.dispose()
+  watch = sensor({ needs: mode })
+  await observe(`Cambio a needs:'${mode}' — baseline nuevo${mode === 'live' ? ', sin clone' : ''}`)
+})
 
 // ── acciones reales sobre el DOM ──────────────────────────────
 $('#act-toggle').addEventListener('click', async () => {

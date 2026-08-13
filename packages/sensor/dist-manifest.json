@@ -9,10 +9,10 @@
     "SENSOR_REPORT_CONTRACT",
     "sensor"
   ],
-  "bytes": 39425,
-  "gzipBytes": 14709,
-  "brotliBytes": 13248,
-  "sha256": "00fd0c2d103868b7e28e1c126150b81457bcec082e66cbc7128315220e57f9a6",
+  "bytes": 40631,
+  "gzipBytes": 15072,
+  "brotliBytes": 13617,
+  "sha256": "7433f09f937dbcab7366b17f4fb763603de12eb608bb21855a71453e86d933d0",
   "peerDependencies": {
     "@zumer/snapdom": ">=3.0.0-beta.0 <4"
   },

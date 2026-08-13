@@ -254,7 +254,8 @@ function emptyBounded() {
   return { items: [], total: 0, truncated: 0 }
 }
 
-function baseReport({ status, after, limits, privacy, continuity, drift }) {
+function baseReport({ status, after, limits, privacy, continuity, drift, stage, source }) {
+  const live = stage === 'live'
   const blindSpots = bounded(
     collectBlindSpots(after),
     limits.blindSpots,
@@ -288,12 +289,13 @@ function baseReport({ status, after, limits, privacy, continuity, drift }) {
       },
     },
     coverage: {
-      source: 'SNAPDOM_AFTER_CLONE_FRAME',
+      source: source || 'SNAPDOM_AFTER_CLONE_FRAME',
       scope: 'SNAPDOM_CAPTURE_ROOT',
+      ...(stage ? { stage } : {}),
       engineFrame: {
-        clonePrepared: true,
-        nodeMapApplied: true,
-        styleCacheApplied: true,
+        clonePrepared: !live,
+        nodeMapApplied: !live,
+        styleCacheApplied: !live,
         driftWatch: drift?.unwatched ? 'UNWATCHED' : 'NET_OF_ENGINE_PREP',
         ...(drift?.mutations > 0 ? { mutationsDuringPrep: drift.mutations } : {}),
       },
@@ -314,25 +316,31 @@ function baseReport({ status, after, limits, privacy, continuity, drift }) {
       nodesAfter: after.nodes.size,
       rootContinuity: continuity ? cloneValue(continuity) : { status: 'CONTINUOUS' },
     },
-    visual: {
-      svg: 'CAPTURED_BY_SNAPDOM',
-      raster: 'AVAILABLE_ON_DEMAND_FROM_SNAPDOM_RESULT',
-    },
+    visual: live
+      ? {
+        // The capture stopped before the clone: no picture of THIS instant exists and
+        // none can be taken afterwards. Pixels on demand = a NEW scoped capture (clip).
+        svg: 'NOT_CAPTURED_STAGE_LIVE',
+        raster: 'REQUEST_A_NEW_SCOPED_CAPTURE_WITH_CLIP',
+      }
+      : stage === 'clone'
+        ? { svg: 'NOT_RENDERED_STAGE_CLONE', raster: 'REQUEST_A_NEW_SCOPED_CAPTURE_WITH_CLIP' }
+        : { svg: 'CAPTURED_BY_SNAPDOM', raster: 'AVAILABLE_ON_DEMAND_FROM_SNAPDOM_RESULT' },
     limits: { ...limits },
   }
 }
 
-function buildReport({ previous, observation, limits, privacy, continuity, drift }) {
+function buildReport({ previous, observation, limits, privacy, continuity, drift, stage, source }) {
   const after = detachSnapshot(observation.snapshot)
   if (!previous) {
     return {
-      report: baseReport({ status: 'BASELINE_ESTABLISHED', after, limits, privacy, continuity, drift }),
+      report: baseReport({ status: 'BASELINE_ESTABLISHED', after, limits, privacy, continuity, drift, stage, source }),
       snapshot: after,
     }
   }
 
   const diff = observation.diff || { changes: [], actionabilityDelta: {} }
-  const report = baseReport({ status: 'NO_SUPPORTED_DELTA_DETECTED', after, limits, privacy, continuity, drift })
+  const report = baseReport({ status: 'NO_SUPPORTED_DELTA_DETECTED', after, limits, privacy, continuity, drift, stage, source })
   // The bounded invariant (items + truncated = total) holds over the SIGNAL list;
   // folded wrapper changes are counted separately and explicitly, never silently.
   const allChanges = Array.isArray(diff.changes) ? diff.changes : []
@@ -397,10 +405,17 @@ function validateExportOptions(options) {
  * report without accepting an expected outcome or deciding whether a task succeeded.
  */
 export function sensor(options = {}) {
-  assertOnlyKeys(options, ['privacy', 'noise', 'limits'], 'sensor options')
+  assertOnlyKeys(options, ['privacy', 'noise', 'limits', 'needs'], 'sensor options')
   let privacy = normalizePrivacy(options.privacy)
   let noise = options.noise
   const limits = normalizeLimits(options.limits)
+  // SnapDOM v3 stage vocabulary. Default 'render' per PLUGIN_SPEC: lowering the stage
+  // takes the picture away, and that is the CALLER's call. sensor({needs:'live'}) is
+  // the no-clone fast path: the walk runs on the live DOM and nothing is cloned.
+  const needs = options.needs === undefined ? 'render' : options.needs
+  if (!['live', 'clone', 'render'].includes(needs)) {
+    throw new TypeError("[snapdom-sensor] needs must be 'live', 'clone' or 'render'")
+  }
   let baselines = new WeakMap()
   let trackedRoots = []
   let driftWatch = null
@@ -498,71 +513,101 @@ export function sensor(options = {}) {
     return { mutations: net, shadowIncomplete: watch.shadowIncomplete }
   }
 
+  // One observation per capture, from whichever hook matches the RESOLVED stage:
+  // 'live' walks the live DOM in beforeClone (no clone exists, none is needed);
+  // 'clone'/'render' walk in afterClone against the prepared frame, as always.
+  const runObservation = (ctx, { engineFrame, stage, source }) => {
+    if (ctx.options[REPORT_SLOT]) { dropDriftWatch(); return }
+    const drift = consumeDriftWatch(ctx.element)
+    const current = baselines.get(ctx.element)
+    const generation = current?.generation || 0
+    let continuity = { status: 'CONTINUOUS' }
+    let rootShape = null
+    if (!current) {
+      const scan = evaluateContinuity(ctx.element, trackedRoots)
+      trackedRoots = scan.kept
+      continuity = scan.continuity
+      rootShape = scan.shape
+    }
+    const observation = observe(ctx.element, {
+      previous: current?.snapshot,
+      privacy,
+      noise,
+      strictScope: true,
+      ...(engineFrame ? { engineFrame } : {}),
+    })
+    const built = buildReport({
+      previous: current?.snapshot,
+      observation,
+      limits,
+      privacy,
+      continuity,
+      drift,
+      stage,
+      source,
+    })
+    const pending = {
+      root: ctx.element,
+      rootShape,
+      expectedGeneration: generation,
+      nextGeneration: generation + 1,
+      snapshot: built.snapshot,
+      report: built.report,
+      committed: false,
+    }
+    Object.defineProperty(ctx.options, REPORT_SLOT, {
+      value: pending,
+      enumerable: true,
+      configurable: true,
+    })
+  }
+
   const plugin = {
     name: SENSOR_PLUGIN_NAME,
+    needs,
 
     beforeSnap(ctx) {
       if (ctx?.options?.burst === true) {
         throw new TypeError('[snapdom-sensor] burst:true is incompatible with fresh sensor frames')
       }
-      // The clone is prepared asynchronously: the live DOM can mutate between here and
-      // afterClone, making the walk read post-mutation state while the SVG shows
-      // pre-mutation pixels. Watch the scope so that drift is DECLARED, never silent.
+      // The stage-less legacy runtime IGNORES needs and silently runs the full
+      // pipeline — the worst way to find out. A live sensor on such a runtime is a
+      // named error, not a silent clone. (v3 stamps the resolved stage on options.)
+      if (needs === 'live' && ctx?.options && ctx.options.__stage === undefined) {
+        const error = new Error(
+          "[snapdom-sensor] needs:'live' requires a staged SnapDOM runtime (v3): this runtime would silently run the full pipeline")
+        error.code = 'SNAPDOM_SENSOR_STAGES_REQUIRED'
+        throw error
+      }
+      // The capture prep is asynchronous: the live DOM can mutate between here and the
+      // observing hook. Watch the scope so that drift is DECLARED, never silent.
       // (Records accumulate in the observer callback: awaited hooks create microtask
-      // checkpoints that deliver the queue before afterClone can takeRecords().)
+      // checkpoints that deliver the queue before takeRecords() at read time.)
       armDriftWatch(ctx?.element)
+    },
+
+    beforeClone(ctx) {
+      if (disposed) { dropDriftWatch(); throw new Error('[snapdom-sensor] plugin is disposed') }
+      if (ctx?.options?.__stage !== 'live') return // a deeper stage observes in afterClone
+      if (!isElement(ctx?.element) || !ctx.element.isConnected) {
+        dropDriftWatch()
+        throw new TypeError('[snapdom-sensor] beforeClone requires a connected capture root')
+      }
+      runObservation(ctx, { stage: 'live', source: 'LIVE_DOM_WALK' })
     },
 
     afterClone(ctx) {
       if (disposed) { dropDriftWatch(); throw new Error('[snapdom-sensor] plugin is disposed') }
-      // Consume the watch FIRST: every exit from this hook (validation throw, shared
-      // report slot) must leave no armed observer behind.
-      const drift = consumeDriftWatch(ctx?.element)
-      validateFrame(ctx)
-      if (ctx.options[REPORT_SLOT]) return
-
-      const current = baselines.get(ctx.element)
-      const generation = current?.generation || 0
-      let continuity = { status: 'CONTINUOUS' }
-      let rootShape = null
-      if (!current) {
-        const scan = evaluateContinuity(ctx.element, trackedRoots)
-        trackedRoots = scan.kept
-        continuity = scan.continuity
-        rootShape = scan.shape
-      }
-      const observation = observe(ctx.element, {
-        previous: current?.snapshot,
-        privacy,
-        noise,
-        strictScope: true,
+      if (ctx?.options?.__stage === 'live') return // already observed live; nothing deeper ran
+      try { validateFrame(ctx) } catch (error) { dropDriftWatch(); throw error }
+      runObservation(ctx, {
+        stage: ctx.options.__stage || 'render',
+        source: 'SNAPDOM_AFTER_CLONE_FRAME',
         engineFrame: {
           clone: ctx.clone,
           nodeMap: ctx.nodeMap,
           styleCache: ctx.styleCache,
         },
-      })
-      const built = buildReport({
-        previous: current?.snapshot,
-        observation,
-        limits,
-        privacy,
-        continuity,
-        drift,
-      })
-      const pending = {
-        root: ctx.element,
-        rootShape,
-        expectedGeneration: generation,
-        nextGeneration: generation + 1,
-        snapshot: built.snapshot,
-        report: built.report,
-        committed: false,
-      }
-      Object.defineProperty(ctx.options, REPORT_SLOT, {
-        value: pending,
-        enumerable: true,
-        configurable: true,
       })
     },
 
