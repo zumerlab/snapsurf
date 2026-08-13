@@ -57,6 +57,11 @@ const PAGES = {
     '<button id="replace-card">Replace Gamma card</button>' +
     '<div id="slot"><h3>Gamma</h3><p>Old offering</p><button>Open Gamma</button></div>' +
     `<script>document.getElementById('replace-card').onclick=()=>{const fresh=document.createElement('div');fresh.id='slot';fresh.innerHTML='<h3>Omega</h3><p>New unrelated offering</p><button>Open Omega</button>';document.getElementById('slot').replaceWith(fresh)}</script>` +
+    '<button id="open-suggest">Open suggestions</button>' +
+    // A dropdown-style insertion whose wrapper chain must FOLD in the diff: the inner
+    // generic wrappers carry no identity (no testid, no authored name, no own text), so
+    // the delivered response must include `foldedWrappers` alongside the full count.
+    `<script>document.getElementById('open-suggest').onclick=()=>{const outer=document.createElement('div');const inner=document.createElement('div');inner.innerHTML='<button>Suggestion one</button><p>historian (1939)</p>';outer.appendChild(inner);document.body.appendChild(outer)}</script>` +
     '</body></html>' },
   '/cf': { status: 403, headers: { 'cf-mitigated': 'challenge' },
     body: '<!doctype html><html><head><title>Just a moment...</title></head><body><script src="/cdn-cgi/challenge-platform/x"></script><h1>DataDome CAPTCHA</h1><p>datadome verification</p></body></html>' },
@@ -104,6 +109,14 @@ const replaceId = replaceFind.meta?.matches?.[0]?.id
 if (replaceId) {
   await run('replace-click', 'click', [replaceId])
   await run('replace-look', 'look', [])
+}
+// Exercise wrapper folding: an added subtree whose identity-free generic chain must be
+// counted in `foldedWrappers` while the signal items stay listed.
+const suggestFind = await run('find-suggest', 'find', ['Open suggestions'])
+const suggestId = suggestFind.meta?.matches?.[0]?.id
+if (suggestId) {
+  await run('suggest-click', 'click', [suggestId])
+  await run('suggest-look', 'look', [])
 }
 await run('look-changed', 'open', [U('/other')])           // a second page → a real diff
 await run('look', 'look', [])

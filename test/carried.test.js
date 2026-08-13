@@ -69,4 +69,50 @@ describe('carried identity across navigations', () => {
     expect(diff.changed[0].from.state).toEqual({ expanded: false })
     expect(diff.changed[0].to.state).toEqual({ expanded: true })
   })
+
+  it('a redacted label is a placeholder, never cross-page identity', () => {
+    // Two DIFFERENT hidden accounts, one per page, same role: matching them would
+    // claim persistence about two values nobody compared — and confirm cross-page
+    // presence of what the policy hides.
+    const a = carriedIndex(view([
+      { role: 'button', nameFp: 'fp:redacted-common', name: '[redacted]', textHash: 'ta', stateHash: 's', styleHash: 'y' },
+      navLink('Carrito'),
+    ]))
+    const b = carriedIndex(view([
+      { role: 'button', nameFp: 'fp:redacted-common', name: '[redacted]', textHash: 'tb', stateHash: 's', styleHash: 'y' },
+      navLink('Carrito'),
+    ]))
+    expect(a.entries.map((e) => e.key)).toEqual(['n:link|fp:Carrito'])
+    const diff = carriedDiff(a, b)
+    expect(diff.matches).toBe(1)
+    expect(JSON.stringify(diff)).not.toContain('fp:redacted-common')
+  })
+
+  it('a testid entry keeps identity even when its label is redacted', () => {
+    // The authored testid is the identity; a redacted testid never reaches this layer
+    // (the privacy pass drops it), so a surviving testid is safe to match on.
+    const a = carriedIndex(view([badge('[redacted]', { textHash: 'ta' })]))
+    const b = carriedIndex(view([badge('[redacted]', { textHash: 'tb' })]))
+    const diff = carriedDiff(a, b)
+    expect(diff.matches).toBe(1)
+    expect(diff.changed[0].key).toBe('t:cart-badge')
+  })
+
+  it('a key unique on one side but ambiguous on the other never matches', () => {
+    const a = carriedIndex(view([navLink('Cuenta')]))
+    const b = carriedIndex(view([navLink('Cuenta'), navLink('Cuenta')]))
+    expect(b.entries.length).toBe(0)
+    expect(b.ambiguousDropped).toBe(1)
+    const diff = carriedDiff(a, b)
+    expect(diff.matches).toBe(0)
+    expect(diff.onlyBefore).toBe(1)
+    expect(diff.ambiguousDropped).toBe(1)
+  })
+
+  it('an empty page yields an empty, honest report', () => {
+    const diff = carriedDiff(carriedIndex(view([])), carriedIndex(view([badge('1')])))
+    expect(diff.matches).toBe(0)
+    expect(diff.changed).toEqual([])
+    expect(diff.onlyAfter).toBe(1)
+  })
 })

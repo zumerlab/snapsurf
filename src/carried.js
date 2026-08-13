@@ -24,6 +24,7 @@
  */
 
 const DEFAULT_CAP = 200
+const REDACTED = '[redacted]'
 
 /**
  * Compact identity slice of one observation. Only nodes with cross-page-strong identity
@@ -40,7 +41,15 @@ export function carriedIndex(view, options = {}) {
   for (const node of view.nodes.values()) {
     const keys = []
     if (node.testid) keys.push({ key: `t:${node.testid}`, by: 'data-testid' })
-    else if (node.nameFp) keys.push({ key: `n:${node.role}|${node.nameFp}`, by: 'role+authored-name' })
+    else if (node.nameFp) {
+      // A redacted label is a PLACEHOLDER, not identity: matching two hidden values
+      // across pages would claim "the same element persisted" about two things nobody
+      // compared, and confirm cross-page presence of a value the policy hides.
+      // (Redacted data-testid never reaches here: the privacy pass drops it.)
+      const label = String(node.name || node.text || '')
+      if (label.includes(REDACTED)) continue
+      keys.push({ key: `n:${node.role}|${node.nameFp}`, by: 'role+authored-name' })
+    }
     if (!keys.length) continue
     considered++
     for (const { key, by } of keys) {

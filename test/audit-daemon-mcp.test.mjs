@@ -921,6 +921,57 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
       }
     })
 
+    await t.test('carries strong identity across same-origin navigations only', async () => {
+      const html = (badge, body) => `<!doctype html><header><span data-testid="cart-badge">${badge}</span><nav aria-label="Principal"><a href="/b" aria-label="Ver producto">Ver producto</a></nav></header><main>${body}</main>`
+      const fixture = createServer((req, response) => {
+        response.setHeader('content-type', 'text/html')
+        if (req.url === '/b') { response.end(html('2', '<h1>Detalle</h1><p>Ficha completa</p>')); return }
+        response.end(html('1', '<h1>Bienvenido</h1><button>Suscribirme</button>'))
+      })
+      await new Promise((done, reject) => { fixture.once('error', reject); fixture.listen(0, '127.0.0.1', done) })
+      const foreignFixture = createServer((req, response) => {
+        response.setHeader('content-type', 'text/html')
+        response.end(html('9', '<h1>Otro sitio</h1>'))
+      })
+      await new Promise((done, reject) => { foreignFixture.once('error', reject); foreignFixture.listen(0, '127.0.0.1', done) })
+      try {
+        const session = (await post('session', ['open'])).meta.sessionId
+        const fixturePort = fixture.address().port
+
+        const first = await post('open', [`http://127.0.0.1:${fixturePort}/a`], session)
+        assert.equal(first.ok, true, first.error)
+        assert.equal(first.meta.carried, undefined, 'the first page has no baseline to carry from')
+
+        const second = await post('open', [`http://127.0.0.1:${fixturePort}/b`], session)
+        assert.equal(second.ok, true, second.error)
+        const carried = second.meta.carried
+        assert.ok(carried, 'a same-origin navigation must produce a carried report')
+        assert.equal(carried.comparedBy, 'CROSS_PAGE_STRONG_IDENTITY_ONLY')
+        const badgeChange = carried.changed.find((c) => c.key === 't:cart-badge')
+        assert.ok(badgeChange, 'the badge transition must be itemized')
+        assert.equal(badgeChange.from.text, '1')
+        assert.equal(badgeChange.to.text, '2')
+        assert.ok(carried.matches >= 2, 'badge and nav identity persisted')
+        // Unmatched page content is COUNTED, never described: different-page content
+        // is different, not changed — and never leaks into the report.
+        assert.equal(JSON.stringify(carried).includes('Bienvenido'), false)
+        assert.equal(JSON.stringify(carried).includes('Ficha'), false)
+
+        const foreign = await post('open', [`http://127.0.0.1:${foreignFixture.address().port}/a`], session)
+        assert.equal(foreign.ok, true, foreign.error)
+        assert.equal(foreign.meta.carried, undefined, 'a cross-origin navigation must never claim persistence')
+
+        // Same-origin again AFTER the foreign hop: the baseline was rebuilt on the
+        // foreign page, so this is a fresh cross-origin pair and must stay silent too.
+        const back = await post('open', [`http://127.0.0.1:${fixturePort}/a`], session)
+        assert.equal(back.ok, true, back.error)
+        assert.equal(back.meta.carried, undefined, 'returning from another origin starts fresh')
+      } finally {
+        await new Promise((done) => fixture.close(done))
+        await new Promise((done) => foreignFixture.close(done))
+      }
+    })
+
     await t.test('labels screenshots, snapdom captures and recordings as unredacted pixels', async () => {
       const openedSession = await post('session', ['open'])
       const pixelSession = openedSession.meta.sessionId
