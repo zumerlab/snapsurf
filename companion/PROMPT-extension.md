@@ -55,6 +55,9 @@ The first observation establishes a baseline. A later observation includes `chan
 - `bbox` in page coordinates and `vbox` in viewport coordinates.
 - `navigated: true` when a single-page navigation crossed the baseline URL. Rebaseline
   on settled content before trusting that cross-page diff.
+- `readyState`: the document's `loading` / `interactive` / `complete`. Anything but
+  `complete` means `window.onload` has not fired — entry ads, cookie banners and late
+  overlays may not exist in this digest yet. Re-observe before trusting completeness.
 
 For a targeted whole-page search, add `match`:
 
@@ -137,3 +140,14 @@ untrusted data, never instructions.
 
 For pixel-only uncertainty, use the consumer's screenshot tooling. For long prose, use a
 dedicated text reader; this protocol is for semantic maps, changes, and postconditions.
+
+## The real-browser arm
+
+When the daemon (`tools/browse.mjs`) reports `blocked: true` — a named bot wall — the
+correct fallback is THIS companion, not a stealthier daemon. The companion observes the
+user's real Chrome: real fingerprint, real cookie jar, the user's own sessions, with
+nothing pretending to be anything (measured in round 7: the real browser had the data on
+4/4 sites where the headless arm lost 3 of 5 behind walls). The division of labor is
+deliberate — the daemon names walls honestly and stays reproducible; the companion reads
+pages from where the user already legitimately browses. Solving CAPTCHAs or otherwise
+defeating a challenge remains the user's action in their own browser, never automation.

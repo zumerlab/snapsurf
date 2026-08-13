@@ -82,7 +82,7 @@ function mcpClient(child) {
   return { call, close: () => lines.close() }
 }
 
-test('daemon/MCP focused security and session regressions', { timeout: 90_000 }, async (t) => {
+test('daemon/MCP focused security and session regressions', { timeout: 120_000 }, async (t) => {
   const port = await freePort()
   assert.notEqual(port, 8377, 'the focused test must never use the shared development port')
   const logDir = await mkdtemp(join(tmpdir(), 'snapdom-daemon-audit-'))
@@ -96,6 +96,8 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
     SNAPDOM_AGENT_TOKEN: authToken,
     SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'daemon.token'),
     SNAPDOM_AGENT_MAX_BODY_BYTES: '4096',
+    // keep the P1 load-wait bound short so the hung-resource case costs ~1.5s, not 5
+    SNAPDOM_LOAD_WAIT_MS: '1500',
   }
   let daemon
   let mcp
@@ -423,6 +425,149 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
       const zoomed = await post('look', [parent.meta.map[0].id])
       assert.equal(zoomed.ok, true, zoomed.error)
       assert.ok(Array.isArray(zoomed.meta.map), 'zoom must publish its subtree map in meta')
+      // a card with its own prose must NOT trigger the sibling-row peek (r5–7 P5 guard)
+      assert.equal(parent.text.includes('SIBLING ROW'), false, parent.text)
+      assert.equal('siblingRowText' in parent.meta, false)
+    })
+
+    await t.test('parent surfaces the sibling row when the card is bare (split table card)', async () => {
+      // HN's shape: the title row carries only its actionables; points/comments live in
+      // the NEXT <tr>. The old behaviour returned a card missing exactly the data the
+      // caller climbed for (r5–7 P5).
+      const hnHtml = `<!doctype html><meta charset="utf-8">
+        <table><tbody>
+          <tr><td>1.</td><td><a href="https://example.com/story">Show HN: an interesting split card</a> <a href="https://example.com/from?site=example.com">(example.com)</a></td></tr>
+          <tr><td></td><td>123 points by alice 2 hours ago | <a href="#hide">hide</a> | <a href="#c">45 comments</a></td></tr>
+          <tr><td>2.</td><td><a href="https://example.com/other">Other story below</a> <a href="https://example.com/from2">(other.com)</a></td></tr>
+        </tbody></table>`
+      const opened = await post('open', [`data:text/html,${encodeURIComponent(hnHtml)}`])
+      assert.equal(opened.ok, true, opened.error)
+      const found = await post('find', ['interesting split card'])
+      const story = found.meta.matches.find((m) => /interesting split card/.test(m.name || m.text || ''))
+      assert.ok(story, JSON.stringify(found.meta.matches))
+      const parent = await post('parent', [story.id])
+      assert.equal(parent.ok, true, parent.error)
+      // the sibling row travels as declared TEXT, in meta and prose
+      assert.match(parent.meta.siblingRowText || '', /123 points by alice/, JSON.stringify(parent.meta))
+      assert.match(parent.text, /SIBLING ROW/)
+      assert.match(parent.text, /45 comments/)
+      // and the card's own map is NOT inflated by it
+      assert.equal(parent.meta.map.some((entry) => /45 comments/.test(entry.n || '')), false, JSON.stringify(parent.meta.map))
+    })
+
+    await t.test('text declares a 600-char cut in prose, not only in meta', async () => {
+      const long = 'LONGSTART ' + 'palabra '.repeat(120) + 'LONGEND'
+      const textHtml = `<!doctype html><meta charset="utf-8"><a href="#x">${long}</a>`
+      const opened = await post('open', [`data:text/html,${encodeURIComponent(textHtml)}`])
+      assert.equal(opened.ok, true, opened.error)
+      const found = await post('find', ['LONGSTART'])
+      const link = found.meta.matches[0]
+      assert.ok(link, JSON.stringify(found.meta.matches))
+      const read = await post('text', [link.id])
+      assert.equal(read.ok, true, read.error)
+      assert.equal(read.meta.truncated, true)
+      assert.ok(read.meta.totalChars > 600, `totalChars must carry the full length, got ${read.meta.totalChars}`)
+      // the marker is the harness speaking, so it must sit OUTSIDE the content fence
+      assert.match(read.text, new RegExp(`⚠ truncated \\(600 of ${read.meta.totalChars} chars\\)`))
+      assert.ok(read.text.indexOf('⚠ truncated') > read.text.indexOf('»»»'), 'cut marker must be outside the fence')
+    })
+
+    await t.test('flags a press-and-hold wall served as HTTP 200 under a normal title', async () => {
+      const wall = createServer((req, response) => {
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        if (req.url === '/rich') {
+          // a page that merely TALKS about press-and-hold walls, with a healthy body
+          response.end(`<!doctype html><title>How bot walls work</title><article>${'Press & Hold walls explained in detail. '.repeat(40)}<a href="#more">Read more</a></article>`)
+          return
+        }
+        // Sweetwater's shape (r5–7 P2): HTTP 200, the page's NORMAL title, no vendor
+        // marker in the rendered document — only the prompt and a reference id.
+        response.end(`<!doctype html><title>special 20 harmonica key of C - Sweetwater</title>
+          <div>Mantenga pulsado para confirmar que es una persona (y no un bot).</div>
+          <div>ID de referencia e0682d10-9744-11f1-af41-8f088269f1b8</div>`)
+      })
+      await new Promise((done, reject) => { wall.once('error', reject); wall.listen(0, '127.0.0.1', done) })
+      try {
+        const wallPort = wall.address().port
+        const blocked = await post('open', [`http://127.0.0.1:${wallPort}/wall`])
+        assert.equal(blocked.ok, true, blocked.error)
+        assert.equal(blocked.meta.blocked, true, JSON.stringify(blocked.meta))
+        assert.equal(blocked.meta.challenge.vendor, 'press-hold')
+        assert.equal(blocked.meta.challenge.status, 200)
+        assert.match(blocked.text, /⛔ BLOCKED by bot mitigation \(press-hold/)
+        const served = await post('open', [`http://127.0.0.1:${wallPort}/rich`])
+        assert.equal(served.ok, true, served.error)
+        assert.equal(served.meta.blocked, undefined, JSON.stringify(served.meta.challenge || null))
+      } finally {
+        wall.closeAllConnections?.()
+        await new Promise((done) => wall.close(done))
+      }
+    })
+
+    await t.test('open waits for window.onload content and declares an unfinished document', async () => {
+      const modalHtml = `<!doctype html><meta charset="utf-8"><button id="start">Start</button>
+        <img src="/slow.png" width="1" height="1">
+        <script>window.addEventListener('load', () => {
+          const m = document.createElement('div')
+          m.innerHTML = '<p>This is a modal window</p><button id="close">Close</button>'
+          document.body.appendChild(m)
+        })</script>`
+      const timerHtml = `<!doctype html><meta charset="utf-8"><button id="start">Start</button>
+        <script>setTimeout(() => {
+          const m = document.createElement('div')
+          m.innerHTML = '<p>Timer overlay</p><button id="dismiss">Dismiss</button>'
+          document.body.appendChild(m)
+        }, 500)</script>`
+      const entry = createServer((req, response) => {
+        if (req.url === '/slow.png') { delayTimer(() => response.end(''), 700); return }
+        if (req.url === '/hang.png') return // never answered: load cannot fire
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        if (req.url === '/timer') { response.end(timerHtml); return }
+        response.end(req.url === '/hung' ? modalHtml.replace('/slow.png', '/hang.png') : modalHtml)
+      })
+      await new Promise((done, reject) => { entry.once('error', reject); entry.listen(0, '127.0.0.1', done) })
+      try {
+        const entryPort = entry.address().port
+        // the late-onload modal must be IN the first digest, not discovered a look later
+        const opened = await post('open', [`http://127.0.0.1:${entryPort}/entry`])
+        assert.equal(opened.ok, true, opened.error)
+        assert.match(opened.text, /Close/, 'onload content missing from the open digest')
+        assert.equal(opened.meta.loading, undefined)
+        // the OTHER measured mechanism (the canonical entry-ad page): a parse-time
+        // setTimeout(500) — no network, no onload involvement — must also land in the
+        // FIRST digest via the open watch window, flagged as latePaint
+        const timed = await post('open', [`http://127.0.0.1:${entryPort}/timer`])
+        assert.equal(timed.ok, true, timed.error)
+        assert.match(timed.text, /Dismiss/, 'timer-delayed content missing from the open digest')
+        assert.equal(timed.meta.latePaint, true, JSON.stringify(timed.meta))
+        // a document that cannot finish inside the bound must SAY it is unfinished
+        const hung = await post('open', [`http://127.0.0.1:${entryPort}/hung`])
+        assert.equal(hung.ok, true, hung.error)
+        assert.equal(hung.meta.loading?.readyState, 'interactive', JSON.stringify(hung.meta))
+        assert.match(hung.text, /page still LOADING/)
+        // leave the session on a page with no hung request
+        await post('open', ['data:text/html,<p>done</p>'])
+      } finally {
+        entry.closeAllConnections?.()
+        await new Promise((done) => entry.close(done))
+      }
+    })
+
+    await t.test('the CLI accepts verify as an alias for look', async () => {
+      const cliUrl = 'data:text/html,' + encodeURIComponent('<!doctype html><button>Alias fixture</button>')
+      const runCli = (args) => new Promise((done) => {
+        const child = spawn(process.execPath, [BROWSE, ...args], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] })
+        let out = '', errOut = ''
+        child.stdout.on('data', (chunk) => { out += chunk })
+        child.stderr.on('data', (chunk) => { errOut += chunk })
+        child.once('exit', (code) => done({ code, out, errOut }))
+      })
+      const opened = await runCli(['open', cliUrl])
+      assert.equal(opened.code, 0, opened.errOut || opened.out)
+      const verified = await runCli(['verify'])
+      assert.equal(verified.code, 0, verified.errOut || verified.out)
+      assert.equal(verified.out.includes('unknown command'), false, verified.out)
+      assert.match(verified.out, /obs #/)
     })
 
     await t.test('invalidates old-policy resolvers and blocks private find probes', async () => {

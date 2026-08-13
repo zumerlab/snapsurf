@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "snapDOM Agent Companion (local)",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Runs the snapDOM semantic oracle in an isolated content-script world and exposes it only to explicitly allowlisted extension clients. LOCAL USE ONLY.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1l4rOG4U6ZnCPVRSjm9G/1LW7GD37QEODKgaexmEKd9me1h/WNxyf/flil8RUHqiw0pPGOzU1wa+Ar03lUcrMZK0LooBj3vEQCPjFCBQSNzjLkUAYhfpEpEbjQCVNT32M+hP2sTjuW0KtSd3bQ/hF1y10qgAdITe0IFel3/WIVcuvZWWD2TjhkaJ3alFjPY3Isi6WuDC1jvxPJ0iTGh3aXkiIE2kk+wUjvJRpuyB8UIFSZE3Ij/+hDEAR1B1FFT1gyO4MjmJNZ/6CF4h+FmGltYa7w3Irwrfd7Ve6KCvOzk2t8qQo0bTTXugmzs+uZX5jkE9LxAcTch/b1h1HkSK5wIDAQAB",
   "permissions": [

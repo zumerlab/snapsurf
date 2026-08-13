@@ -53,7 +53,9 @@ const PAGES = {
   '/page': { status: 200, headers: {}, body: '<!doctype html><html><head><title>Doc contract</title></head><body>' +
     '<h1>Contact</h1><a href="/security">disclosure</a><a href="mailto:jdoe@corp.com">write</a>' +
     '<form><input type="email" placeholder="john@company.com"></form>' +
-    `<p>${'padding '.repeat(30)}tail-token-here</p>` +
+    // long enough that `text` on this node truncates at 600 and must deliver
+    // `totalChars`; the token still sits past the old 80-char find window
+    `<p>${'padding '.repeat(90)}tail-token-here</p>` +
     '<button id="replace-card">Replace Gamma card</button>' +
     '<div id="slot"><h3>Gamma</h3><p>Old offering</p><button>Open Gamma</button></div>' +
     `<script>document.getElementById('replace-card').onclick=()=>{const fresh=document.createElement('div');fresh.id='slot';fresh.innerHTML='<h3>Omega</h3><p>New unrelated offering</p><button>Open Omega</button>';document.getElementById('slot').replaceWith(fresh)}</script>` +
@@ -66,8 +68,17 @@ const PAGES = {
   '/cf': { status: 403, headers: { 'cf-mitigated': 'challenge' },
     body: '<!doctype html><html><head><title>Just a moment...</title></head><body><script src="/cdn-cgi/challenge-platform/x"></script><h1>DataDome CAPTCHA</h1><p>datadome verification</p></body></html>' },
   '/other': { status: 200, headers: {}, body: '<!doctype html><html><body><h1>Second page</h1><p>changed content</p></body></html>' },
+  // HN-style split card: the title row carries only actionables; the metadata lives in
+  // the SIBLING row — `parent` must deliver `siblingRowText`.
+  '/split': { status: 200, headers: {}, body: '<!doctype html><html><body><table><tbody>' +
+    '<tr><td>1.</td><td><a href="/story">Split card story headline</a> <a href="/from">(site.example)</a></td></tr>' +
+    '<tr><td></td><td>99 points by writer | <a href="/c">12 comments</a></td></tr>' +
+    '</tbody></table></body></html>' },
+  // a subresource that never answers: `open` must return with `loading` declared
+  '/hung': { status: 200, headers: {}, body: '<!doctype html><html><body><h1>Hung page</h1><img src="/hang.png" width="1" height="1"></body></html>' },
 }
 const srv = createServer((req, res) => {
+  if (req.url === '/hang.png') return // never answered — keeps `loading` deliverable
   const p = PAGES[req.url.split('?')[0]]
   if (!p) { res.writeHead(404); res.end('no'); return }
   res.writeHead(p.status, { 'content-type': 'text/html', ...p.headers })
@@ -79,7 +90,8 @@ if (!address || typeof address === 'string') throw new Error('fixture did not bi
 const PORT = address.port
 const U = (p) => `http://127.0.0.1:${PORT}${p}`
 
-const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore' })
+// a short load-wait bound keeps the `/hung` scenario at ~1s instead of the 5s default
+const daemon = spawn(process.execPath, [BROWSE, 'serve'], { stdio: 'ignore', env: { ...process.env, SNAPDOM_LOAD_WAIT_MS: '800' } })
 const cmd = (c, args = [], sessionId) => daemonFetch({
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ cmd: c, args, envelope: true, sessionId }),
@@ -96,7 +108,10 @@ const run = async (label, c, args, sid) => { const r = await cmd(c, args, sid); 
 
 await run('open', 'open', [U('/page')])
 await run('find', 'find', ['disclosure'])
-await run('find-deep', 'find', ['tail-token-here'])       // past the old 80-char window
+const deep = await run('find-deep', 'find', ['tail-token-here']) // past the old 80-char window
+// a >600-char node: `text` must deliver truncated + `totalChars`, not a silent cut
+const longId = deep.meta?.matches?.[0]?.id
+if (longId) await run('text-long', 'text', [longId])
 const idr = await run('find-id', 'find', ['Contact'])
 const nid = idr.meta?.matches?.[0]?.id
 if (nid) await run('text', 'text', [nid])
@@ -122,6 +137,13 @@ await run('look-changed', 'open', [U('/other')])           // a second page → 
 await run('look', 'look', [])
 await run('challenge', 'open', [U('/cf')])                 // blocked / challenge / vendors
 await run('failure', 'open', ['https://nope-' + Date.now() + '.invalid/'])
+// split card: `parent` on the title must deliver `siblingRowText`
+await run('split-open', 'open', [U('/split')])
+const splitFind = await run('split-find', 'find', ['Split card story headline'])
+const splitId = splitFind.meta?.matches?.[0]?.id
+if (splitId) await run('split-parent', 'parent', [splitId])
+// a document whose load cannot finish: `open` must deliver `loading`, never silence
+await run('loading', 'open', [U('/hung')])
 const sid = (await run('session', 'session', ['open'])).meta?.sessionId
 if (sid) { await run('session-open', 'open', [U('/page')], sid); await run('session-close', 'session', ['close', sid]) }
 await run('redact', 'open', [U('/page'), '--redact-json', JSON.stringify(['security'])])

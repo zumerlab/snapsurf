@@ -160,7 +160,12 @@ if (CMD !== 'serve') {
     if (ARGS[i] === '--session') { sessionId = ARGS[++i]; continue }
     cliArgs.push(ARGS[i])
   }
-  const cmds = CMD === 'run' ? cliArgs.map((s) => s.trim().split(/\s+/)) : [[CMD, ...cliArgs]]
+  // `verify` is what the MCP surface calls the CLI's `look` (r5: the split vocabulary
+  // cost a real call — `unknown command: verify`). One concept, one verb everywhere;
+  // the alias is normalised HERE so every daemon-side contract keeps seeing `look`.
+  const VERB_ALIASES = { verify: 'look' }
+  const cmds = (CMD === 'run' ? cliArgs.map((s) => s.trim().split(/\s+/)) : [[CMD, ...cliArgs]])
+    .map(([c, ...rest]) => [VERB_ALIASES[c] || c, ...rest])
   try {
     const authToken = await clientAuthToken()
     let stopPid = null
@@ -375,10 +380,27 @@ const ruleWarnings = (rules) => (rules || [])
   .filter(Boolean)
 
 const MUTATING = new Set(['click', 'type', 'enter'])
+// How long `open` waits for window.onload after domcontentloaded (r5–7 P1). Bounded so
+// a page with a hung resource cannot stall the open; when the bound expires the digest
+// says so instead of silently describing a half-painted page. 0 disables the wait.
+const LOAD_WAIT_MS = Math.max(0, Number(process.env.SNAPDOM_LOAD_WAIT_MS ?? 5000) || 0)
+// The other half of P1, measured on the canonical entry-ad page: the modal is not an
+// onload paint at all — an inline script arms setTimeout(showAd, 500) at PARSE time.
+// No network, no mutation until it fires, so a quiet-DOM settle honestly exits early
+// and the first digest misses the exact class of element that blocks clicks. `open`
+// therefore keeps watching the fresh document until this many ms after the navigation
+// response; a mutation inside the window re-settles (bounded) before the single walk.
+// Static pages pay idle time once, on open only — `look` keeps its fast settle.
+const OPEN_WATCH_MS = Math.max(0, Number(process.env.SNAPDOM_OPEN_WATCH_MS ?? 1200) || 0)
 const CHECKPOINT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const isCheckpointName = (name) => typeof name === 'string' && name !== '.' && name !== '..' && CHECKPOINT_NAME.test(name)
 
-const browser = await chromium.launch({ headless: !ARGS.includes('--headed') })
+// r5–7 P3 (owner decision, 2026-08-13): channel 'chromium' runs the FULL Chromium
+// binary in --headless=new instead of the stripped chrome-headless-shell — the shell
+// is itself a bot signal and lost 3/5 sites where a real browser lost 0. No disguise
+// beyond that: sites the full binary still cannot pass belong to the companion arm
+// (the user's real Chrome), not to a fingerprint arms race here.
+const browser = await chromium.launch({ headless: !ARGS.includes('--headed'), channel: 'chromium' })
 let terminating = false
 async function terminateDaemon(code = 0) {
   if (terminating) return
@@ -391,9 +413,14 @@ async function terminateDaemon(code = 0) {
 }
 process.once('SIGINT', () => { terminateDaemon(130) })
 process.once('SIGTERM', () => { terminateDaemon(0) })
+// r5–7 P3: the UA must describe the binary actually running. The old hand-written
+// "Chrome/140.0" over whatever engine Playwright shipped was the instrument lying
+// about itself — and a version/engine mismatch is precisely a bot signal. Reduced-UA
+// form (frozen platform, real major, zeroed minors), derived, never drifting.
+const CHROME_MAJOR = (browser.version().match(/^(\d+)/) || [])[1] || '140'
 const CONTEXT_OPTIONS = {
   viewport: { width: 1280, height: 800 },
-  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36',
+  userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROME_MAJOR}.0.0.0 Safari/537.36`,
   bypassCSP: true,
   locale: 'es-AR',
 }
@@ -633,6 +660,7 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
   // scope never invalidates an id the immediately preceding full map just published.
   // Newest scoped views win only in the astronomically unlikely event of an id clash.
   let root = document.body
+  let siblingText, siblingTag
   if (scopeId) {
     const resolved = window.__agentResolveUi(scopeId, { requireBox: true })
     if (!resolved) return { badScope: true }
@@ -652,6 +680,33 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
     while (cur && cur !== document.body && depth < 10 && actionables(cur) < 2) { cur = cur.parentElement; depth++ }
     if (!cur || cur === document.body) return { noParent: true }
     root = cur
+    // r5–7 P5: a table splits one logical card across sibling rows (HN: the title <tr>
+    // and the points/comments <tr> next to it), so the resolved card carries NO prose
+    // beyond its actionables' own names and the metadata the caller wanted sits beside
+    // it. The card is NOT inflated — its map and ids stay exactly the walk of `root` —
+    // the sibling row travels as TEXT, declared as such. The bare-card gate keeps
+    // ordinary layouts (prose inside the card) untouched.
+    try {
+      let leftover = (cur.innerText || '').replace(/\s+/g, ' ').trim()
+      for (const a of cur.querySelectorAll('a[href],button,[role="button"]')) {
+        const t = (a.innerText || '').replace(/\s+/g, ' ').trim()
+        if (t) leftover = leftover.replace(t, '')
+      }
+      if (leftover.replace(/[\s\d.,·|•–—-]+/g, '').length < 8) {
+        // the card may be a <td> whose row ends with it — look right, then up (bounded)
+        let holder = cur, sib = null
+        for (let up = 0; holder && holder !== document.body && up < 3 && !sib; up++) {
+          sib = holder.nextElementSibling
+          if (sib && !(sib.innerText || '').trim()) sib = null
+          if (!sib) holder = holder.parentElement
+        }
+        const sibText = sib && (sib.innerText || '').replace(/\s+/g, ' ').trim()
+        if (sibText) {
+          siblingText = (window.__agentRedact ? window.__agentRedact(sibText) : sibText).slice(0, 280)
+          siblingTag = sib.tagName.toLowerCase()
+        }
+      }
+    } catch { /* the card itself is the answer; the sibling peek must never break it */ }
   }
   // slice-stats-only sink (no per-node profiler overhead): makes the ≤~90ms
   // main-thread-block property AUDITABLE from the consumer surface on every walk
@@ -893,6 +948,9 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
     identityIndex: (!scoped && window.__agentCarriedIndex)
       ? window.__agentCarriedIndex(ui.__view || ui.__snapshot)
       : undefined,
+    // parentOfId only (r5–7 P5): the text of the sibling row when the card itself is
+    // bare — declared metadata beside the card, never merged into its ids.
+    ...(siblingText ? { siblingText, siblingTag } : {}),
     walkDetail: { slices: window.__SD_SLICES.slices || 0, maxSliceMs: Math.round(window.__SD_SLICES.maxSliceMs || 0) },
   }
 }
@@ -1485,11 +1543,16 @@ async function detectChallenge(S, resp) {
   // The header is the strongest evidence, but it must not hide a second vendor in the
   // markup — that is exactly how the wrong vendor got reported. Note it and keep looking.
   const headerVendor = headers['cf-mitigated'] ? 'cloudflare' : null
-  const probe = await inPage(S, () => ({
-    title: (document.title || '').slice(0, 120),
-    body: (document.body ? document.body.innerHTML : '').slice(0, 4000),
-    text: (document.body ? document.body.innerText || '' : '').replace(/\s+/g, ' ').trim().length,
-  })).catch(() => null)
+  const probe = await inPage(S, () => {
+    const text = (document.body ? document.body.innerText || '' : '').replace(/\s+/g, ' ').trim()
+    return {
+      title: (document.title || '').slice(0, 120),
+      body: (document.body ? document.body.innerHTML : '').slice(0, 4000),
+      text: text.length,
+      // what a HUMAN is being shown, for the walls that hide from markup markers
+      sample: text.slice(0, 2000),
+    }
+  }).catch(() => null)
   if (!probe) {
     return headerVendor
       ? { blocked: true, vendor: headerVendor, reason: 'challenge', status, signal: 'cf-mitigated header' }
@@ -1524,6 +1587,18 @@ async function detectChallenge(S, resp) {
       blocked: true, vendor: primary.vendor, reason: 'challenge', status, signal: primary.signal,
       ...(hits.length > 1 ? { vendors: hits.map((h) => h.vendor) } : {}),
     }
+  }
+  // r5–7 P2: a press-and-hold wall can arrive as HTTP 200 under the page's NORMAL title
+  // (Sweetwater), with none of the vendor markers visible in the rendered document —
+  // the prompt itself and a challenge reference id are the only evidence. To the agent
+  // the old result read as "no results", which is the exact confusion this detector
+  // exists to prevent. Like `recaptcha` above, name the widget actually shown rather
+  // than guess the WAF behind it. The thin-body gate keeps an ordinary page that merely
+  // TALKS about press-and-hold walls from being mislabelled.
+  const pressHold = /press\s*&?\s*hold|mantenga\s+pulsado|mant[ée]n\s+presionado|hold\s+to\s+confirm/i.test(probe.sample)
+  const challengeRef = /(ID de referencia|reference ID)\s*[:\s]\s*[0-9a-f-]{16,}/i.test(probe.sample)
+  if ((pressHold || challengeRef) && probe.text < 800) {
+    return { blocked: true, vendor: 'press-hold', reason: 'challenge', status, signal: pressHold ? 'press-and-hold prompt' : 'challenge reference id' }
   }
   // Blocked without a recognised vendor still beats silence.
   if (captchaUrl && probe.text < 800) {
@@ -1583,7 +1658,38 @@ const HANDLERS = {
       return `⛔ ${failure.layer.toUpperCase()} failure: ${failure.code} — the request never reached an HTTP response. structuredContent.failure carries {layer, code, hostUp}; this is NOT a bot block and NOT an empty page.`
     }
     const navMs = Date.now() - tNav
+    // r5–7 P1: goto returns at domcontentloaded, and settle's quiet window expires long
+    // before window.onload on pages with slow resources — so entry ads, cookie banners
+    // and late overlays never entered the digest, with NO signal that anything was
+    // missing. That class of element is exactly the class that blocks clicks: an agent
+    // that cannot see it clicks "through" the overlay and reports success. Wait for
+    // `load`, but BOUNDED — `load` waits for images, and a hung hero image must not eat
+    // the whole 45s goto budget twice over. If load still has not fired when the bound
+    // expires, the one unacceptable outcome is silence: readyState is checked after
+    // settle and an incomplete document is declared in meta AND prose.
+    const tLoad = Date.now()
+    if (LOAD_WAIT_MS > 0) await S.page.waitForLoadState('load', { timeout: LOAD_WAIT_MS }).catch(() => { /* declared below via readyState */ })
+    const loadMs = Date.now() - tLoad
     const s = await settle(S, 3500, 500)
+    // Second-chance window for timer-delayed first paints (see OPEN_WATCH_MS). Only
+    // idle time is spent unless something actually mutates; then one bounded re-settle
+    // lets the late paint finish before the walk below observes.
+    let latePaint = false
+    const watchLeft = (tNav + navMs + OPEN_WATCH_MS) - Date.now()
+    if (watchLeft > 50) {
+      latePaint = await inPage(S, (ms) => new Promise((res) => {
+        let mo = null
+        const done = (hit) => { try { mo && mo.disconnect() } catch { /* gone */ } res(hit) }
+        try {
+          mo = new MutationObserver(() => done(true))
+          mo.observe(document, { subtree: true, childList: true, attributes: true, characterData: true })
+        } catch { return res(false) }
+        setTimeout(() => done(false), ms)
+      }), watchLeft).catch(() => false)
+      if (latePaint) await settle(S, 1500, 400)
+    }
+    const readyState = await inPage(S, () => document.readyState).catch(() => null)
+    const stillLoading = !!readyState && readyState !== 'complete'
     let challenge = await detectChallenge(S, resp)
     let challengeCleared
     if (challenge && waitChallengeMs) {
@@ -1641,13 +1747,18 @@ const HANDLERS = {
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
-    S.meta = { mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(carried ? { carried } : {}), nav: navMs, settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    S.meta = { mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(stillLoading ? { loading: { readyState, waitedMs: loadMs } } : {}), ...(latePaint ? { latePaint: true } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(carried ? { carried } : {}), nav: navMs, ...(loadMs > 50 ? { loadWait: loadMs } : {}), settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
       ? `⛔ BLOCKED by bot mitigation (${challenge.vendor}, ${challenge.signal}, HTTP ${challenge.status}). This is NOT an empty page — the content was withheld. Fall back to another fetcher, or retry with waitForChallenge.\n`
       : ''
-    return banner + fmtFirst(o, S.page.url(), S.epoch, compact, S) + fmtCarried(carried)
+    // Same rule for a document that has not finished loading: the digest below is a
+    // truthful walk of an UNFINISHED page, and only saying so makes it truthful.
+    const loadingBanner = stillLoading
+      ? `⚠ page still LOADING (readyState "${readyState}" after waiting ${loadMs}ms) — content that appears at window.onload (modals, cookie banners, entry ads) may be MISSING from this digest; run look once it settles before trusting completeness\n`
+      : ''
+    return banner + loadingBanner + fmtFirst(o, S.page.url(), S.epoch, compact, S) + fmtCarried(carried)
   },
   async look([id], S) {
     if (id) {
@@ -1706,8 +1817,13 @@ const HANDLERS = {
     // The card travels as FIELDS too: a structuredContent consumer told to read fields
     // saw {parentOf} alone and honestly concluded the card was missing (Codex parity
     // run) while the prose had it all along.
-    S.meta = { parentOf: id, mapTotal: o.mapTotal, map: o.map }
-    return `CARD around ${id} (global baseline untouched)\n${fmtFirst(o, S.page.url(), S.epoch, undefined, S)}`
+    S.meta = { parentOf: id, mapTotal: o.mapTotal, map: o.map, ...(o.siblingText ? { siblingRowText: o.siblingText, siblingRowTag: o.siblingTag } : {}) }
+    // The sibling row rides along in prose too, fenced (it is page content) and named
+    // for what it is: metadata that lives BESIDE this card, not part of its ids.
+    const siblingNote = o.siblingText
+      ? `\nSIBLING ROW <${o.siblingTag}> (metadata beside this card — not in the card's ids; target its links via find):\n${fence(o.siblingText)}`
+      : ''
+    return `CARD around ${id} (global baseline untouched)\n${fmtFirst(o, S.page.url(), S.epoch, undefined, S)}${siblingNote}`
   },
   async outline(_args, S) {
     // The FULL trimmed outline of the current observation, on demand — the escalation
@@ -1810,21 +1926,28 @@ const HANDLERS = {
       if (!resolved) return null
       const el = resolved.el
       const full = window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim())
-      if (full) return { text: full.slice(0, 600), truncated: full.length > 600, source: 'inner-text' }
+      if (full) return { text: full.slice(0, 600), truncated: full.length > 600, totalChars: full.length, source: 'inner-text' }
       // No visible text — common on aria-labelled composite rows (Google Flights packs
       // the entire fare into the label; parity round 3: both models got "(no text)"
       // from a node whose name carried everything). Fall back to the accessible name,
       // DECLARED as such: a label is authored metadata, not rendered prose.
       const name = resolved.node && (resolved.node.name || '')
-      if (name) return { text: String(name).slice(0, 600), truncated: String(name).length > 600, source: 'accessible-name' }
+      if (name) return { text: String(name).slice(0, 600), truncated: String(name).length > 600, totalChars: String(name).length, source: 'accessible-name' }
       return { text: '', truncated: false, source: 'none' }
     }, id)
     const t = result && result.text
     // same reason as outline: the text is a field, not only prose
-    S.meta = { resolved: { id }, text: t ?? undefined, truncated: result?.truncated || undefined, textSource: result?.source }
+    S.meta = { resolved: { id }, text: t ?? undefined, truncated: result?.truncated || undefined, ...(result?.truncated ? { totalChars: result.totalChars } : {}), textSource: result?.source }
     if (result === null) throw new Error(`unknown or detached id: ${id} — re-observe and retry`)
     if (!t) return '(no text)'
-    return result.source === 'accessible-name' ? `${fence(t)}\n(accessible name — the node has no visible text)` : fence(t)
+    // r5–7 P4: structuredContent always carried `truncated`, but the CLI prints only the
+    // prose — a cut value read as a complete value (HN's listing died mid-item #35 and
+    // nothing said so). The marker lives OUTSIDE the fence: it is the harness speaking,
+    // not the page.
+    const cut = result.truncated
+      ? `\n⚠ truncated (600 of ${result.totalChars} chars) — the value continues; narrow the target to a child id, or read the rest via find/outline`
+      : ''
+    return (result.source === 'accessible-name' ? `${fence(t)}\n(accessible name — the node has no visible text)` : fence(t)) + cut
   },
   // Runtime privacy rules (session-scoped, same semantics as serve --redact). The
   // terms never reach the JSONL log — it records only the rule COUNT.

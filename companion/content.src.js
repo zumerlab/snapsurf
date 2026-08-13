@@ -361,6 +361,11 @@ async function runObserve(opts = {}) {
     // whose screenshots are scaled (dpr) compute scale = screenshotWidth / viewport.width.
     viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
     walkMs,
+    // r5–7 P1 parity with the daemon: anything but 'complete' means window.onload has
+    // not fired yet — entry ads, cookie banners and late overlays may not EXIST in
+    // this digest, and only saying so makes the digest truthful. Additive field, same
+    // contract: consumers that ignore it lose nothing they had.
+    readyState: document.readyState,
     // Public attestation only. Detailed hit counts stay inside the trusted reader.
     privacy: publicPrivacy(ui),
     // chunked walk: the tab stays responsive; torn counts DOM mutations that landed

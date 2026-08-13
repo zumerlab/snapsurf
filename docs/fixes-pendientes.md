@@ -1,181 +1,126 @@
-# Fixes pendientes — handoff
+# Fixes de las rondas 5–7 — RESUELTOS (2026-08-13)
 
-Hallazgos de las rondas 5–7 (2026-08-13), verificados. Este documento es
-autocontenido: no hace falta la conversación donde salieron.
+Los seis hallazgos del handoff original están cerrados. Antes de aplicar cada uno se
+lo filtró por un criterio pedido por el dueño: **¿es un agujero en el sentido de la
+herramienta** (el contrato "nunca silencio, nunca dato mentiroso") **o una confusión
+sobre su uso?** — como el reporte retirado de `browser_session_open`, que resultó ser
+un registro MCP viejo en el cliente y no un bug del árbol.
 
-Repo: `snapdom-agent`. Todos los paths son relativos a la raíz.
-Orden: por impacto sobre un agente real, no por esfuerzo.
+Veredicto por ítem: P1, P2 y P4 eran violaciones directas del contrato (silencio).
+P5 era un límite del modelo "card = contenedor" frente a layouts de tabla. P6 era
+confusión de uso *causada por la herramienta* (dos vocabularios para un concepto).
+P3 era mitad y mitad: mentir el UA era el instrumento mintiendo sobre sí mismo
+(se arregló); la evasión de fingerprint no es el sentido de la herramienta (se
+resolvió por diseño con el companion, no por disfraz).
 
----
-
-## P1 — `open` observa antes de `window.onload`: los modales de carga no existen
-
-**Archivo:** `tools/browse.mjs:1578`
-
-```js
-resp = await S.page.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
-```
-
-**Qué pasa.** Todo lo que la página pinta en `window.onload` —entry ads, cookie
-banners, overlays tardíos— **no entra en el digest**, y el agente no recibe ninguna
-señal de que falta algo. Ve una página con 2 actionables y la da por completa.
-
-**Repro exacto:**
-
-```bash
-node tools/browse.mjs serve &
-node tools/browse.mjs open "https://the-internet.herokuapp.com/entry_ad"
-# → 2 actionables, sin modal, sin aviso. `find "Close"` no encuentra nada.
-node -e 'await new Promise(r=>setTimeout(r,2500))'
-node tools/browse.mjs look
-# → CHANGES (15): added "This is a modal window", added "Close", …
-```
-
-**Descartado como causa:** no son las `CONTEXT_OPTIONS` (`tools/browse.mjs:394-399`).
-Con `viewport`, `userAgent`, `bypassCSP` y `locale: 'es-AR'` idénticos, Playwright
-pelado sí muestra el modal. Es el momento de la observación.
-
-**Por qué importa más que otros bugs.** La clase de elemento que aparece en `onload`
-es justo la que **bloquea clicks**. Un agente que no la ve no falla ruidosamente:
-clickea "a través" del overlay y reporta éxito. En la ronda 5 le costó ~9 llamadas
-al brazo de Claude y una sesión entera al de Codex, que reportó *"la primera sesión
-no expuso el modal pese a re-habilitarlo y recargar"*.
-
-**Fix sugerido.** Esperar `load` en vez de `domcontentloaded`, o mantener
-`domcontentloaded` y añadir un settle corto con reobservación. Si se elige no
-esperar, el digest DEBE decir que la página sigue cargando — el modo de falla
-inaceptable es el silencio. Ojo con no romper el timeout de 45s en páginas con
-recursos lentos: `load` espera imágenes.
+Suites: daemon/MCP 36/36 · vitest 121/121 · doc-contract 26/26 · contract-gates 17/17
+· gate companion VERDE (fixture torn reforzado, ver abajo).
 
 ---
 
-## P2 — Wall con HTTP 200 y título normal que el detector no ve
+## P1 — `open` observaba antes de la primera pintura tardía — RESUELTO
 
-**Archivo:** `tools/browse.mjs:1457-1510` (tabla `WALLS` + `detectChallenge`)
+**Corrección al diagnóstico original**, medida contra el sitio del repro: el modal
+de `entry_ad` NO sale en `window.onload` — un script inline arma
+`setTimeout(showAd, 500)` al *parsearse*. Sin red y sin mutación hasta que dispara,
+el settle de DOM-quieto salía honesto y temprano igual. El fix cubre las dos
+mecánicas de la clase "primera pintura tardía que bloquea clicks":
 
-**Qué pasa.** Sweetwater sirve un desafío *press-and-hold* con **HTTP 200** y el
-título normal de la página (`"special 20 harmonica key of C - Sweetwater"`). El
-detector no lo marca: devuelve una observación común, **0 actionables**, sin
-`blocked: true` ni `challenge`. Para el agente eso se lee como "no hay resultados".
+1. Espera de `load` **acotada** tras el goto en `domcontentloaded`
+   (`SNAPDOM_LOAD_WAIT_MS`, default 5000ms; 0 la apaga). Si al final
+   `readyState !== 'complete'`, meta lleva `loading: {readyState, waitedMs}` y la
+   prosa `⚠ page still LOADING…` — nunca silencio sobre un documento incompleto.
+2. Ventana de vigilancia del documento fresco hasta `SNAPDOM_OPEN_WATCH_MS`
+   (default 1200ms) desde la respuesta de navegación: una mutación en la ventana
+   re-settlea acotado antes del único walk, y meta lleva `latePaint: true`.
+   Páginas estáticas pagan solo idle, una vez, en `open` — `look` sigue rápido.
 
-**Evidencia capturada** (`outline` de esa observación):
+Verificado contra el sitio real: el primer digest ahora trae el heading del modal
+y `click here` sale `⊘covered by generic` — la falla de r5 (clickear "a través"
+del overlay y reportar éxito) ya no puede ocurrir en silencio.
 
-```
-div [375,354 530x48] "Mantenga pulsado para confirmarque es una persona (y no un bot)."
-div [375,542 530x28] "ID de referencia e0682d10-9744-11f1-af41-8f088269f1b8"
-```
+Tests: "open waits for window.onload content and declares an unfinished document"
+(img lenta → modal en primer digest; `setTimeout(500)` → `latePaint` + contenido
+en primer digest; img colgada → señal `loading`). doc-contract ejercita `loading`
+con `/hung`.
 
-**Por qué la entrada actual no alcanza.** La regla `perimeterx` (línea 1470) exige
-`title: /access to this page has been denied/i`, y acá el título es legítimo. El
-body tampoco trae `px-captcha`/`perimeterx`/`_pxhd` visibles en el texto renderizado.
+## P2 — Wall press-and-hold con HTTP 200 y título normal — RESUELTO
 
-**Contraste que lo confirma como bug propio:** en la misma tarea, el brazo nativo de
-Codex (Playwright + shell) **sí** lo distinguió y lo reportó como bloqueo:
-`"HTTP 403 y texto en pantalla: Press & Hold to confirm you are a human (and not a
-bot)"`. Otro agente, mismo wall, detección correcta.
+`detectChallenge` ahora sondea el TEXTO renderizado (`sample`): prompt
+press-and-hold (`press & hold` / `mantenga pulsado` / `hold to confirm`) o
+`ID de referencia`/`reference ID` + hex ≥16, combinado con body fino (<800 chars)
+⇒ `blocked: true, vendor: 'press-hold'`. Igual que `recaptcha`: se nombra el
+widget mostrado, no se adivina el WAF. Página que solo *habla* de press-and-hold
+con body sano: no se marca (test negativo incluido).
 
-**Firma propuesta** (cualquiera de las dos, combinadas con `actionables === 0`):
-- texto que matchee `/press\s*&?\s*hold|mantenga pulsado|hold to confirm/i`
-- `/(ID de referencia|reference ID)\s*[:\s]\s*[0-9a-f-]{16,}/i`
+Test: "flags a press-and-hold wall served as HTTP 200 under a normal title",
+con el markup de la evidencia de Sweetwater.
 
-Los tres walls de HTTP 403 de la misma corrida (Guitar Center/akamai,
-Sam Ash/datadome, American Musical/datadome) **sí** se detectaron bien. El agujero es
-sólo el 200-con-título-normal.
+## P3 — Fingerprint headless — RESUELTO por decisión del dueño (2026-08-13)
 
-**Test:** agregar el caso a la suite de walls con un fixture que reproduzca ese
-markup. No hace falta pegarle al sitio real.
+Aplicado al launch del daemon:
+- `channel: 'chromium'`: binario completo en `--headless=new`, no el
+  chrome-headless-shell (que es en sí una señal de bot).
+- UA derivado de `browser.version()` real, forma reduced-UA
+  (`Chrome/<major>.0.0.0`): el hardcode `Chrome/140.0` era el instrumento
+  mintiendo sobre sí mismo.
 
----
+**No** aplicado, a propósito: `channel: 'chrome'` (dependencia del host) y perfil
+persistente (`launchPersistentContext` = un solo context ⇒ rompe el aislamiento
+por sesión). Los walls que el binario completo igual no pasa pertenecen al **brazo
+real**: el companion en el Chrome del usuario (fingerprint y sesiones legítimas,
+sin disfraz) — documentado en `companion/PROMPT-extension.md` §"The real-browser
+arm". La medición r7 ya mostró que ahí estaba el dato correcto (4/4 vs 2/5).
 
-## P3 — Fingerprint headless: el daemon pierde contra un browser común
+## P4 — `text` cortaba en 600 sin decirlo en prosa — RESUELTO
 
-**Archivo:** `tools/browse.mjs:381`
+La prosa agrega `⚠ truncated (600 of N chars)` FUERA del fence (es la voz del
+harness, no contenido de página) y structuredContent suma `totalChars` junto a
+`truncated`. Test: "text declares a 600-char cut in prose, not only in meta";
+doc-contract verifica que `totalChars` se entrega.
 
-```js
-const browser = await chromium.launch({ headless: !ARGS.includes('--headed') })
-```
+## P5 — `parent` no llegaba a la fila hermana — RESUELTO
 
-**Medición (ronda 7, misma tarea, tres brazos):**
+Cuando la card resuelta no tiene prosa más allá de los nombres de sus actionables
+(gate de "card pelada") y existe un hermano con texto (mirando a la derecha y
+hasta 2 niveles arriba — el caso `<td>` final de HN), la observación devuelve
+`siblingText` y el handler lo publica como `siblingRowText` en meta + prosa
+fenced, declarado como metadata AL LADO de la card. La card y sus ids **no** se
+inflan; layouts normales (con prosa propia) no disparan el peek — asserts en ambos
+sentidos en la suite.
 
-| brazo | sitios con dato | bloqueados |
-|---|---|---|
-| Browser pane (browser real) | 4 de 4 | 0 |
-| Codex + Playwright headless | 3 de 6 | 3 |
-| **este daemon** | 2 de 5 | 3 + 1 sin detectar |
+## P6 — El CLI no aceptaba `verify` — RESUELTO
 
-Sweetwater y Guitar Center frenaron al daemon y al Playwright de Codex, y dejaron
-pasar al browser real sin fricción. **El dato correcto estaba detrás del wall**: el
-daemon reportó $74.99 de una variante *Country-tuned*, mientras el browser real
-encontró el producto pedido, `Hohner Special 20 Harmonica - Key of C, $50.00`.
-
-**Fix sugerido** — ninguno requiere resolver captchas:
-- `chromium.launch({ channel: 'chrome' })` (Chrome real en vez de Chromium bundled)
-- headless nuevo (`chrome-headless-shell` NO; el modo `--headless=new`)
-- contexto persistente con perfil, para tener historial de cookies
-- coherencia del UA con la versión real del binario — hoy `CONTEXT_OPTIONS`
-  (`:396`) declara `Chrome/140.0` a mano, y si el binario no es 140 eso es
-  justamente una señal de bot
-
-**DECISIÓN DEL DUEÑO, no aplicar sin consultar:** cambia cómo se lanza el browser
-para todo el producto, no sólo para esta prueba. Puede afectar determinismo de tests,
-consumo de memoria y el contrato de aislamiento entre sesiones.
-
----
-
-## P4 — `text` corta en 600 caracteres y la prosa del CLI no lo dice
-
-**Archivo:** `tools/browse.mjs:1813-1826`
-
-`structuredContent` sí trae `truncated: true`, pero el cliente CLI imprime sólo el
-texto: **un valor cortado se lee como un valor completo.** En la ronda 5 el listado de
-Hacker News se cortó a mitad del item #35 y hubo que recuperarlo con otra búsqueda;
-el brazo de Codex reportó la misma forma del problema en `outline`
-(*"truncó el contenido y omitió los puntos"*).
-
-**Fix:** que la prosa del CLI marque el corte (una línea `⚠ truncado (600 de N)`).
-Barato y elimina una clase entera de dato silenciosamente equivocado.
+Alias `verify` → `look` normalizado en el cliente CLI (vale también dentro de
+`run`-batch). El defecto era de la herramienta —dos vocabularios para un
+concepto— no del usuario. Test: "the CLI accepts verify as an alias for look".
 
 ---
 
-## P5 — `parent` no llega a la fila hermana
+## Companion 0.5.1 — el brazo real
 
-**Archivo:** verbo `parent` en `tools/browse.mjs` (~`:1702`)
+- El reply de OBSERVE ahora incluye `readyState` (paridad con P1: un digest de
+  documento incompleto solo es veraz si lo dice). Campo aditivo, contract 8.
+- `PROMPT-extension.md` documenta el rol: ante `blocked` del daemon, el fallback
+  correcto es observar vía companion en el Chrome real del usuario. Resolver
+  captchas sigue siendo acción del usuario, nunca automatización.
+- Gate: el fixture torn pasó de 6000 a 20000 spans — 6000 quedaba AL BORDE del
+  presupuesto de slice (40ms de trabajo continuo, `makeSlicer`) en una máquina
+  rápida y el chequeo flakeaba según ruido de JIT, no según la propiedad testeada.
+  Medido: 3/12 rojo antes, 0/6 después.
 
-Sube al ancestro con ≥2 actionables. En el `<table>` de Hacker News eso es el `<tr>`
-del título, y los puntos/comentarios viven en el `<tr>` **hermano** — la "card"
-queda incompleta y hay que caer a `text` sobre la tabla entera (que además trunca,
-ver P4).
+## Contratos sincronizados
 
-**Fix posible:** cuando el contenedor resuelto no tiene texto más allá del título,
-considerar el hermano inmediato. Cuidado con no inflar la card en layouts normales.
+`mcp/server.mjs`: `browser_open` promete `loading`, `browser_text` promete
+`totalChars`, `browser_parent` promete `siblingRowText` — y doc-contract fue
+extendido para ENTREGAR las tres promesas (fixtures `/split` y `/hung`, nodo
+>600 chars). **Recordatorio operativo:** tras tocar `mcp/server.mjs` hay que
+reiniciar el cliente MCP, o el registro viejo genera reportes fantasma (fue la
+causa del falso hallazgo de `browser_session_open`).
 
-Prioridad baja: es incomodidad, no dato equivocado.
+## Contexto original de las mediciones
 
----
-
-## P6 — El CLI no acepta `verify`
-
-`verify` es el nombre de la tool MCP; en el CLI el verbo es `look` y `verify`
-devuelve `unknown command: verify`. Costó una llamada en la ronda 5.
-
-**Fix:** alias de `verify` → `look` en el CLI. Una línea.
-
----
-
-## Ya arreglado — no tocar
-
-- **Descripción de `browser_session_open`.** Un reporte previo decía que el texto
-  afirmaba que las sesiones comparten cookies. **Es falso en el árbol actual:**
-  `mcp/server.mjs:347` dice *"Each session owns a private BrowserContext,
-  cookie/storage jar…"*, coherente con `browser.newContext()` por sesión
-  (`tools/browse.mjs:453`). El reporte vino de un registro MCP viejo cargado en el
-  cliente, no del repo. Misma causa por la que `browser_scroll` y `browser_parent`
-  no aparecían como invocables: **hay que reiniciar el cliente MCP tras tocar
-  `mcp/server.mjs`.**
-
-## Contexto de las mediciones
-
-Fixtures y protocolos en el repo: `docs/ronda5-protocolo.md`,
-`docs/ronda5-resultados.md`, `test/fixtures/side-effect-shop.html`.
-Salidas crudas de los brazos de Codex en `scratchpad/r5-*.out`, `r6-*.out`,
-`r7-*.out`.
+Fixtures y protocolos: `docs/ronda5-protocolo.md`, `docs/ronda5-resultados.md`,
+`test/fixtures/side-effect-shop.html`. Salidas crudas de los brazos de Codex en
+`scratchpad/r5-*.out`, `r6-*.out`, `r7-*.out`. El handoff original con el detalle
+de cada hallazgo vive en el historial de git de este archivo (commit a9613e6).

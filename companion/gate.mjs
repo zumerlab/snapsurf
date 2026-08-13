@@ -295,7 +295,12 @@ try {
     const bulk = document.createElement('div')
     bulk.id = 'torn-bulk'
     const fragment = document.createDocumentFragment()
-    for (let i = 0; i < 6000; i++) {
+    // The walk slices only after 40ms of CONTINUOUS work (makeSlicer's budget), and a
+    // walk that fits in one slice can never be torn — no park, no gap for the interval
+    // to land in. 6000 trivial spans sat right AT that boundary on a fast machine and
+    // the check flaked with the answer depending on JIT/alloc noise, not on the
+    // property under test. The count buys margin: several guaranteed slices per walk.
+    for (let i = 0; i < 20000; i++) {
       const span = document.createElement('span')
       span.textContent = `stable-${i}`
       fragment.append(span)
