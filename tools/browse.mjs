@@ -519,12 +519,30 @@ async function newSession(id) {
   return S
 }
 
+// Tombstones for dead sessions: "unknown session" was the wrong diagnosis for an id
+// the TTL reaper collected minutes ago (parity round 3: an agent lost its session while
+// analysing results and got told the id never existed). Bounded, newest kept.
+const deadSessions = new Map()
+const buryDeadSession = (id, reason, idleMs) => {
+  deadSessions.set(id, { reason, idleMs, at: Date.now() })
+  while (deadSessions.size > 24) deadSessions.delete(deadSessions.keys().next().value)
+}
+
 /** Resolve the session for a request. No id → the implicit one, created on demand, so
  *  every existing single-session caller keeps working unchanged. */
 async function resolveSession(sessionId) {
   if (sessionId) {
     const S = sessions.get(sessionId)
-    if (!S) throw new Error(`⛔ unknown session: ${sessionId} (open one with \`session open\`, or omit it to use the default)`)
+    if (!S) {
+      const dead = deadSessions.get(sessionId)
+      if (dead && dead.reason === 'ttl') {
+        throw new Error(`⛔ session ${sessionId} expired after ${Math.round(dead.idleMs / 60000)} min idle (TTL) — its pages are gone; open a fresh one with \`session open\``)
+      }
+      if (dead) {
+        throw new Error(`⛔ session ${sessionId} was closed — open a fresh one with \`session open\``)
+      }
+      throw new Error(`⛔ unknown session: ${sessionId} (open one with \`session open\`, or omit it to use the default)`)
+    }
     S.lastUsed = Date.now()
     return S
   }
@@ -555,14 +573,23 @@ async function closeSession(S) {
 }
 
 // An agent that dies mid-run must not leak a page. Sweep on a slow timer; the default
-// session is exempt so an idle interactive user never loses their tab.
+// session is exempt so an idle interactive user never loses their tab. Every reap is
+// LOGGED and tombstoned — a silent collection read as "unknown session" minutes later.
 setInterval(() => {
   const now = Date.now()
   for (const S of [...sessions.values()]) {
     if (S.id === 's_default') continue
-    if (now - S.lastUsed > SESSION_TTL_MS) closeSession(S).catch(() => {})
+    const idleMs = now - S.lastUsed
+    if (idleMs > SESSION_TTL_MS) {
+      buryDeadSession(S.id, 'ttl', idleMs)
+      appendFile(LOGFILE, JSON.stringify({
+        ts: new Date().toISOString(), session: SESSION, seq: ++seq,
+        cmd: 'session-reaped', sessionId: S.id, idleMs, ttlMs: SESSION_TTL_MS, ok: true,
+      }) + '\n').catch(() => {})
+      closeSession(S).catch(() => {})
+    }
   }
-}, 60_000).unref?.()
+}, Math.min(60_000, SESSION_TTL_MS)).unref?.()
 
 // ── Session log: one JSONL line per command, durable, typed text redacted ────────────
 const SESSION = `${new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace('Z', '').replace('.', '-')}-${process.pid}`
@@ -1754,13 +1781,21 @@ const HANDLERS = {
       if (!resolved) return null
       const el = resolved.el
       const full = window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim())
-      return { text: full.slice(0, 600), truncated: full.length > 600 }
+      if (full) return { text: full.slice(0, 600), truncated: full.length > 600, source: 'inner-text' }
+      // No visible text — common on aria-labelled composite rows (Google Flights packs
+      // the entire fare into the label; parity round 3: both models got "(no text)"
+      // from a node whose name carried everything). Fall back to the accessible name,
+      // DECLARED as such: a label is authored metadata, not rendered prose.
+      const name = resolved.node && (resolved.node.name || '')
+      if (name) return { text: String(name).slice(0, 600), truncated: String(name).length > 600, source: 'accessible-name' }
+      return { text: '', truncated: false, source: 'none' }
     }, id)
     const t = result && result.text
     // same reason as outline: the text is a field, not only prose
-    S.meta = { resolved: { id }, text: t ?? undefined, truncated: result?.truncated || undefined }
+    S.meta = { resolved: { id }, text: t ?? undefined, truncated: result?.truncated || undefined, textSource: result?.source }
     if (result === null) throw new Error(`unknown or detached id: ${id} — re-observe and retry`)
-    return t ? fence(t) : '(no text)'
+    if (!t) return '(no text)'
+    return result.source === 'accessible-name' ? `${fence(t)}\n(accessible name — the node has no visible text)` : fence(t)
   },
   // Runtime privacy rules (session-scoped, same semantics as serve --redact). The
   // terms never reach the JSONL log — it records only the rule COUNT.
@@ -2339,6 +2374,7 @@ const HANDLERS = {
       const target = arg ? sessions.get(arg) : null
       if (!target) throw new Error(`⛔ unknown session: ${arg} — see session list`)
       if (target.id === 's_default') throw new Error('⛔ the default session cannot be closed')
+      buryDeadSession(target.id, 'closed', Date.now() - target.lastUsed)
       await closeSession(target)
       S.meta = { closed: target.id }
       return `session ${target.id} closed`

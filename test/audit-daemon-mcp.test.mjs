@@ -982,6 +982,39 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
       }
     })
 
+    await t.test('text falls back to the accessible name, declared as such', async () => {
+      // Parity round 3: Google Flights rows carry the whole fare in aria-label and no
+      // visible text — both models got "(no text)" from a node whose name had it all.
+      const html = '<!doctype html><a aria-label="Desde 975 dólares. Vuelo sin escalas de Plus Ultra" href="#fare"><svg width="40" height="12"></svg></a><p>Visible paragraph</p>'
+      const opened = await post('open', [`data:text/html;charset=utf-8,${encodeURIComponent(html)}`])
+      assert.equal(opened.ok, true, opened.error)
+      const fare = await post('find', ['975'])
+      const match = fare.meta.matches?.find((entry) => entry.role === 'link')
+      assert.ok(match, JSON.stringify(fare.meta))
+      const read = await post('text', [match.id])
+      assert.equal(read.ok, true, read.error)
+      assert.match(read.meta.text, /975 dólares/)
+      assert.equal(read.meta.textSource, 'accessible-name')
+      assert.match(read.text, /accessible name — the node has no visible text/)
+      // Visible text keeps winning and says so.
+      const para = await post('find', ['Visible paragraph'])
+      const readPara = await post('text', [para.meta.matches[0].id])
+      assert.equal(readPara.meta.textSource, 'inner-text')
+    })
+
+    await t.test('a dead session id gets a diagnosis, not "unknown"', async () => {
+      const opened = await post('session', ['open'])
+      const sid = opened.meta.sessionId
+      const closed = await post('session', ['close', sid])
+      assert.equal(closed.ok, true, closed.error)
+      const late = await post('open', ['data:text/html,late'], sid)
+      assert.equal(late.ok, false)
+      assert.match(String(late.error), /was closed — open a fresh one/)
+      // A never-existing id keeps the original honest answer.
+      const ghost = await post('open', ['data:text/html,ghost'], 's_ghost')
+      assert.match(String(ghost.error), /unknown session/)
+    })
+
     await t.test('reports a status-200 reCAPTCHA wall as blocked, never as a thin page', async () => {
       // Field-found by two models in one parity run: MercadoLibre's /captcha/wall
       // serves HTTP 200 and no legacy marker matched, so blocked:true never reached
