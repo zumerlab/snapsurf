@@ -1,0 +1,321 @@
+Reading additional input from stdin...
+OpenAI Codex v0.147.0
+--------
+workdir: /Users/martin/GitHub/zumerlab/snapdom-agent
+model: gpt-5.6-sol
+provider: openai
+approval: on-request
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: low
+reasoning summaries: none
+session id: 019ffc3f-b62c-7383-9a7b-725a969a6065
+--------
+user
+Sos un brazo de un experimento controlado. Ejecutá las tres tareas de abajo y reportá
+exactamente en el formato pedido. No cambies el orden, no agregues tareas.
+
+STACK: nativo.
+Usá tu tooling propio de navegación (tu browser nativo / computer-use, o shell con
+Playwright — Playwright ya está instalado en /Users/martin/GitHub/zumerlab/snapdom-agent
+/node_modules). Tenés PROHIBIDO usar las tools MCP de snapdom-agent (cualquier
+browser_*) y tenés prohibido llamar a tools/browse.mjs. Este brazo mide qué se puede
+hacer SIN el instrumento.
+
+LAS TRES TAREAS (idénticas para los cuatro brazos de la ronda 5)
+
+T-A · Lazy scroll.
+Abrí https://news.ycombinator.com/news?p=2 (página 2, puestos 31–60). Reportá
+título + puntos + cantidad de comentarios de los items en los puestos #33, #34 y #35.
+Esos tres viven bajo el fold: exigen scroll real, no alcanza con la primera
+observación.
+
+T-B · Negativo fiel.
+Abrí https://www.saucedemo.com y logueate con las credenciales de demo públicas
+impresas en esa misma página (standard_user / secret_sauce). Si el "Sauce Labs
+Backpack" ya está en el carrito, reseteá el estado primero (menú ☰ → Reset App State).
+Agregá SOLO el Sauce Labs Backpack al carrito. Verificá TRES cosas:
+  (1) el botón del Backpack pasó de "Add to cart" a "Remove",
+  (2) el badge del carrito dice 1,
+  (3) NINGÚN otro producto cambió de estado.
+Lo que se mide es (3): cómo PROBÁS que nada más se movió.
+
+T-C · Oclusión + estado.
+Abrí https://the-internet.herokuapp.com/entry_ad (si el modal no aparece, click en
+"click here" para re-habilitarlo y recargá). Con el modal presente: probá que el link
+"click here" NO es clickeable porque está cubierto. Después cerrá el modal por su
+control "Close". Probá que "click here" SÍ es clickeable ahora. Reportá la evidencia
+de ambas verificaciones.
+
+CONTRATO DE SALIDA (no negociable)
+
+Reportá UNA línea JSON por tarea, sin prosa adicional alrededor:
+
+{"task":"T-A","stack":"nativo","answer":"…","evidence":"…","toolCalls":N,"proof":"demostrado|afirmado","frictions":"…"}
+
+- answer: la respuesta pedida por la tarea.
+- evidence: QUÉ te permitió afirmarla (el dato concreto, no "lo vi").
+- toolCalls: cuántas llamadas a herramientas usaste en ESA tarea.
+- proof: "demostrado" SOLO si el instrumento emitió la prueba como DATO
+  (una transición tipada, un negativo fiel verificado, un hecho de oclusión).
+  "afirmado" si lo miraste en pantalla/DOM/HTML y lo declarás vos.
+  Sé honesto en esta columna: es el resultado central del experimento.
+- frictions: qué te trabó o confundió, en una frase (o "" si nada).
+
+Al final, una línea JSON extra:
+{"task":"meta","stack":"nativo","frictions":"lo que te trabó del stack, en una frase"}
+codex
+Voy a usar la skill de Playwright porque este brazo exige navegación nativa; respetaré la prohibición de `snapdom-agent` y contaré las llamadas por tarea.
+exec
+/bin/zsh -lc "sed -n '1,240p' /Users/martin/.codex/skills/playwright/SKILL.md" in /Users/martin/GitHub/zumerlab/snapdom-agent
+ succeeded in 0ms:
+---
+name: "playwright"
+description: "Use when the task requires automating a real browser from the terminal (navigation, form filling, snapshots, screenshots, data extraction, UI-flow debugging) via `playwright-cli` or the bundled wrapper script."
+---
+
+
+# Playwright CLI Skill
+
+Drive a real browser from the terminal using `playwright-cli`. Prefer the bundled wrapper script so the CLI works even when it is not globally installed.
+Treat this skill as CLI-first automation. Do not pivot to `@playwright/test` unless the user explicitly asks for test files.
+
+## Prerequisite check (required)
+
+Before proposing commands, check whether `npx` is available (the wrapper depends on it):
+
+```bash
+command -v npx >/dev/null 2>&1
+```
+
+If it is not available, pause and ask the user to install Node.js/npm (which provides `npx`). Provide these steps verbatim:
+
+```bash
+# Verify Node/npm are installed
+node --version
+npm --version
+
+# If missing, install Node.js/npm, then:
+npm install -g @playwright/cli@latest
+playwright-cli --help
+```
+
+Once `npx` is present, proceed with the wrapper script. A global install of `playwright-cli` is optional.
+
+## Skill path (set once)
+
+```bash
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
+```
+
+User-scoped skills install under `$CODEX_HOME/skills` (default: `~/.codex/skills`).
+
+## Quick start
+
+Use the wrapper script:
+
+```bash
+"$PWCLI" open https://playwright.dev --headed
+"$PWCLI" snapshot
+"$PWCLI" click e15
+"$PWCLI" type "Playwright"
+"$PWCLI" press Enter
+"$PWCLI" screenshot
+```
+
+If the user prefers a global install, this is also valid:
+
+```bash
+npm install -g @playwright/cli@latest
+playwright-cli --help
+```
+
+## Core workflow
+
+1. Open the page.
+2. Snapshot to get stable element refs.
+3. Interact using refs from the latest snapshot.
+4. Re-snapshot after navigation or significant DOM changes.
+5. Capture artifacts (screenshot, pdf, traces) when useful.
+
+Minimal loop:
+
+```bash
+"$PWCLI" open https://example.com
+"$PWCLI" snapshot
+"$PWCLI" click e3
+"$PWCLI" snapshot
+```
+
+## When to snapshot again
+
+Snapshot again after:
+
+- navigation
+- clicking elements that change the UI substantially
+- opening/closing modals or menus
+- tab switches
+
+Refs can go stale. When a command fails due to a missing ref, snapshot again.
+
+## Recommended patterns
+
+### Form fill and submit
+
+```bash
+"$PWCLI" open https://example.com/form
+"$PWCLI" snapshot
+"$PWCLI" fill e1 "user@example.com"
+"$PWCLI" fill e2 "password123"
+"$PWCLI" click e3
+"$PWCLI" snapshot
+```
+
+### Debug a UI flow with traces
+
+```bash
+"$PWCLI" open https://example.com --headed
+"$PWCLI" tracing-start
+# ...interactions...
+"$PWCLI" tracing-stop
+```
+
+### Multi-tab work
+
+```bash
+"$PWCLI" tab-new https://example.com
+"$PWCLI" tab-list
+"$PWCLI" tab-select 0
+"$PWCLI" snapshot
+```
+
+## Wrapper script
+
+The wrapper script uses `npx --package @playwright/cli playwright-cli` so the CLI can run without a global install:
+
+```bash
+"$PWCLI" --help
+```
+
+Prefer the wrapper unless the repository already standardizes on a global install.
+
+## References
+
+Open only what you need:
+
+- CLI command reference: `references/cli.md`
+- Practical workflows and troubleshooting: `references/workflows.md`
+
+## Guardrails
+
+- Always snapshot before referencing element ids like `e12`.
+- Re-snapshot when refs seem stale.
+- Prefer explicit commands over `eval` and `run-code` unless needed.
+- When you do not have a fresh snapshot, use placeholder refs like `eX` and say why; do not bypass refs with `run-code`.
+- Use `--headed` when a visual check will help.
+- When capturing artifacts in this repo, use `output/playwright/` and avoid introducing new top-level artifact folders.
+- Default to CLI commands and workflows, not Playwright test specs.
+
+exec
+/bin/zsh -lc 'command -v npx' in /Users/martin/GitHub/zumerlab/snapdom-agent
+ succeeded in 0ms:
+/opt/homebrew/bin/npx
+
+exec
+/bin/zsh -lc "node --input-type=module -e 'import { chromium } from \"playwright\"; const b=await chromium.launch({headless:true}); const p=await b.newPage({viewport:{width:1280,height:720}}); await p.goto(\"https://news.ycombinator.com/news?p=2\",{waitUntil:\"domcontentloaded\"}); const rows=p.locator(\"tr.athing\"); const out=[]; for (const rank of [33,34,35]) { const row=rows.filter({has:p.locator(\"span.rank\",{hasText:"'`${rank}.`})}); const box=await row.boundingBox(); await row.scrollIntoViewIfNeeded(); const box2=await row.boundingBox(); const id=await row.getAttribute("id"); const title=(await row.locator("span.titleline > a").first().innerText()).trim(); const sub=p.locator(`#score_${id}`).locator("xpath=ancestor::td"); const score=await p.locator(`#score_${id}`).innerText(); const links=await sub.locator("a").allInnerTexts(); const comment=links.find(x=>/comment/.test(x)) ?? "0 comments"; out.push({rank,title,points:score,comments:comment,beforeY:box?.y,afterY:box2?.y,viewportHeight:720}); } console.log(JSON.stringify(out)); await b.close();'"'" in /Users/martin/GitHub/zumerlab/snapdom-agent
+ succeeded in 765ms:
+[{"rank":33,"title":"Principia Mathematica is modern and insightful","points":"258 points","comments":"60 comments","beforeY":112,"afterY":112,"viewportHeight":720},{"rank":34,"title":"GoAccess – open-source real-time log analyzer and interactive viewer","points":"5 points","comments":"60 comments","beforeY":147,"afterY":147,"viewportHeight":720},{"rank":35,"title":"Show HN: At 16K features, flat autoencoders break. Curved space doesn't","points":"3 points","comments":"60 comments","beforeY":182,"afterY":182,"viewportHeight":720}]
+
+exec
+/bin/zsh -lc "node --input-type=module -e 'import { chromium } from \"playwright\"; const b=await chromium.launch({headless:true}); const p=await b.newPage({viewport:{width:1280,height:100}}); await p.goto(\"https://news.ycombinator.com/news?p=2\",{waitUntil:\"domcontentloaded\"}); const rows=p.locator(\"tr.athing\"); const out=[]; for (const rank of [33,34,35]) { const row=rows.nth(rank-31); const before=await row.boundingBox(); await row.scrollIntoViewIfNeeded(); await p.waitForTimeout(50); const after=await row.boundingBox(); const title=(await row.locator(\"span.titleline > a\").first().innerText()).trim(); const sub=row.locator(\"xpath=following-sibling::tr[1]\"); const score=(await sub.locator(\"span.score\").innerText()).trim(); const texts=await sub.locator(\"a\").allInnerTexts(); const comments=texts.find(x=>/comment/.test(x)) ?? \"0 comments\"; out.push({rank,title,points:score,comments,beforeY:before?.y,afterY:after?.y,scrollY:await p.evaluate(()=>scrollY),viewportHeight:100}); } console.log(JSON.stringify(out)); await b.close();'" in /Users/martin/GitHub/zumerlab/snapdom-agent
+ succeeded in 771ms:
+[{"rank":33,"title":"Principia Mathematica is modern and insightful","points":"258 points","comments":"136 comments","beforeY":112,"afterY":40,"scrollY":72,"viewportHeight":100},{"rank":34,"title":"Show HN: At 16K features, flat autoencoders break. Curved space doesn't","points":"3 points","comments":"0 comments","beforeY":75,"afterY":75,"scrollY":72,"viewportHeight":100},{"rank":35,"title":"OpenCV AI Competition 2026","points":"3 points","comments":"0 comments","beforeY":110,"afterY":40,"scrollY":142,"viewportHeight":100}]
+
+exec
+/bin/zsh -lc "node --input-type=module -e 'import { chromium } from \"playwright\"; const b=await chromium.launch({headless:true}); const p=await b.newPage(); await p.goto(\"https://www.saucedemo.com\",{waitUntil:\"domcontentloaded\"}); await p.getByPlaceholder(\"Username\").fill(\"standard_user\"); await p.getByPlaceholder(\"Password\").fill(\"secret_sauce\"); await p.getByRole(\"button\",{name:\"Login\"}).click(); await p.waitForURL(/inventory/); const card=p.locator(\".inventory_item\").filter({hasText:\"Sauce Labs Backpack\"}); let reset=false; if ((await card.getByRole(\"button\").innerText()).trim()===\"Remove\") { await p.getByRole(\"button\",{name:\"Open Menu\"}).click(); await p.getByText(\"Reset App State\",{exact:true}).click(); reset=true; } const snapshot=async()=>Object.fromEntries(await p.locator(\".inventory_item\").evaluateAll(items=>items.map(i=>[i.querySelector(\".inventory_item_name\").textContent.trim(),i.querySelector(\"button\").textContent.trim()]))); const before=await snapshot(); await card.getByRole(\"button\",{name:\"Add to cart\"}).click(); const after=await snapshot(); const badge=(await p.locator(\".shopping_cart_badge\").innerText()).trim(); const othersChanged=Object.keys(before).filter(k=>k"'!=="Sauce Labs Backpack"&&before[k]!==after[k]); console.log(JSON.stringify({reset,beforeBackpack:before["Sauce Labs Backpack"],afterBackpack:after["Sauce Labs Backpack"],badge,othersChanged,beforeOthers:Object.fromEntries(Object.entries(before).filter(([k])=>k!=="Sauce Labs Backpack")),afterOthers:Object.fromEntries(Object.entries(after).filter(([k])=>k!=="Sauce Labs Backpack"))})); await b.close();'"'" in /Users/martin/GitHub/zumerlab/snapdom-agent
+ succeeded in 426ms:
+{"reset":false,"beforeBackpack":"Add to cart","afterBackpack":"Remove","badge":"1","othersChanged":[],"beforeOthers":{"Sauce Labs Bike Light":"Add to cart","Sauce Labs Bolt T-Shirt":"Add to cart","Sauce Labs Fleece Jacket":"Add to cart","Sauce Labs Onesie":"Add to cart","Test.allTheThings() T-Shirt (Red)":"Add to cart"},"afterOthers":{"Sauce Labs Bike Light":"Add to cart","Sauce Labs Bolt T-Shirt":"Add to cart","Sauce Labs Fleece Jacket":"Add to cart","Sauce Labs Onesie":"Add to cart","Test.allTheThings() T-Shirt (Red)":"Add to cart"}}
+
+exec
+/bin/zsh -lc "node --input-type=module -e 'import { chromium } from \"playwright\"; const b=await chromium.launch({headless:true}); const p=await b.newPage(); await p.goto(\"https://the-internet.herokuapp.com/entry_ad\",{waitUntil:\"domcontentloaded\"}); const modal=p.locator(\".modal\"); if ("'!(await modal.isVisible())) { await p.getByText("click here",{exact:true}).click(); await p.reload({waitUntil:"domcontentloaded"}); } const link=p.getByText("click here",{exact:true}); const box=await link.boundingBox(); const topBefore=await p.evaluate(({x,y})=>{const e=document.elementFromPoint(x,y); return {tag:e?.tagName,text:e?.textContent?.trim().slice(0,80),class:e?.className}}, {x:box.x+box.width/2,y:box.y+box.height/2}); let coveredTrial; try { await link.click({trial:true,timeout:1000}); coveredTrial={succeeded:true}; } catch(e) { coveredTrial={succeeded:false,error:String(e.message).split("'"\\n\").slice(0,5).join(\" | \")}; } await p.getByText(\"Close\",{exact:true}).click(); await modal.waitFor({state:\"hidden\"}); const topAfter=await p.evaluate(({x,y})=>{const e=document.elementFromPoint(x,y); return {tag:e?.tagName,text:e?.textContent?.trim().slice(0,80),class:e?.className}}, {x:box.x+box.width/2,y:box.y+box.height/2}); let uncoveredTrial; try { await link.click({trial:true,timeout:1000}); uncoveredTrial={succeeded:true}; } catch(e) { uncoveredTrial={succeeded:false,error:String(e.message).split(\"\\n\")[0]}; } console.log(JSON.stringify({modalInitiallyVisible:true,topBefore,coveredTrial,modalVisibleAfterClose:await modal.isVisible(),topAfter,uncoveredTrial})); await b.close();'" in /Users/martin/GitHub/zumerlab/snapdom-agent
+ exited 1 in 30601ms:
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByText('Close', { exact: true })[22m
+[2m    - locator resolved to <p>Close</p>[22m
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not visible[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not visible[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    58 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is not visible[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+
+    at /Users/martin/GitHub/zumerlab/snapdom-agent/[eval1]:1:924 {
+  name: 'TimeoutError'
+}
+
+Node.js v25.8.1
+
+exec
+/bin/zsh -lc "node --input-type=module -e 'import { chromium } from \"playwright\"; const b=await chromium.launch({headless:true}); const p=await b.newPage(); await p.goto(\"https://the-internet.herokuapp.com/entry_ad\",{waitUntil:\"domcontentloaded\",timeout:15000}); const modal=p.locator(\".modal\"); if ("'!(await modal.isVisible())) { await p.locator("#content a").click(); await p.reload({waitUntil:"domcontentloaded",timeout:15000}); } const link=p.locator("#content a"); const box=await link.boundingBox(); const point={x:box.x+box.width/2,y:box.y+box.height/2}; const at=async()=>p.evaluate(({x,y})=>{const e=document.elementFromPoint(x,y);return {tag:e?.tagName,text:e?.textContent?.trim().slice(0,60),class:String(e?.className)}},{x:point.x,y:point.y}); const topBefore=await at(); let before; try{await link.click({trial:true,timeout:1500});before={clickable:true}}catch(e){before={clickable:false,error:e.message.includes("intercepts pointer events")?"intercepts pointer events":e.message.split("'"\\n\")[0]}} await p.locator(\".modal-footer p\").click(); await modal.waitFor({state:\"hidden\",timeout:3000}); const topAfter=await at(); let after; try{await link.click({trial:true,timeout:1500});after={clickable:true}}catch(e){after={clickable:false,error:e.message.split(\"\\n\")[0]}} console.log(JSON.stringify({topBefore,before,modalVisibleAfterClose:await modal.isVisible(),topAfter,after})); await b.close();'" in /Users/martin/GitHub/zumerlab/snapdom-agent
+ exited 1 in 30629ms:
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('.modal-footer p')[22m
+[2m    - locator resolved to <p>Close</p>[22m
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not visible[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not visible[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    58 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is not visible[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+
+    at /Users/martin/GitHub/zumerlab/snapdom-agent/[eval1]:1:1002 {
+  name: 'TimeoutError'
+}
+
+Node.js v25.8.1
+
+exec
+/bin/zsh -lc "node --input-type=module -e 'import { chromium } from \"playwright\"; let b; try { b=await chromium.launch({headless:true}); const p=await b.newPage(); console.log(\"launch\"); const res=await p.goto(\"https://the-internet.herokuapp.com/entry_ad\",{waitUntil:\"commit\",timeout:10000}); console.log(\"goto\",res?.status()); await p.waitForTimeout(1500); console.log(\"modal\",await p.locator(\".modal\").isVisible(),\"links\",await p.locator(\"#content a\").count()); const link=p.locator(\"#content a\").first(); const box=await link.boundingBox(); console.log(\"box\",JSON.stringify(box)); const point={x:box.x+box.width/2,y:box.y+box.height/2}; const topBefore=await p.evaluate(({x,y})=>{const e=document.elementFromPoint(x,y);return {tag:e?.tagName,text:e?.textContent?.trim().slice(0,60),class:String(e?.className)}},{x:point.x,y:point.y}); let before; try{await link.click({trial:true,timeout:1500});before={clickable:true}}catch(e){before={clickable:false,error:e.message.includes(\"intercepts pointer events\")?\"intercepts pointer events\":e.message.split(\"\\n\")[0]}} console.log(\"before\",JSON.stringify({topBefore,before})); await p.locator(\".modal-footer p\").click({timeout:3000}); await p.locator(\".modal\").waitFor({state:\"hidden\",timeout:3000}); const topAfter=await p.evaluate(({x,y})=>{const e=document.elementFromPoint(x,y);return {tag:e?.tagName,text:e?.textContent?.trim().slice(0,60),class:String(e?.className)}},{x:point.x,y:point.y}); let after; try{await link.click({trial:true,timeout:1500});after={clickable:true}}catch(e){after={clickable:false,error:e.message.split(\"\\n\")[0]}} console.log(\"RESULT\",JSON.stringify({topBefore,before,modalVisibleAfterClose:await p.locator(\".modal\").isVisible(),topAfter,after})); } catch(e) { console.error(\"ERR\",e.message); } finally { if(b) await b.close(); }'" in /Users/martin/GitHub/zumerlab/snapdom-agent
+ succeeded in 3369ms:
+launch
+goto 200
+modal true links 1
+box {"x":265.546875,"y":182.875,"width":68.171875,"height":18}
+before {"topBefore":{"tag":"DIV","text":"","class":"underlay"},"before":{"clickable":false,"error":"intercepts pointer events"}}
+RESULT {"topBefore":{"tag":"DIV","text":"","class":"underlay"},"before":{"clickable":false,"error":"intercepts pointer events"},"modalVisibleAfterClose":false,"topAfter":{"tag":"A","text":"click here","class":""},"after":{"clickable":true}}
+
+codex
+{"task":"T-A","stack":"nativo","answer":"#33 Principia Mathematica is modern and insightful — 258 puntos — 136 comentarios; #34 Show HN: At 16K features, flat autoencoders break. Curved space doesn't — 3 puntos — 0 comentarios; #35 OpenCV AI Competition 2026 — 3 puntos — 0 comentarios","evidence":"Con viewport de 100 px, #33 pasó de y=112 a y=40 con scrollY=72 y #35 de y=110 a y=40 con scrollY=142; tras el scroll se leyeron título, score y enlace de comentarios del DOM.","toolCalls":2,"proof":"afirmado","frictions":"La primera consulta mezcló filas al filtrar por texto; repetí usando el índice exacto de cada puesto."}
+{"task":"T-B","stack":"nativo","answer":"Backpack: Add to cart → Remove; badge: 1; ningún otro producto cambió.","evidence":"La comparación completa antes/después devolvió othersChanged=[]; los otros cinco productos conservaron exactamente Add to cart, mientras Backpack cambió a Remove y el badge fue 1.","toolCalls":1,"proof":"afirmado","frictions":""}
+{"task":"T-C","stack":"nativo","answer":"Con el modal, click here no era clickeable; cerrado el modal, sí era clickeable.","evidence":"Antes: elementFromPoint sobre el centro del link devolvió DIV.underlay y Playwright trial-click falló con 'intercepts pointer events'. Después de Close: modalVisible=false, elementFromPoint devolvió A con texto 'click here' y el trial-click tuvo éxito.","toolCalls":5,"proof":"demostrado","frictions":"Dos ejecuciones quedaron sin salida útil y fue necesario repetir con diagnóstico incremental."}
+{"task":"meta","stack":"nativo","frictions":"Playwright permitió inspección y actionability, pero probar el negativo global exigió construir manualmente snapshots antes/después y compararlos."}
+tokens used
+19,248
+{"task":"T-A","stack":"nativo","answer":"#33 Principia Mathematica is modern and insightful — 258 puntos — 136 comentarios; #34 Show HN: At 16K features, flat autoencoders break. Curved space doesn't — 3 puntos — 0 comentarios; #35 OpenCV AI Competition 2026 — 3 puntos — 0 comentarios","evidence":"Con viewport de 100 px, #33 pasó de y=112 a y=40 con scrollY=72 y #35 de y=110 a y=40 con scrollY=142; tras el scroll se leyeron título, score y enlace de comentarios del DOM.","toolCalls":2,"proof":"afirmado","frictions":"La primera consulta mezcló filas al filtrar por texto; repetí usando el índice exacto de cada puesto."}
+{"task":"T-B","stack":"nativo","answer":"Backpack: Add to cart → Remove; badge: 1; ningún otro producto cambió.","evidence":"La comparación completa antes/después devolvió othersChanged=[]; los otros cinco productos conservaron exactamente Add to cart, mientras Backpack cambió a Remove y el badge fue 1.","toolCalls":1,"proof":"afirmado","frictions":""}
+{"task":"T-C","stack":"nativo","answer":"Con el modal, click here no era clickeable; cerrado el modal, sí era clickeable.","evidence":"Antes: elementFromPoint sobre el centro del link devolvió DIV.underlay y Playwright trial-click falló con 'intercepts pointer events'. Después de Close: modalVisible=false, elementFromPoint devolvió A con texto 'click here' y el trial-click tuvo éxito.","toolCalls":5,"proof":"demostrado","frictions":"Dos ejecuciones quedaron sin salida útil y fue necesario repetir con diagnóstico incremental."}
+{"task":"meta","stack":"nativo","frictions":"Playwright permitió inspección y actionability, pero probar el negativo global exigió construir manualmente snapshots antes/después y compararlos."}
