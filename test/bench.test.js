@@ -1,5 +1,6 @@
 /**
- * Benchmarks (§Phase 3/4): report, don't gate. Three costs on the same pages, because
+ * Benchmarks (§Phase 3/4): timings report, checkpoint compactness gates. Three costs
+ * on the same pages, because
  * `inspect()` now runs a real snapdom capture with the oracle plugin attached and the
  * only interesting question is how that splits:
  *
@@ -35,7 +36,7 @@ const pct = (arr, p) => {
   return +s[Math.min(s.length - 1, Math.floor(s.length * p))].toFixed(2)
 }
 
-describe('agent benchmarks (report only)', () => {
+describe('agent benchmarks and checkpoint budget', () => {
   it('inspect() vs snapdom.capture(), and checkpoint size vs serialized DOM', async () => {
     const report = []
     for (const cards of [12, 48, 120]) {
@@ -62,16 +63,22 @@ describe('agent benchmarks (report only)', () => {
         }
         // Diff cost: inspect with a previous checkpoint on an unchanged page.
         const cp = ui.checkpoint()
+        // Exercise the actual wire boundary, not an in-memory object that could carry
+        // accidental prototypes/references the persisted JSON does not.
+        const persistedCp = JSON.parse(JSON.stringify(cp))
         const dT = []
+        let diffChanged
         for (let i = 0; i < 12; i++) {
           const t0 = performance.now()
-          await inspect(el, { previous: cp })
+          const after = await inspect(el, { previous: persistedCp })
+          diffChanged = after.changed
           dT.push(performance.now() - t0)
         }
+        expect(diffChanged).toBe(false)
         const cpBytes = JSON.stringify(cp).length
         const cpLean = JSON.stringify(ui.checkpoint({ excludeText: true })).length
         const domBytes = el.outerHTML.length
-        const nodes = Object.keys(cp.nodes).length
+        const nodes = cp.nodes.length
         report.push({
           cards, nodes,
           walk_p50: pct(wT, 0.5), walk_p95: pct(wT, 0.95),
@@ -79,6 +86,8 @@ describe('agent benchmarks (report only)', () => {
           diff_p50: pct(dT, 0.5), diff_p95: pct(dT, 0.95),
           capture_p50: pct(cT, 0.5), capture_p95: pct(cT, 0.95),
           checkpoint_bytes: cpBytes, checkpoint_excludeText_bytes: cpLean,
+          checkpoint_bytes_per_node: +(cpBytes / nodes).toFixed(2),
+          checkpoint_excludeText_bytes_per_node: +(cpLean / nodes).toFixed(2),
           serialized_dom_bytes: domBytes,
           checkpoint_vs_dom: +(cpBytes / domBytes).toFixed(2),
           context_bytes: ui.context.length,
@@ -89,5 +98,14 @@ describe('agent benchmarks (report only)', () => {
     }
     console.log('AGENT_BENCH_JSON:' + JSON.stringify(report))
     expect(report.length).toBe(3)
+    // A DOM ratio is not a stable compactness contract: `<div></div>` is 11 bytes but
+    // its checkpoint still needs identity, change hashes and geometry. Marginal bytes
+    // per semantic node are stable across page sizes and directly budget the wire.
+    // The pre-columnar object format measured ~180 B/node (~158 without names) here.
+    // These ceilings leave headroom for real content while preventing that regression.
+    for (const row of report) {
+      expect(row.checkpoint_bytes_per_node).toBeLessThanOrEqual(110)
+      expect(row.checkpoint_excludeText_bytes_per_node).toBeLessThanOrEqual(90)
+    }
   }, 300000)
 })

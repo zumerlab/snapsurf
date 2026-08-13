@@ -27,7 +27,12 @@ describe('manual agent cases', () => {
     const ui = await inspect(root, { privacy: { redact: ['email'] } })
 
     expect(ui.getByRole('button', { name: 'Delete' })).toBeNull()
-    expect(ui.getByLabel('Email')).toBeTruthy()
+    // The protected label itself cannot remain a query predicate: doing so would expose
+    // a one-bit presence oracle. The actionable control is still discoverable by role.
+    const input = ui.getByRole('textbox')
+    expect(input).toBeTruthy()
+    expect(input.name).toBe('[redacted]')
+    expect(ui.getByLabel('Email')).toBeNull()
   })
 
   it('keeps change detection working with no privacy rules', async () => {

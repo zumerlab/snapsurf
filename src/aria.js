@@ -52,6 +52,27 @@ export function computeRole(el) {
   return f ? f(el) : 'generic'
 }
 
+/** Composed containment crosses open-shadow host boundaries and slot assignment. */
+export function composedContains(ancestor, node) {
+  let current = node
+  const seen = new Set()
+  while (current && !seen.has(current)) {
+    if (current === ancestor) return true
+    seen.add(current)
+    if (current.assignedSlot) {
+      current = current.assignedSlot
+      continue
+    }
+    if (current.parentElement) {
+      current = current.parentElement
+      continue
+    }
+    const tree = current.getRootNode?.()
+    current = tree?.host || null
+  }
+  return false
+}
+
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim()
 
 /** ARIA "name from content" roles: for these, the accessible name legitimately derives
@@ -99,16 +120,18 @@ export function visibleText(el, maxRaw = Infinity) {
  *   authored source (aria-label/labelledby, <label>, alt, title, value), not from
  *   subtree text.
  */
-export function computeName(el, labelFor) {
+export function computeName(el, labelFor, boundaryRoot) {
   const ariaLabel = el.getAttribute('aria-label')
   if (ariaLabel) return { name: norm(ariaLabel), explicit: true }
 
   const labelledBy = el.getAttribute('aria-labelledby')
   if (labelledBy) {
-    const doc = el.ownerDocument
+    // IDREFs are resolved in the element's own tree scope. ownerDocument lookup can
+    // cross from an open shadow root into light DOM and import an unrelated duplicate id.
+    const tree = el.getRootNode?.() || el.ownerDocument
     const parts = labelledBy.split(/\s+/)
-      .map((id) => doc.getElementById(id))
-      .filter(Boolean)
+      .map((id) => tree.getElementById?.(id) || null)
+      .filter((node) => node && (!boundaryRoot || composedContains(boundaryRoot, node)))
       .map((n) => norm(visibleText(n)))
       .filter(Boolean)
     if (parts.length) return { name: parts.join(' '), explicit: true }
@@ -117,7 +140,10 @@ export function computeName(el, labelFor) {
   if (el.id) {
     // labelFor: one document scan per walk instead of one full-document
     // querySelector per id'd element (thousands on a large article)
-    if (labelFor) {
+    if (boundaryRoot && el.labels) {
+      const label = [...el.labels].find((candidate) => composedContains(boundaryRoot, candidate))
+      if (label) return { name: norm(visibleText(label, 1000)), explicit: true }
+    } else if (labelFor) {
       const label = labelFor.get(el.id)
       if (label) return { name: norm(visibleText(label, 1000)), explicit: true }
     } else {
@@ -128,7 +154,8 @@ export function computeName(el, labelFor) {
     }
   }
   const wrappingLabel = el.closest && el.closest('label')
-  if (wrappingLabel && wrappingLabel !== el) {
+  if (wrappingLabel && wrappingLabel !== el &&
+      (!boundaryRoot || composedContains(boundaryRoot, wrappingLabel))) {
     const t = norm(visibleText(wrappingLabel, 1000))
     if (t) return { name: t, explicit: true }
   }

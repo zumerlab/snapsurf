@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "package": "@zumer/snapdom-receipt",
+  "artifact": "dist/snapdom-receipt.js",
+  "format": "esm",
+  "platform": "browser",
+  "exports": [
+    "BASELINE_CONTRACT",
+    "RECEIPT_CONTRACT",
+    "buildUi",
+    "createBaseline",
+    "createReceipt",
+    "observe",
+    "observeChunked",
+    "probeCapabilities",
+    "redactString"
+  ],
+  "bytes": 40777,
+  "gzipBytes": 15314,
+  "brotliBytes": 13793,
+  "sha256": "3d1306a0b9235f8a76667b5850bfce1addc219a468af3015b9524575f2f08171",
+  "dependencies": [],
+  "staticEvidence": {
+    "scope": "generated browser bundle only",
+    "checkedPatterns": [
+      "fetch(",
+      "XMLHttpRequest",
+      "WebSocket",
+      "sendBeacon",
+      "node: import",
+      "Playwright"
+    ],
+    "matches": [],
+    "interpretation": "No references to the enumerated egress primitives or Node/Playwright imports were found. This is not an exhaustive network-capability audit and does not constrain the host page."
+  }
+}

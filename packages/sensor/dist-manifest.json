@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "package": "@zumer/snapdom-sensor",
+  "artifact": "dist/snapdom-sensor.js",
+  "format": "esm",
+  "platform": "browser",
+  "exports": [
+    "SENSOR_PLUGIN_NAME",
+    "SENSOR_REPORT_CONTRACT",
+    "sensor"
+  ],
+  "bytes": 39425,
+  "gzipBytes": 14709,
+  "brotliBytes": 13248,
+  "sha256": "00fd0c2d103868b7e28e1c126150b81457bcec082e66cbc7128315220e57f9a6",
+  "peerDependencies": {
+    "@zumer/snapdom": ">=3.0.0-beta.0 <4"
+  },
+  "externalImports": [],
+  "buildInputs": {
+    "semanticKernel": "../../src/",
+    "interpretation": "The browser artifact bundles the semantic projection used by the plugin. It runs only from SnapDOM standard afterClone/defineExports hooks. The host supplies the @zumer/snapdom peer; Playwright, MCP and a browser controller are not imported."
+  },
+  "staticEvidence": {
+    "scope": "generated sensor bundle only",
+    "checkedPatterns": [
+      "fetch(",
+      "XMLHttpRequest",
+      "WebSocket",
+      "sendBeacon",
+      "node: import",
+      "Playwright"
+    ],
+    "matches": [],
+    "interpretation": "No references to the enumerated egress primitives or Node/Playwright imports were found. This is not an exhaustive network-capability audit and does not constrain the host page."
+  }
+}

@@ -9,11 +9,17 @@ import { hash } from './hash.js'
 import { computeRole, computeName, visibleText, NAME_FROM_CONTENT_ROLES } from './aria.js'
 import { normalizeText, isIgnored, collectAnimatedProps } from './noise.js'
 
+// Raw inputs used to build the node signatures. A WeakMap lets buildUi(observe(...),
+// {privacy}) rebuild safe signatures even when privacy was selected after the walk,
+// without attaching values to nodes returned through the compatibility snapshot.
+const PRIVACY_INPUTS = new WeakMap()
+export const getPrivacyInputs = (node) => PRIVACY_INPUTS.get(node)
+
 /** §3 initial visualStyleSubset — explicitly empirical; adjust only with corpus
  *  evidence + ADR. outline/box-shadow deliberately absent (focus-ring noise). */
 const VISUAL_STYLE_SUBSET = [
   'display', 'visibility', 'opacity', 'color', 'background-color',
-  'font-family', 'font-size', 'font-weight', 'border', 'transform', 'z-index',
+  'background-image', 'font-family', 'font-size', 'font-weight', 'border', 'transform', 'z-index',
 ]
 
 /** Properties whose animation moves/resizes the box — geometry is frozen while any of
@@ -29,26 +35,74 @@ const INTERACTIVE_ROLES = new Set([
   'button', 'link', 'textbox', 'searchbox', 'checkbox', 'radio', 'combobox',
   'slider', 'spinbutton', 'switch', 'tab', 'menuitem', 'option',
 ])
-const SENSITIVE_AC = new Set(['current-password', 'new-password', 'one-time-code'])
+const SENSITIVE_AC = new Set([
+  'username', 'current-password', 'new-password', 'one-time-code', 'email', 'tel',
+])
 
 function isSensitiveInput(el) {
-  if (el.tagName !== 'INPUT') return false
-  const type = (el.getAttribute('type') || 'text').toLowerCase()
+  if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && el.tagName !== 'SELECT') return false
+  const type = el.tagName === 'INPUT' ? (el.getAttribute('type') || 'text').toLowerCase() : ''
   if (type === 'password' || type === 'email' || type === 'tel') return true
   const ac = (el.getAttribute('autocomplete') || '').toLowerCase()
   if (!ac) return false
-  for (const t of ac.split(/\s+/)) if (SENSITIVE_AC.has(t) || t.startsWith('cc-')) return true
+  for (const t of ac.split(/\s+/)) {
+    if (SENSITIVE_AC.has(t) || t.startsWith('tel-') || t.startsWith('cc-')) return true
+  }
   return false
 }
 
-/** Composed-tree children: shadow roots replace light children; slots expand. */
-function composedChildren(el) {
-  if (el.shadowRoot) return Array.from(el.shadowRoot.children)
+// A raw-value digest in a persisted checkpoint is an offline guessing oracle, even
+// when the digest is truncated. Coarse buckets retain a little useful change signal
+// without making a candidate password/email/card number directly verifiable.
+function sensitiveValueBucket(value) {
+  const length = String(value).length
+  if (length <= 4) return '1-4'
+  if (length <= 8) return '5-8'
+  if (length <= 16) return '9-16'
+  if (length <= 32) return '17-32'
+  return '33+'
+}
+
+const SENSITIVE_VALUE_UNCERTAINTY = Object.freeze({
+  sourceType: 'sensitive-input-value',
+  scope: 'value-change-detection',
+  detection: 'presence-and-coarse-length-bucket',
+  uncertainty: 'value edits within one coarse length bucket, including same-length edits, may be missed',
+})
+
+/** Composed-tree nodes: shadow roots replace light children; slots expand. Text nodes
+ *  matter here too. `ShadowRoot.children`/`assignedElements()` silently dropped direct
+ *  text, allowing a visible open-shadow mutation to report `changed:false`. */
+function composedNodes(el) {
+  if (el.shadowRoot) return Array.from(el.shadowRoot.childNodes)
   if (el.localName === 'slot') {
-    const assigned = el.assignedElements ? el.assignedElements({ flatten: true }) : []
+    const assigned = el.assignedNodes ? el.assignedNodes({ flatten: true }) : []
     if (assigned.length) return assigned
   }
-  return Array.from(el.children)
+  return Array.from(el.childNodes)
+}
+
+const composedChildren = (el) => composedNodes(el).filter((node) => node.nodeType === 1)
+const composedOwnText = (el) => composedNodes(el)
+  .filter((node) => node.nodeType === 3)
+  .map((node) => node.nodeValue || '')
+  .join('')
+
+/** Open shadow roots crossed by the same composed walk as the snapshot. MutationObserver
+ *  does not cross a shadow boundary when it observes the document/root, so each root must
+ *  be registered explicitly for the chunked walk's torn guarantee. */
+function collectOpenShadowRoots(root) {
+  const roots = new Set()
+  const seen = new Set()
+  const stack = [root]
+  while (stack.length) {
+    const el = stack.pop()
+    if (!el || el.nodeType !== 1 || seen.has(el)) continue
+    seen.add(el)
+    if (el.shadowRoot) roots.add(el.shadowRoot)
+    for (const child of composedChildren(el)) stack.push(child)
+  }
+  return roots
 }
 
 /** Nearest positioned OR scrolling ancestor — the geometry reference frame.
@@ -65,12 +119,15 @@ function composedChildren(el) {
  *
  *  Both caches are cleared at every yield of the chunked walk (see makeWalker), so a
  *  value can never outlive the layout it was measured in. */
-function makeGeometry(root) {
+function makeGeometry(root, styleCache) {
   const frameOfParent = new Map()
   const frameMetrics = new Map()
 
+  const styleFor = (element) => styleCache?.get?.(element) ||
+    element.ownerDocument.defaultView.getComputedStyle(element)
+
   const isFrame = (p) => {
-    const cs = getComputedStyle(p)
+    const cs = styleFor(p)
     if (cs.position !== 'static') return true
     return (cs.overflowY !== 'visible' || cs.overflowX !== 'visible') &&
       (p.scrollHeight > p.clientHeight + 1 || p.scrollWidth > p.clientWidth + 1)
@@ -129,22 +186,42 @@ function interactionState(el) {
     if (el.matches(':checked')) s.checked = true
     else if (el.type === 'checkbox' || el.type === 'radio') s.checked = false
   } catch { }
-  const bools = [['aria-expanded', 'expanded'], ['aria-pressed', 'pressed'], ['aria-selected', 'selected']]
+  const bools = [
+    ['aria-expanded', 'expanded'],
+    ['aria-pressed', 'pressed'],
+    ['aria-selected', 'selected'],
+    ['aria-checked', 'checked'],
+  ]
   for (const [attr, key] of bools) {
     const v = el.getAttribute(attr)
     if (v === 'true') s[key] = true
     else if (v === 'false') s[key] = false
   }
   if (el.localName === 'details') s.open = el.hasAttribute('open')
-  let valueHash = ''
-  if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') && el.value) {
-    // The HASH sees the raw value (so real edits are detected even at equal length);
-    // the state OBJECT only ever carries a mask — checkpoints stay safe to store.
-    valueHash = hash('v', el.value)
-    if (!isSensitiveInput(el)) s.value = '•'.repeat(Math.min(String(el.value).length, 12))
+  const sensitive = isSensitiveInput(el)
+  let valueSignal = ''
+  const isValueControl = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'
+  const rawValue = isValueControl ? String(el.value || '') : null
+  if (isValueControl && rawValue) {
+    // Sensitive values must never feed a deterministic checkpoint hash: that turns
+    // the checkpoint into an offline password/email/card-number guessing oracle.
+    // Presence plus a coarse length bucket still detects empty/fill and larger edits.
+    valueSignal = sensitive
+      ? `sensitive:${sensitiveValueBucket(rawValue)}`
+      : hash('v', rawValue)
+    if (!sensitive) s.value = '•'.repeat(Math.min(rawValue.length, 12))
     s.hasValue = true
   }
-  return { state: Object.keys(s).length ? s : null, valueHash }
+  return {
+    state: Object.keys(s).length ? s : null,
+    valueSignal,
+    valueChangeUncertainty: sensitive ? SENSITIVE_VALUE_UNCERTAINTY : null,
+    // A sensitive value is never needed for semantic output. Do not even retain it in
+    // the realm-local privacy sidecar: presence/coarse bucket plus explicit uncertainty
+    // are the full supported observation contract for these controls.
+    rawValue: sensitive ? null : rawValue,
+    sensitive,
+  }
 }
 
 function styleSubset(el, cs, animatedProps) {
@@ -152,9 +229,37 @@ function styleSubset(el, cs, animatedProps) {
   const parts = []
   for (const prop of VISUAL_STYLE_SUBSET) {
     if (skip && (skip.has('*') || skip.has(prop))) continue
-    parts.push(prop + ':' + cs.getPropertyValue(prop))
+    parts.push([prop, cs.getPropertyValue(prop)])
   }
-  return parts.join(';')
+  return { parts, text: parts.map(([prop, value]) => prop + ':' + value).join(';') }
+}
+
+/** Authored/readable content that is not represented by own text nodes. These values
+ *  alter what an agent can understand or where it will navigate, so they belong in the
+ *  content component of the signature. Values are hashed immediately and never exposed
+ *  through this field (privacy views still govern the readable name/text surfaces). */
+function authoredContentParts(el, name, nameExplicit) {
+  const parts = []
+  if (nameExplicit) parts.push(['accessible-name', name])
+  if (el.hasAttribute('href')) parts.push(['href', el.getAttribute('href') || ''])
+  if (el.hasAttribute('src')) parts.push(['src', el.getAttribute('src') || ''])
+  if (el.localName === 'img') {
+    if (el.hasAttribute('srcset')) parts.push(['srcset', el.getAttribute('srcset') || ''])
+    // currentSrc catches responsive-source changes caused by <picture>/media selection;
+    // the authored src/srcset above still catches a mutation before the new image loads.
+    if (el.currentSrc) parts.push(['current-src', el.currentSrc])
+  }
+  return parts
+}
+
+/** There is no platform API that distinguishes a closed shadow root from no shadow root.
+ *  A defined custom element with no open root is therefore an honest uncertainty: it may
+ *  render an opaque closed tree. Mark it instead of claiming the walk saw everything. */
+function mayHaveClosedShadow(el) {
+  if (el.shadowRoot || !el.localName.includes('-')) return false
+  try {
+    return !!el.ownerDocument?.defaultView?.customElements?.get(el.localName)
+  } catch { return false }
 }
 
 /**
@@ -167,7 +272,8 @@ function styleSubset(el, cs, animatedProps) {
 function occluderAt(el, rect) {
   const cx = rect[0] + rect[2] / 2
   const cy = rect[1] + rect[3] / 2
-  if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) return null
+  const view = el.ownerDocument?.defaultView || globalThis
+  if (cx < 0 || cy < 0 || cx > view.innerWidth || cy > view.innerHeight) return null
   try {
     const doc = el.ownerDocument
     const top = (el.getRootNode()?.elementFromPoint || doc.elementFromPoint).call(el.getRootNode?.() || doc, cx, cy)
@@ -190,24 +296,37 @@ function occluderAt(el, rect) {
  * @returns {{ nodes: Map<string, object>, order: string[], rootId: string,
  *             byElement: Map<Element, string>, elements: Map<string, Element>, rootHash: string }}
  */
-function makeWalker(root, noise) {
-  const geo = makeGeometry(root)
+function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
+  const styleCache = engineFrame?.styleCache
+  const includedElements = engineFrame?.nodeMap instanceof Map
+    ? new Set([...engineFrame.nodeMap.values()].filter((node) => node?.nodeType === 1))
+    : null
+  if (includedElements) includedElements.add(root)
+  const styleFor = (element) => styleCache?.get?.(element) ||
+    element.ownerDocument.defaultView.getComputedStyle(element)
+  const geo = makeGeometry(root, styleCache)
   const animated = noise.ignoreAnimations ? collectAnimatedProps(root) : new Map()
   // one label[for] scan per walk — computeName used to run a full-document
   // querySelector for every element with an id
-  const labelFor = new Map()
-  try {
-    for (const l of (root.ownerDocument || document).querySelectorAll('label[for]')) {
-      const f = l.getAttribute('for')
-      if (f && !labelFor.has(f)) labelFor.set(f, l)
-    }
-  } catch { /* no doc */ }
+  const labelFor = strictScope ? null : new Map()
+  if (labelFor) {
+    try {
+      for (const l of (root.ownerDocument || document).querySelectorAll('label[for]')) {
+        const f = l.getAttribute('for')
+        if (f && !labelFor.has(f)) labelFor.set(f, l)
+      }
+    } catch { /* no doc */ }
+  }
   const nodes = new Map()
   const order = []
   const byElement = new Map()
   const elements = new Map()
   // node id → occluding Element, resolved to a node reference once the walk has seen it.
   const occluders = new Map()
+  // A slot can render a light-DOM node that is not a DOM descendant of the capture
+  // root. The semantic walk may still include it, but a MutationObserver on `root`
+  // cannot promise torn detection for that external assigned subtree.
+  let externalAssignedNodes = false
   let seq = 0
 
   /** @returns {string|null} node id */
@@ -216,9 +335,20 @@ function makeWalker(root, noise) {
   const pacc = (k, t) => { if (P) P[k] = (P[k] || 0) + (performance.now() - t) }
   function* visit(el, parentId, semanticPath, ordinalKeyCounts, depth, frozenGeo) {
     if (el.nodeType !== 1 || SKIP_TAGS.has(el.tagName)) return null
+    if (includedElements && !includedElements.has(el)) return null
     if (isIgnored(el, noise)) return null
+    if (el.localName === 'slot' && el.assignedNodes) {
+      try {
+        for (const assigned of el.assignedNodes({ flatten: true })) {
+          if (assigned !== root && !root.contains(assigned)) {
+            externalAssignedNodes = true
+            break
+          }
+        }
+      } catch { /* slot assignment is best-effort */ }
+    }
     let _t = pnow()
-    const cs = getComputedStyle(el)
+    const cs = styleFor(el)
     pacc('getComputedStyle', _t)
     if (cs.display === 'none') return null
 
@@ -228,7 +358,7 @@ function makeWalker(root, noise) {
     const role = computeRole(el)
     pacc('computeRole', _t)
     _t = pnow()
-    const { name, explicit: nameExplicit } = computeName(el, labelFor)
+    const { name, explicit: nameExplicit } = computeName(el, labelFor, strictScope ? root : undefined)
     pacc('computeName', _t)
     // Identity may only trust the name when it's authored, or when the role takes its
     // name from content per ARIA. A content-derived name on a generic container is
@@ -255,7 +385,7 @@ function makeWalker(root, noise) {
     if (!visible && el.labels && el.labels.length && cs.visibility !== 'hidden' &&
         bbox.viewport[2] > 0 && bbox.viewport[3] > 0) {
       for (const l of el.labels) {
-        const lcs = getComputedStyle(l)
+        const lcs = styleFor(l)
         const lr = l.getBoundingClientRect()
         if (lcs.display !== 'none' && lcs.visibility !== 'hidden' &&
             parseFloat(lcs.opacity) > 0 && lr.width > 0 && lr.height > 0) { visible = true; break }
@@ -269,30 +399,38 @@ function makeWalker(root, noise) {
     const covered = !!occluder
     if (occluder) occluders.set(id, occluder)
 
-    // Own text only — subtree text belongs to the children (Merkle locality).
-    let ownText = ''
-    for (let c = el.firstChild; c; c = c.nextSibling) {
-      if (c.nodeType === 3) ownText += c.nodeValue
-    }
+    // Own COMPOSED text only — subtree text belongs to the children (Merkle locality).
+    // This includes a Text node directly under an open ShadowRoot or assigned to a slot.
+    const ownText = composedOwnText(el)
     const normText = normalizeText(ownText, el, noise)
+    const authoredParts = authoredContentParts(el, name, nameExplicit)
+    const authoredHash = authoredParts.length
+      ? hash('authored', ...authoredParts.flat())
+      : ''
     _t = pnow()
-    const { state, valueHash } = interactionState(el)
+    const { state, valueSignal, valueChangeUncertainty, rawValue, sensitive } = interactionState(el)
     pacc('interactionState', _t)
 
     const isCanvas = tag === 'canvas'
-    const isBlockedIframe = tag === 'iframe' && (() => { try { return !el.contentDocument } catch { return true } })()
+    const isIframe = tag === 'iframe'
+    let iframeReadable = false
+    if (isIframe) {
+      try { iframeReadable = !!el.contentDocument?.documentElement } catch { /* cross-origin */ }
+    }
+    const possibleClosedShadow = mayHaveClosedShadow(el)
 
     // §1 — the three hashes. Identity core inside contentHash is tag+role+testid only:
     // accessibleName can derive from SUBTREE text, and letting it in would produce two
     // changes for one text edit (the text node's and every named ancestor's).
-    const textHash = hash('t', normText)
+    const textHash = hash('t', normText, authoredHash)
     // Raw-text hash rides along so the diff can attribute geometry side-effects of
     // NORMALIZED text changes (a clock tick shifts the span width in proportional
     // fonts — the resize is the same non-change as the digits; codex assert round).
-    const rawTextHash = ownText === normText ? textHash : hash('t', ownText)
-    const stateHash = hash('s', JSON.stringify(state), valueHash)
+    const rawTextHash = ownText === normText ? textHash : hash('t', ownText, authoredHash)
+    const stateHash = hash('s', JSON.stringify(state), valueSignal)
     _t = pnow()
-    const sHash = hash('y', styleSubset(el, cs, animated.get(el)))
+    const style = styleSubset(el, cs, animated.get(el))
+    const sHash = hash('y', style.text)
     pacc('styleSubset', _t)
     const contentHash = hash('c', tag, role, testid || '', textHash, stateHash, sHash)
     // A running animation on a layout/transform property moves the box every frame.
@@ -325,16 +463,35 @@ function makeWalker(root, noise) {
       geometryAnimating,
       childIds: [],
     }
+    PRIVACY_INPUTS.set(node, {
+      ownText,
+      normText,
+      authoredParts,
+      nameForIdentity,
+      rawValue,
+      sensitive,
+      valueSignal,
+      styleParts: style.parts,
+    })
+    if (valueChangeUncertainty) node.valueChangeUncertainty = valueChangeUncertainty
     if (isCanvas) {
       node.sourceType = 'canvas'
       node.semanticsAvailable = false
       node.rasterAvailable = true
       if (role === 'generic') node.role = 'img'
     }
-    if (isBlockedIframe) {
+    // Even a same-origin iframe is a separate document and is not part of this composed
+    // walk. Declaring it unobservable is preferable to a false `changed:false`; callers
+    // can inspect that document separately. Same-origin content can at least be rasterized.
+    if (isIframe) {
       node.sourceType = 'iframe'
       node.semanticsAvailable = false
-      node.rasterAvailable = false
+      node.rasterAvailable = iframeReadable
+    }
+    if (possibleClosedShadow && node.semanticsAvailable !== false) {
+      node.sourceType = 'possible-closed-shadow'
+      node.semanticsAvailable = false
+      node.rasterAvailable = true
     }
 
     nodes.set(id, node)
@@ -373,8 +530,14 @@ function makeWalker(root, noise) {
     const n = hitId ? nodes.get(hitId) : null
     // The occluding element's full text is the label an agent can act on ("the bar that
     // says Usamos cookies…"); a bare overlay div has no role and no accessible name.
-    const label = visibleText(el, 600).replace(/\s+/g, ' ').trim().slice(0, 60)
-    const name = n && n.name ? n.name : ''
+    const label = !strictScope || n
+      ? visibleText(el, 600).replace(/\s+/g, ' ').trim().slice(0, 60)
+      : ''
+    // An occluder outside the capture root has no snapshot node, but its authored
+    // accessible name is still the safest compact description of what blocks the
+    // target. Scope reports disclose this external render reference explicitly.
+    const externalName = !n && !strictScope ? computeName(el).name : ''
+    const name = n && n.name ? n.name : externalName
     nodes.get(id).coveredBy = {
       ...(hitId ? { id: hitId } : {}),
       role: n ? n.role : computeRole(el),
@@ -382,13 +545,17 @@ function makeWalker(root, noise) {
       ...(label && label !== name ? { label } : {}),
     }
   }
-  return { nodes, order, rootId, byElement, elements, rootHash: rootId ? nodes.get(rootId).subtreeHash : hash('empty') }
+  return {
+    nodes, order, rootId, byElement, elements,
+    rootHash: rootId ? nodes.get(rootId).subtreeHash : hash('empty'),
+    externalAssignedNodes,
+  }
   }
   return { walk: () => visit(root, null, '', {}, 0), finish, resetGeometryCache: geo.reset }
 }
 
-export function takeSnapshot(root, noise) {
-  const w = makeWalker(root, noise)
+export function takeSnapshot(root, noise, options = {}) {
+  const w = makeWalker(root, noise, options)
   const gen = w.walk()
   let r = gen.next()
   while (!r.done) r = gen.next()
@@ -400,7 +567,8 @@ export function takeSnapshot(root, noise) {
 // hands the thread to arbitrary pending work — a 6s walk inflated to 24s in the
 // field (panel gate round). MessageChannel posts are plain tasks: no 4ms clamp,
 // no background throttling; and yielding only after budgetMs of actual work keeps
-// the yield count proportional to work done. Max main-thread block ≈ budgetMs.
+// the yield count proportional to work done. The main node walk is sliced; synchronous
+// prelude/finalization work is measured separately and is not bounded by `budgetMs`.
 const yieldToLoop = () => new Promise((res) => {
   const { port1, port2 } = new MessageChannel()
   port1.onmessage = () => { port1.close(); res() }
@@ -454,16 +622,43 @@ export function makeSlicer(budgetMs = 40) {
  * mutations observed while the walk was parked — a torn observation says so
  * instead of pretending.
  */
-export async function takeSnapshotChunked(root, noise, { budgetMs = 40 } = {}) {
+export async function takeSnapshotChunked(root, noise, {
+  budgetMs = 40,
+  strictScope = false,
+  engineFrame,
+} = {}) {
   const P = typeof window !== 'undefined' && window.__SD_PROF
   let t = P ? performance.now() : 0
-  const w = makeWalker(root, noise)
+  const w = makeWalker(root, noise, { strictScope, engineFrame })
   if (P) P.prelude = (P.prelude || 0) + (performance.now() - t)
   let torn = 0
   let mo = null
+  let mutationMonitorInstalled = false
+  let mutationMonitorFailures = 0
+  const observedShadowRoots = new Set()
+  const attemptedShadowRoots = new Set()
+  const mutationOptions = { subtree: true, childList: true, attributes: true, characterData: true }
+  const observeOpenShadowRoots = () => {
+    if (!mo) return 0
+    let added = 0
+    for (const shadow of collectOpenShadowRoots(root)) {
+      if (attemptedShadowRoots.has(shadow)) continue
+      attemptedShadowRoots.add(shadow)
+      try {
+        mo.observe(shadow, mutationOptions)
+        observedShadowRoots.add(shadow)
+        added++
+      } catch {
+        mutationMonitorFailures++
+      }
+    }
+    return added
+  }
   try {
     mo = new MutationObserver((recs) => { torn += recs.length })
-    mo.observe(root, { subtree: true, childList: true, attributes: true, characterData: true })
+    mo.observe(root, mutationOptions)
+    mutationMonitorInstalled = true
+    observeOpenShadowRoots()
   } catch { /* no MutationObserver: torn stays 0 */ }
   const pause = makeSlicer(budgetMs)
   const gen = w.walk()
@@ -476,9 +671,21 @@ export async function takeSnapshotChunked(root, noise, { budgetMs = 40 } = {}) {
     if (p) { await p; w.resetGeometryCache() }
     r = gen.next()
   }
-  if (mo) { torn += mo.takeRecords().length; mo.disconnect() }
+  if (mo) {
+    // Attaching a ShadowRoot is not itself observable from the host. A final composed scan
+    // catches roots that appeared while parked; their pre-observation contents may already
+    // have been read inconsistently, so each is an honest torn event.
+    torn += observeOpenShadowRoots()
+    torn += mo.takeRecords().length
+    mo.disconnect()
+  }
   if (P) t = performance.now()
   const out = w.finish(r.value)
+  out.mutationMonitorInstalled = mutationMonitorInstalled
+  out.mutationMonitorCoverage = out.externalAssignedNodes || mutationMonitorFailures > 0
+    ? 'INCOMPLETE'
+    : 'ROOT_AND_DISCOVERED_OPEN_SHADOW_ROOTS'
+  out.mutationMonitorFailures = mutationMonitorFailures
   if (P) P.finish = (P.finish || 0) + (performance.now() - t)
   out.torn = torn
   return out

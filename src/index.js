@@ -19,7 +19,7 @@
  * Core is untouched and never depends on this package.
  * @module agent
  */
-import { snapdom } from '@zumer/snapdom'
+import { snapdom } from '../vendor/snapdom/dist/snapdom.mjs'
 import { agentOracle, probeCapabilities, getLastSnapshot } from './plugin.js'
 import { MATCH_ELEMENTS } from './query.js'
 
@@ -40,7 +40,13 @@ export { agentOracle }
 export async function inspect(root, options = {}) {
   if (!root || root.nodeType !== 1) throw new Error('[agent.inspect] element required')
   const plugin = agentOracle(options)
-  const result = await snapdom(root, { ...(options.capture || {}), plugins: [plugin] })
+  const capture = options.capture || {}
+  const callerPlugins = Array.isArray(capture.plugins)
+    ? capture.plugins
+    : (capture.plugins ? [capture.plugins] : [])
+  // `capture` is the caller's snapdom configuration, so composing the oracle must not
+  // silently discard plugins they already installed (exporters, instrumentation, etc.).
+  const result = await snapdom(root, { ...capture, plugins: [...callerPlugins, plugin] })
   const ui = plugin.ui
   ui.capabilities = await probeCapabilities()
   /**

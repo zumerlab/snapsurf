@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * snapdom-agent MCP server — PLAN phase F1: the oracle as native tools for any MCP
  * client (Claude Code, Claude Desktop, other agents).
@@ -12,21 +13,40 @@
  *
  * Register (once):  claude mcp add --scope user snapdom-agent -- node <path>/server.mjs
  *
- * NOT FOR PUBLICATION — private packages/agent workspace.
+ * Private development package; see the repository LICENSE.
  */
 import { createInterface } from 'node:readline'
 import { spawn } from 'node:child_process'
-import { readFile, access } from 'node:fs/promises'
+import { readFile, access, mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const PORT = 8377
+const PORT = Number(process.env.SNAPDOM_AGENT_PORT || 8377)
+const TOKEN_FILE = process.env.SNAPDOM_AGENT_TOKEN_FILE || join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`)
 const log = (...a) => console.error('[snapdom-agent-mcp]', ...a)
+let daemonAuthToken = process.env.SNAPDOM_AGENT_TOKEN || null
+
+async function authToken() {
+  if (daemonAuthToken) return daemonAuthToken
+  const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
+  if (!token) throw new Error(`daemon token is empty: ${TOKEN_FILE}`)
+  return token
+}
+
+const hmac = (token, message) => createHmac('sha256', token).update(message).digest('hex')
+const safeEqual = (actual, expected) => {
+  const a = Buffer.from(String(actual || ''))
+  const b = Buffer.from(String(expected || ''))
+  return a.length === b.length && timingSafeEqual(a, b)
+}
 
 // ── Daemon: locate and auto-spawn ────────────────────────────────────────────────────
 async function browsePath() {
   const candidates = [
+    join(HERE, 'browse.mjs'),                                      // global self-contained copy
     join(HERE, '..', 'tools', 'browse.mjs'),                       // repo (agent-lab)
     join(process.env.HOME || '', '.claude', 'snapdom-agent', 'browse.mjs'), // global
   ]
@@ -39,13 +59,44 @@ async function browsePath() {
 // Daemon envelope v1: {ok, text, error, epoch, url, meta} — a machine contract
 // instead of parsed prose (codex-mcp ask).
 async function cmd(name, args = [], { internal = false, sessionId } = {}) {
-  const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
+  const token = await authToken()
+  // Prove the listener knows the private token before sending a URL, typed text or
+  // privacy rule. Merely signing the later request would still hand its clear body to a
+  // process that pre-bound the port, even though that process could not forge a reply.
+  const challenge = randomBytes(16).toString('hex')
+  const authResponse = await fetch(`http://127.0.0.1:${PORT}/auth`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ cmd: name, args, envelope: true, internal, sessionId }),
+    body: JSON.stringify({ nonce: challenge }),
   })
-  const env = await res.json()
-  if (!env.ok && env.error) throw new Error(env.error)
+  await authResponse.text()
+  if (!authResponse.ok || !safeEqual(authResponse.headers.get('x-snapdom-auth'), hmac(token, `auth-v1\n${challenge}`))) {
+    throw new Error('daemon identity verification failed')
+  }
+  const body = JSON.stringify({ cmd: name, args, envelope: true, internal, sessionId })
+  const nonce = randomBytes(16).toString('hex')
+  const res = await fetch(`http://127.0.0.1:${PORT}/cmd`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-snapdom-nonce': nonce,
+      'x-snapdom-auth': hmac(token, `request-v1\n${nonce}\n${body}`),
+    },
+    body,
+  })
+  const wire = await res.text()
+  if (!safeEqual(res.headers.get('x-snapdom-auth'), hmac(token, `response-v1\n${nonce}\n${wire}`))) {
+    throw new Error('daemon response authentication failed')
+  }
+  let env
+  try { env = JSON.parse(wire) } catch { throw new Error(`invalid daemon response (${res.status}): ${wire.slice(0, 160)}`) }
+  if (!env || env.v !== 1 || typeof env.ok !== 'boolean') {
+    throw new Error('invalid daemon envelope')
+  }
+  if (!res.ok || !env.ok) throw new Error(env.error || `daemon request failed (${res.status})`)
+  if (typeof env.sessionId !== 'string' || typeof env.epoch !== 'number' || typeof env.meta !== 'object' || env.meta === null) {
+    throw new Error('invalid daemon success envelope')
+  }
   return env
 }
 
@@ -74,6 +125,7 @@ function mcpDialect(text) {
 // spawned it, it is our non-detached child and we kill it on EOF/SIGINT/SIGTERM.
 // If it was already running (the user's), we leave it alone.
 let spawnedDaemon = null
+let daemonStartPromise = null
 let shuttingDown = false
 function shutdown(code = 0) {
   if (shuttingDown) return
@@ -97,14 +149,27 @@ process.on('SIGTERM', () => shutdown(0))
 process.stdin.on('end', () => shutdown(0))
 process.stdin.on('close', () => shutdown(0))
 
-async function ensureDaemon() {
+async function ensureDaemonOnce() {
   // internal: the liveness probe before every tool call must not pollute the JSONL
   // (codex v5: 13 zero-ms status entries made per-verb suite reconstruction noisy)
   try { await cmd('status', [], { internal: true }); return } catch { /* spawn it */ }
   const p = await browsePath()
   log('spawning daemon (own child):', p)
-  spawnedDaemon = spawn(process.execPath, [p, 'serve'], { stdio: 'ignore' })
-  spawnedDaemon.on('exit', () => { spawnedDaemon = null })
+  const ownedToken = randomBytes(32).toString('hex')
+  daemonAuthToken = ownedToken
+  const child = spawn(process.execPath, [p, 'serve'], {
+    stdio: 'ignore',
+    env: { ...process.env, SNAPDOM_AGENT_TOKEN: ownedToken },
+  })
+  spawnedDaemon = child
+  // Never let an older/failed child erase ownership of a newer one. This identity
+  // guard also makes future restart logic safe.
+  child.on('exit', () => {
+    if (spawnedDaemon === child) {
+      spawnedDaemon = null
+      if (daemonAuthToken === ownedToken) daemonAuthToken = process.env.SNAPDOM_AGENT_TOKEN || null
+    }
+  })
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500))
     try { await cmd('status', [], { internal: true }); return } catch { /* not yet */ }
@@ -112,11 +177,26 @@ async function ensureDaemon() {
   throw new Error('daemon did not respond within 20s')
 }
 
+async function ensureDaemon() {
+  // MCP clients may issue several tool calls as soon as the server advertises itself.
+  // Without a singleton startup, each call observed a closed port and spawned its own
+  // daemon; the EADDRINUSE loser then cleared the winner reference, orphaning it when
+  // stdio closed. One in-flight liveness/startup attempt is shared by every caller.
+  if (daemonStartPromise) return daemonStartPromise
+  const attempt = ensureDaemonOnce()
+  daemonStartPromise = attempt
+  try {
+    return await attempt
+  } finally {
+    if (daemonStartPromise === attempt) daemonStartPromise = null
+  }
+}
+
 // ── Tools ────────────────────────────────────────────────────────────────────────────
 const TOOLS = [
   {
     name: 'browser_open',
-    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. A `top` entry with `placeholder: true` is an EMPTY form field whose name is its placeholder — a prompt, never data from the site. Every observation reports `authState` and `cookiesForOrigin`: this tool drives ITS OWN cookie jar, so a site you are signed into in your normal browser is read ANONYMOUSLY here, and the signed-out view of a dashboard looks like a valid page with less on it. `anonymous` is proof; anything else is `unknown`, never a claim of being logged in. For a task that needs the real signed-in session, this is the wrong instrument. If the site answered with a bot-mitigation interstitial, structuredContent carries `blocked: true` and `challenge` {vendor, reason, status, signal, and `vendors` when more than one is detected — vendors chain, and a confidently wrong name is worse than unknown for per-vendor retry routing}: the content was WITHHELD, which is a different answer from a page that has little on it — fall back to another fetcher rather than recording an empty result. A request that never reached an HTTP response returns `failure` {layer: dns|tls|transport|http, code, hostUp} instead of a thrown string — a DNS or certificate failure is neither a block nor an empty page. Returns `digest` in structuredContent (marks/heads/top) as well as prose — read the field, do not parse the text. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Input values are never exposed regardless (masked+hashed by design).',
+    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. A `top` entry with `placeholder: true` is an EMPTY form field whose name is its placeholder — a prompt, never data from the site. Every observation reports `authState` and `cookiesForOrigin`: this tool drives ITS OWN isolated per-session BrowserContext, cookie jar and storage. `authState` is conservatively `unknown`; a cookie count is evidence, not proof of identity, because authentication can also live in storage, bearer state or the URL. For a task that needs the real signed-in session from another browser, this is the wrong instrument. If the site answered with a bot-mitigation interstitial, structuredContent carries `blocked: true` and `challenge` {vendor, reason, status, signal, and `vendors` when more than one is detected — vendors chain, and a confidently wrong name is worse than unknown for per-vendor retry routing}: the content was WITHHELD, which is a different answer from a page that has little on it — fall back to another fetcher rather than recording an empty result. A request that never reached an HTTP response returns `failure` {layer: dns|tls|transport|http, code, hostUp} instead of a thrown string — a DNS or certificate failure is neither a block nor an empty page. Returns `digest` in structuredContent (marks/heads/top) as well as prose — read the field, do not parse the text. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Raw form values are never returned; sensitive categories use coarse change signals and declare same-bucket uncertainty.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, waitForChallenge: { type: 'number', description: 'ms to wait for a bot-mitigation interstitial to clear by itself (capped at 30000). Many do within a few seconds. Omitted = do not wait, just report.' }, digest: { type: 'string', enum: ['full', 'compact'], description: 'compact = the extraction profile: no bbox, no section, and the prose collapses to one line because the digest is already in structuredContent. Halves the per-page cost for a sweep that reads fields and never clicks.' }, url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
     run: async ({ url, redact, digest, waitForChallenge, sessionId }) =>
       // Rules as JSON, in the SAME call as the navigation. It used to be two calls with
@@ -130,6 +210,12 @@ const TOOLS = [
     description: 'Search text across the WHOLE page (not just the visible part) and get RANKED matches in structuredContent: `id`, `role`, `name`, `text` (same string, honest label), `href` (mailto:/tel: pass through intact) and `truncated` when a value was cut. The right tool to locate something specific on long pages — do not ask for the full outline.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, text: { type: 'string' } }, required: ['text'] },
     run: async ({ text, sessionId }) => cmd('find', text.split(/\s+/), { sessionId }),
+  },
+  {
+    name: 'browser_parent',
+    description: 'Climb from a find/digest match to the CARD around it (the nearest container with ≥2 actionables) and observe just that subtree: the way from "found the price text" to "here is the clickable title next to it". Returns the card with fresh ids; the global look baseline stays untouched. The right follow-up when browser_find located an inner node and you need its actionable context — never infer the card by id arithmetic.',
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, id: { type: 'string', description: 'id of the inner node (from find/digest/map)' } }, required: ['id'] },
+    run: async ({ id, sessionId }) => cmd('parent', [id], { sessionId }),
   },
   {
     name: 'browser_act',
@@ -157,13 +243,14 @@ const TOOLS = [
         if (!text) throw new Error('type requires text')
         return cmd('type', text.split(/\s+/), { sessionId })
       }
-      return cmd('enter', [], { sessionId })
+      if (action === 'enter') return cmd('enter', [], { sessionId })
+      throw new Error('action must be click, type or enter')
     },
   },
   {
     name: 'browser_verify',
-    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Call it after EVERY action instead of comparing screenshots. structuredContent carries `changed`, `changes` (list of {kind, role, name, id}) and `changesTotal` — read those rather than parsing the prose.',
-    inputSchema: { type: 'object', properties: {} },
+    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Possible replacements also carry `beforeName`, so the prior and current identities are both explicit. Call it after EVERY action instead of comparing screenshots. structuredContent carries `changed`, `changes` (list of {kind, role, name, beforeName?, id}) and `changesTotal` — read those rather than parsing the prose. Reading aids: `changes` lists signal first and omits folded wrapper nodes of an ADDED subtree (identity-free generic wrappers only — authored names never fold; `foldedWrappers` counts them and `changesTotal` is the full diff count), and `geometryOnly: true` flags a diff that is ONLY moved/resized AND changed no actionability — a scope reflow (scrollbar, container resize) you can skim past.',
+    inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' } } },
     run: async ({ sessionId } = {}) => cmd('look', [], { sessionId }),
   },
   {
@@ -180,25 +267,26 @@ const TOOLS = [
   },
   {
     name: 'browser_assert',
-    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). FAIL-LOUD CONTRACT: unknown spec keys, empty specs and missing baselines are hard pass:false with a reason — confusion never looks green. Returns structured {pass, hasBaseline, attempts, checks[], changes[]}; the diff evidence (with state from/to) travels with every result. Also: mustNotInclude (assert side-effect ABSENCE), maxChanges, becameVisible/becameCovered (actionability deltas), mustInclude entries accept selector and to:{state:value} (directional state — assert the menu IS open), settleMs and retry:{budgetMs} re-walk against the SAME baseline until pass or budget (CSS transitions land mid-flight). exists searches accessible names AND page text. It consumes the diff baseline at the END unless keepBaseline:true. SPA soft navs: results with a baseline include navigated:true + baselineUrl when the URL moved since the baseline was taken — that diff spans two pages of one document; re-observe on settled content (non-zero, stable actionables) before trusting change-based checks.',
+    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized — a framework re-render that REPLACES a node reports kind `possible-replacement`, and added/removed matchers accept it with STRICT side reading: an added matcher matches the after-side name/role, a removed matcher matches ONLY the before-side name/role (never the after side; selector specs never match through the alias), and the check result says "found (via possible-replacement — identity ambiguous)" instead of a plain green), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). FAIL-LOUD CONTRACT: unknown spec keys, empty specs and missing baselines are hard pass:false with a reason — confusion never looks green. Returns structured {pass, hasBaseline, attempts, checks[], changes[]}; the diff evidence (with state from/to) travels with every result. Also: mustNotInclude (assert side-effect ABSENCE), maxChanges, becameVisible/becameCovered (actionability deltas), mustInclude entries accept selector and to:{state:value} (directional state — assert the menu IS open), settleMs and retry:{budgetMs} re-walk against the SAME baseline until pass or budget (CSS transitions land mid-flight). exists searches accessible names AND page text. It consumes the diff baseline at the END unless keepBaseline:true. SPA soft navs: results with a baseline include navigated:true + baselineUrl when the URL moved since the baseline was taken — that diff spans two pages of one document; re-observe on settled content (non-zero, stable actionables) before trusting change-based checks.',
     inputSchema: {
       type: 'object',
       properties: {
+        sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' },
         url: { type: 'string', description: 'substring the current URL must contain' },
         changed: { type: 'boolean', description: 'expected value of the diff since the last observation' },
         mustInclude: {
           type: 'array',
-          items: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, nameExact: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
+          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, nameExact: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
           description: 'changes that must appear in the diff (selector = exact; to = expected state after, e.g. {expanded:true})',
         },
         mustNotInclude: {
           type: 'array',
-          items: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
+          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
           description: 'changes that must NOT appear (assert absence of side-effects)',
         },
         only: {
           type: 'array',
-          items: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
+          items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
           description: 'causal scoping: EVERY change must match one of these matchers',
         },
         ignore: { type: 'array', items: { type: 'string' }, description: 'CSS selectors whose subtree changes are excluded (e.g. the agent toolbar)' },
@@ -206,13 +294,16 @@ const TOOLS = [
         becameVisible: { type: 'string', description: 'an actionable matching this text must have become visible' },
         becameCovered: { type: 'string', description: 'an actionable matching this text must have become covered' },
         settleMs: { type: 'number', description: 'wait before the first walk' },
-        retry: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, budgetMs: { type: 'number' }, intervalMs: { type: 'number' } }, description: 're-walk against the SAME baseline until pass or budget' },
+        retry: { type: 'object', properties: { budgetMs: { type: 'number' }, intervalMs: { type: 'number' } }, description: 're-walk against the SAME baseline until pass or budget' },
         exists: { type: 'string', description: 'text that must be findable on the page' },
         notCovered: { type: 'string', description: 'text whose best match must not be occluded' },
         keepBaseline: { type: 'boolean', description: 'do not consume the diff baseline (peek mode — safe to retry)' },
       },
     },
-    run: async (args) => cmd('assert', [JSON.stringify(args)], { sessionId: args.sessionId }),
+    // Routing metadata belongs in the envelope, never inside the assertion spec: the
+    // daemon intentionally rejects unknown spec keys, so serialising sessionId there
+    // made every session-scoped browser_assert fail its own fail-loud contract.
+    run: async ({ sessionId, ...spec } = {}) => cmd('assert', [JSON.stringify(spec)], { sessionId }),
   },
   {
     name: 'browser_text',
@@ -248,13 +339,13 @@ const TOOLS = [
   },
   {
     name: 'browser_session_open',
-    description: 'Open an independent browsing session and get its `sessionId`. Each session is its own page with its own observation counter and its own ids, so several sweeps run AT THE SAME TIME without invalidating each other — without this, one caller navigating voids the ids another caller is holding. Pass the returned sessionId on every call belonging to that sweep. Sessions share cookies (one browser context): right for a sweep of unrelated public sites, wrong for two different logged-in identities. Close it with browser_session_close when done.',
+    description: 'Open an independent browsing session and get its `sessionId`. Each session owns a private BrowserContext, cookie/storage jar, popup tree, observation counter and ids, so several sweeps run AT THE SAME TIME without invalidating or authenticating each other. Pass the returned sessionId on every call belonging to that sweep. Close it with browser_session_close when done.',
     inputSchema: { type: 'object', properties: {} },
     run: async () => cmd('session', ['open']),
   },
   {
     name: 'browser_session_close',
-    description: 'Close a session opened with browser_session_open and free its page. Sessions also close themselves after 10 minutes idle, so a crashed run does not leak pages.',
+    description: 'Close a session opened with browser_session_open and free its complete context, including every popup it created. Sessions also close themselves after 10 minutes idle, so a crashed run does not leak pages.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'] },
     run: async ({ sessionId }) => cmd('session', ['close', sessionId]),
   },
@@ -269,13 +360,75 @@ const TOOLS = [
     description: 'Pixels as ESCALATION, not default: snapdom render of the viewport, or of one element (scrolled to center) when you pass an id. Only when the doubt is genuinely visual (layout, color, overlap) — for what changed there is browser_verify.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, id: { type: 'string', description: 'optional: element to center' } } },
     run: async ({ id, sessionId }) => {
-      const file = `/tmp/snapdom-mcp-${Date.now()}.png`
-      const env = await cmd('snap', id ? [id, file] : [file], { sessionId })
-      const data = (await readFile(file)).toString('base64')
-      return { ...env, image: { data, mimeType: 'image/png' } }
+      // One private directory per call avoids same-millisecond collisions between MCP
+      // sessions and, unlike the old predictable /tmp file, leaves no screenshots on
+      // disk after the response has been encoded.
+      const dir = await mkdtemp(join(tmpdir(), 'snapdom-mcp-'))
+      const file = join(dir, 'capture.png')
+      try {
+        const env = await cmd('snap', id ? [id, file] : [file], { sessionId })
+        const data = (await readFile(file)).toString('base64')
+        return { ...env, image: { data, mimeType: 'image/png' } }
+      } finally {
+        await rm(dir, { recursive: true, force: true })
+      }
     },
   },
 ]
+
+// MCP clients are not required to enforce the advertised JSON Schema before sending a
+// tools/call. Validate at the authority boundary too: an absent/typoed browser_act action
+// previously fell through to Enter and could submit a form while the request was invalid.
+function schemaErrors(schema, value, path = '$') {
+  const errors = []
+  if (!schema || typeof schema !== 'object') return errors
+  if (Object.prototype.hasOwnProperty.call(schema, 'const') && value !== schema.const) {
+    errors.push(`${path} must equal ${JSON.stringify(schema.const)}`)
+  }
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
+    errors.push(`${path} must be one of ${schema.enum.map((entry) => JSON.stringify(entry)).join(', ')}`)
+  }
+  if (schema.type) {
+    const validType = schema.type === 'object'
+      ? !!value && typeof value === 'object' && !Array.isArray(value)
+      : schema.type === 'array'
+        ? Array.isArray(value)
+        : schema.type === 'number'
+          ? typeof value === 'number' && Number.isFinite(value)
+          : typeof value === schema.type
+    if (!validType) {
+      errors.push(`${path} must be ${schema.type}`)
+      return errors
+    }
+  }
+  // The hand-written schemas historically omit `type: object` at their roots. Their
+  // properties/required shape still implies an object; do not let null, arrays or strings
+  // bypass `required` and reach a mutating tool implementation.
+  if ((schema.properties || schema.required) && (!value || typeof value !== 'object' || Array.isArray(value))) {
+    errors.push(`${path} must be object`)
+    return errors
+  }
+  if (Array.isArray(schema.required) && value && typeof value === 'object' && !Array.isArray(value)) {
+    for (const key of schema.required) {
+      if (!Object.prototype.hasOwnProperty.call(value, key)) errors.push(`${path}.${key} is required`)
+    }
+  }
+  if (schema.properties && value && typeof value === 'object' && !Array.isArray(value)) {
+    for (const [key, childSchema] of Object.entries(schema.properties)) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        errors.push(...schemaErrors(childSchema, value[key], `${path}.${key}`))
+      }
+    }
+  }
+  if (schema.items && Array.isArray(value)) {
+    value.forEach((entry, index) => errors.push(...schemaErrors(schema.items, entry, `${path}[${index}]`)))
+  }
+  if (Array.isArray(schema.oneOf)) {
+    const matches = schema.oneOf.filter((branch) => schemaErrors(branch, value, path).length === 0).length
+    if (matches !== 1) errors.push(`${path} must match exactly one allowed shape`)
+  }
+  return errors
+}
 
 // ── MCP stdio (JSON-RPC 2.0, one message per line) ───────────────────────────────────
 const write = (msg) => process.stdout.write(JSON.stringify(msg) + '\n')
@@ -305,8 +458,18 @@ rl.on('line', async (line) => {
     const tool = TOOLS.find((t) => t.name === params?.name)
     if (!tool) return replyErr(id, -32602, `unknown tool: ${params?.name}`)
     try {
+      const toolArguments = params && Object.prototype.hasOwnProperty.call(params, 'arguments')
+        ? params.arguments
+        : {}
+      const invalid = schemaErrors(tool.inputSchema, toolArguments)
+      if (invalid.length) {
+        return reply(id, {
+          content: [{ type: 'text', text: `invalid arguments: ${invalid.join('; ')}` }],
+          isError: true,
+        })
+      }
       await ensureDaemon()
-      const env = await tool.run(params?.arguments || {})
+      const env = await tool.run(toolArguments)
       const content = [{ type: 'text', text: mcpDialect(env.text) }]
       if (env.image) content.push({ type: 'image', data: env.image.data, mimeType: env.image.mimeType })
       // structuredContent: the fields an integrator must never parse out of prose

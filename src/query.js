@@ -43,8 +43,8 @@ function toMatch(node, api) {
  * @param {{nodes: Map<string,object>, order: string[]}} snapshot
  * @returns {object} query surface bound to the snapshot
  */
-export function makeQueryApi(snapshot) {
-  const api = { elements: snapshot.elements }
+export function makeQueryApi(snapshot, identitySnapshot = snapshot) {
+  const api = { elements: snapshot.elements, identitySnapshot }
   const descendants = (rootId) => {
     const out = []
     const walk = (id) => {
@@ -61,7 +61,8 @@ export function makeQueryApi(snapshot) {
     // Skip the scope root itself so dialog.getByRole('dialog') doesn't self-match.
     const start = rootId ? 1 : 0
     for (let i = start; i < pool.length; i++) {
-      if (pred(pool[i])) return toMatch(pool[i], api)
+      const identityNode = api.identitySnapshot.nodes.get(pool[i].id) || pool[i]
+      if (pred(identityNode)) return toMatch(pool[i], api)
     }
     return null
   }

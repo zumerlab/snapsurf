@@ -43,7 +43,7 @@ describe('agentOracle plugin', () => {
     expect(outline).toContain('Pedidos')
 
     const cp = await result.toCheckpoint()
-    expect(cp.version).toBe(1)
+    expect(cp.version).toBe(2)
     // §7: a checkpoint carries no image and no serialized DOM.
     const wire = JSON.stringify(cp)
     expect(wire).not.toContain('data:image')

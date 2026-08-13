@@ -8,6 +8,8 @@
 /** @typedef {{
  *   ignore?: string[],
  *   ignoreAnimations?: boolean,
+ *   normalizeWhitespace?: boolean,
+ *   normalizeDynamicText?: boolean,
  *   geometryTolerance?: number,
  *   textRules?: Array<{selector: string, normalize: 'relative-time'|'clock'|'number'|((t: string) => string)}>,
  * }} NoiseRules */
@@ -15,17 +17,21 @@
 const AGENT_PRESET = Object.freeze({
   ignore: ['[aria-busy="true"]', '[data-live-clock]', '.loading-shimmer', '.skeleton'],
   ignoreAnimations: true,
+  normalizeWhitespace: true,
+  normalizeDynamicText: true,
   geometryTolerance: 1,
   textRules: [],
 })
 
 /** @param {'agent'|'none'|NoiseRules|undefined} noise @returns {Required<NoiseRules>} */
 export function resolveNoise(noise) {
-  if (noise === 'none') return { ignore: [], ignoreAnimations: false, geometryTolerance: 0, textRules: [] }
+  if (noise === 'none') return { ignore: [], ignoreAnimations: false, normalizeWhitespace: false, normalizeDynamicText: false, geometryTolerance: 0, textRules: [] }
   if (!noise || noise === 'agent') return { ...AGENT_PRESET }
   return {
     ignore: noise.ignore || AGENT_PRESET.ignore,
     ignoreAnimations: noise.ignoreAnimations !== false,
+    normalizeWhitespace: noise.normalizeWhitespace !== false,
+    normalizeDynamicText: noise.normalizeDynamicText !== false,
     geometryTolerance: noise.geometryTolerance ?? AGENT_PRESET.geometryTolerance,
     textRules: noise.textRules || [],
   }
@@ -52,9 +58,11 @@ const NORMALIZERS = {
  * @returns {string}
  */
 export function normalizeText(text, el, rules) {
-  let out = text.replace(/\s+/g, ' ').trim()
-  out = out.replace(CLOCK_RE, '⟨clock⟩')
-  out = out.replace(REL_TIME_RE, '⟨t⟩')
+  let out = rules.normalizeWhitespace ? text.replace(/\s+/g, ' ').trim() : text
+  if (rules.normalizeDynamicText) {
+    out = out.replace(CLOCK_RE, '⟨clock⟩')
+    out = out.replace(REL_TIME_RE, '⟨t⟩')
+  }
   for (const rule of rules.textRules) {
     try {
       if (el.matches(rule.selector)) {

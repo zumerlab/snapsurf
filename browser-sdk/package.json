@@ -1,0 +1,21 @@
+{
+  "name": "@zumer/snapdom-receipt",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Historical compatibility browser SDK for portable receipts.",
+  "type": "module",
+  "browser": "./dist/snapdom-receipt.js",
+  "exports": {
+    ".": {
+      "import": "./dist/snapdom-receipt.js",
+      "default": "./dist/snapdom-receipt.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "dist-manifest.json",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "license": "SEE LICENSE IN LICENSE"
+}

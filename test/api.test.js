@@ -97,7 +97,7 @@ describe('query API + resolve', () => {
   it('checkpoint is compact, versioned, image-free, DOM-free and secret-free', async () => {
     const ui = await inspect(app())
     const cp = ui.checkpoint()
-    expect(cp.version).toBe(1)
+    expect(cp.version).toBe(2)
     expect(cp.environment.viewport).toHaveLength(2)
     expect(cp.environment.engine).toBeTruthy()
     const json = JSON.stringify(cp)

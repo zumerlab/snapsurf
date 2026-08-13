@@ -15,13 +15,37 @@
  * Core is untouched and knows nothing about this package (§Anti-goals).
  * @module agent/plugin
  */
-import { takeSnapshot, takeSnapshotChunked, makeSlicer } from './snapshot.js'
+import { takeSnapshot, takeSnapshotChunked, makeSlicer, getPrivacyInputs } from './snapshot.js'
 import { resolveNoise } from './noise.js'
 import { diffSnapshots } from './diff.js'
 import { makeCheckpoint, inflateCheckpoint, inflateCheckpointChunked } from './checkpoint.js'
 import { makeQueryApi } from './query.js'
+import { hash } from './hash.js'
 
-let runCounter = 0
+// A realm-local counter restarts after reload and in every iframe/worker realm. A
+// persisted checkpoint could therefore donate an id to a genuinely new node and make the
+// stable-id relabel pass collapse two nodes into one Map entry. Give EVERY observation a
+// fresh 64-bit namespace instead: that covers independent realms and concurrent runs in
+// one step. URL-safe base64 stores it in 11 characters (versus 13 in base36), preserving
+// the checkpoint compactness budget.
+const randomNamespace = () => {
+  const alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-'
+  const words = globalThis.crypto.getRandomValues(new Uint32Array(2))
+  let value = (BigInt(words[0]) << 32n) | BigInt(words[1])
+  let out = ''
+  for (let i = 0; i < 11; i++) {
+    out = alphabet[Number(value & 63n)] + out
+    value >>= 6n
+  }
+  return out
+}
+
+const PRIVACY_VALUE_UNCERTAINTY = Object.freeze({
+  sourceType: 'privacy-redacted-input-value',
+  scope: 'value-change-detection',
+  detection: 'presence-only',
+  uncertainty: 'value changes hidden by an active privacy rule may be missed',
+})
 
 // ── Privacy (§9): rule-based redaction of every string that leaves the page ──────────
 // Rules only — no sensitive-looking heuristics. Input VALUES never need one: snapshot.js
@@ -74,14 +98,26 @@ export function redactString(value, privacy) {
 
 function redactText(value, rules, tally, field, id) {
   if (typeof value !== 'string' || !value.trim()) return value
-  const lower = value.toLowerCase()
+  const candidates = [value.toLowerCase()]
+  let decoded = value
+  // URLs and DOM text sometimes carry percent-encoded identifiers. Literal rules must
+  // cover those representations too; redacting only the raw string leaks
+  // alice%40corp.test under a rule for alice@corp.test.
+  for (let pass = 0; pass < 2; pass++) {
+    try {
+      const next = decodeURIComponent(decoded)
+      if (next === decoded) break
+      decoded = next
+      candidates.push(decoded.toLowerCase())
+    } catch { break }
+  }
   let matched = false
   // EVERY rule that matches is counted, not just the first one: first-match attribution
   // made `redact sec,secret` report 0 hits for `secret` even though it matched every
   // occurrence. The contract promised "hits per rule" and the implementation measured
   // something else. The replacement itself is still applied once.
   for (let i = 0; i < rules.length; i++) {
-    if (lower.includes(rules[i])) { recordHit(tally, i, field, matched ? null : id); matched = true }
+    if (candidates.some((candidate) => candidate.includes(rules[i]))) { recordHit(tally, i, field, matched ? null : id); matched = true }
   }
   return matched ? '[redacted]' : value
 }
@@ -90,6 +126,7 @@ function redactText(value, rules, tally, field, id) {
 function redactRef(ref, rules, tally) {
   const next = { ...ref }
   if (next.name) next.name = redactText(next.name, rules, tally, 'name', next.id)
+  if (next.nameForIdentity) next.nameForIdentity = redactText(next.nameForIdentity, rules, tally, 'name', next.id)
   if (next.label) next.label = redactText(next.label, rules, tally, 'label', next.id)
   if (next.coveredBy) next.coveredBy = redactRef(next.coveredBy, rules, tally)
   return next
@@ -101,17 +138,124 @@ function redactState(state, rules, tally, id) {
   return out
 }
 
+/** Build the exact style serialization snapshot.js hashes, after filtering each value. */
+function privateStyleHash(parts, rules, tally, id) {
+  const safe = parts.map(([prop, value]) => [prop, redactText(value, rules, tally, 'style', id)])
+  return hash('y', safe.map(([prop, value]) => prop + ':' + value).join(';'))
+}
+
+/**
+ * Return a privacy-safe snapshot, including its identity/change signatures.
+ *
+ * Redacting only readable fields is insufficient: a checkpoint holder can hash a guess
+ * and compare it with `nameFp`, `textFp`, `textHash`, `stateHash` or an ancestor Merkle
+ * hash. snapshot.js therefore keeps the raw signature inputs on a non-enumerable Symbol
+ * while this pass rebuilds every affected signature from the already-redacted values.
+ * The Symbol never survives the clones below.
+ */
 function applyPrivacy(snapshot, privacy, tally) {
   const rules = normalizePrivacyRules(privacy)
   if (!snapshot || !rules.length) return snapshot
   const nodes = new Map()
   for (const [id, n] of snapshot.nodes) {
     const next = redactRef(n, rules, tally)
-    if (next.text) next.text = redactText(next.text, rules, tally, 'text', id)
+    const inputs = getPrivacyInputs(n)
+    const safeTestid = n.testid ? redactText(n.testid, rules, tally, 'testid', id) : null
+    // A shared `[redacted]` test id would become a false 100-point identity signal. Drop
+    // it instead: structural/geometry signals can still match the node without creating a
+    // presence oracle or merging every protected test id into one identity.
+    next.testid = safeTestid === '[redacted]' ? null : safeTestid
     if (next.state) next.state = redactState(next.state, rules, tally, id)
+
+    if (inputs) {
+      let safeText = redactText(inputs.normText, rules, tally, 'text', id)
+      let safeRawText = redactText(inputs.ownText, rules, tally, 'text', id)
+      // Whitespace normalization can make a rule match one representation but not the
+      // other. If either side is protected, both signatures must use the same sentinel;
+      // otherwise rawTextHash remains an oracle for the alternate representation.
+      if (safeText === '[redacted]' || safeRawText === '[redacted]') {
+        safeText = '[redacted]'
+        safeRawText = '[redacted]'
+      }
+      const safeNameForIdentity = redactText(inputs.nameForIdentity, rules, tally, 'name', id)
+      const safeAuthored = inputs.authoredParts.map(([kind, value]) => [
+        kind,
+        redactText(value, rules, tally, kind, id),
+      ])
+      const authoredHash = safeAuthored.length
+        ? hash('authored', ...safeAuthored.flat())
+        : ''
+
+      let valueSignal = inputs.valueSignal
+      if (inputs.rawValue !== null && inputs.rawValue !== '') {
+        const safeValue = redactText(inputs.rawValue, rules, tally, 'value', id)
+        if (safeValue === '[redacted]') {
+          valueSignal = 'privacy-redacted-value'
+          // Ordinary inputs expose a bullet mask whose length is exact up to 12 chars.
+          // Once the value matches a privacy rule, retain only presence: persisting the
+          // mask or hashing it would still let a checkpoint holder test length guesses.
+          if (next.state) {
+            next.state = { ...next.state }
+            delete next.state.value
+          }
+          // A constant signal necessarily hides edits between two protected values. Make
+          // that limitation explicit instead of returning an unqualified changed:false.
+          if (!next.valueChangeUncertainty) {
+            next.valueChangeUncertainty = PRIVACY_VALUE_UNCERTAINTY
+          }
+        } else if (!inputs.sensitive) valueSignal = hash('v', inputs.rawValue)
+      }
+
+      next.text = safeText
+      next.nameForIdentity = safeNameForIdentity
+      next.nameFp = safeNameForIdentity && safeNameForIdentity !== '[redacted]'
+        ? hash('nm', safeNameForIdentity)
+        : ''
+      next.textFp = safeText && safeText !== '[redacted]'
+        ? hash('f', safeText.slice(0, 200))
+        : ''
+      next.textHash = hash('t', safeText, authoredHash)
+      next.rawTextHash = safeRawText === safeText
+        ? next.textHash
+        : hash('t', safeRawText, authoredHash)
+      next.stateHash = hash('s', JSON.stringify(next.state), valueSignal)
+      next.styleHash = privateStyleHash(inputs.styleParts, rules, tally, id)
+    } else {
+      // Defensive fallback for a caller that invokes buildUi(rawObservation, {privacy})
+      // after observing without privacy collection. Never retain opaque raw signatures:
+      // deriving a smaller, structural signature is preferable to a guessing oracle.
+      const safeText = redactText(next.text || '', rules, tally, 'text', id)
+      next.text = safeText
+      next.nameFp = next.nameForIdentity && next.nameForIdentity !== '[redacted]'
+        ? hash('privacy-fallback-name', next.nameForIdentity)
+        : ''
+      next.textFp = safeText && safeText !== '[redacted]'
+        ? hash('privacy-fallback-fp', safeText.slice(0, 200))
+        : ''
+      next.textHash = hash('privacy-fallback-text', safeText, next.name || '')
+      next.rawTextHash = next.textHash
+      next.stateHash = hash('privacy-fallback-state', JSON.stringify(next.state))
+      next.styleHash = hash('privacy-fallback-style')
+    }
+
+    next.contentHash = hash(
+      'c', next.tag, next.role, next.testid || '', next.textHash, next.stateHash, next.styleHash
+    )
     nodes.set(id, next)
   }
-  return { ...snapshot, nodes }
+
+  // Merkle hashes inherit every descendant signature. Rebuild them bottom-up or the root
+  // itself remains a deterministic oracle even after all leaf fields are safe.
+  for (let i = snapshot.order.length - 1; i >= 0; i--) {
+    const n = nodes.get(snapshot.order[i])
+    if (!n) continue
+    const children = n.childIds.map((childId) => nodes.get(childId)?.subtreeHash || '')
+    n.subtreeHash = hash('m', n.contentHash, children.join('|'))
+  }
+  const rootHash = snapshot.rootId && nodes.get(snapshot.rootId)
+    ? nodes.get(snapshot.rootId).subtreeHash
+    : hash('empty')
+  return { ...snapshot, nodes, rootHash }
 }
 
 /** The diff is the product's main output — it must honor the same rules as the views.
@@ -249,19 +393,28 @@ export function probeCapabilities() {
  * @param {Element} root
  * @param {{previous?: object, noise?: any}} options
  */
-function* finishObserveStages(snapshot, options, noise, run) {
+function* finishObserveStages(snapshot, options, noise, namespace) {
   // capture before applyStableIds rebuilds the snapshot object
   const torn = snapshot.torn || 0
   // Namespace this run's ids so unmatched (added) nodes can never collide with a
-  // previous checkpoint's ids after relabeling. `run` is captured at observe start:
-  // reading the live counter here would collide two interleaved chunked observes.
-  const salt = run.toString(36) + 'r'
+  // previous checkpoint's ids after relabeling. `namespace` is captured at observe start,
+  // so interleaved chunked observations cannot borrow one another's epoch.
+  const salt = namespace
   {
     const idMap = new Map()
     for (const id of snapshot.order) idMap.set(id, 'n_' + salt + id.slice(2))
     snapshot = applyStableIds(snapshot, idMap)
   }
   yield 'saltIds'
+  const privacyRules = normalizePrivacyRules(options.privacy)
+  const privacyTally = privacyRules.length ? createPrivacyTally() : null
+  if (privacyTally) {
+    // A persisted baseline and the fresh side of a diff must carry the SAME safe
+    // signatures. Sanitizing only in buildUi() would compare a protected checkpoint
+    // against raw current hashes and turn every unchanged secret into a false change.
+    snapshot = applyPrivacy(snapshot, options.privacy, privacyTally)
+    yield 'privacy'
+  }
   let diff = null
   if (options.previous) {
     const prev = options.previous.nodes instanceof Map || options.previous.__inflated
@@ -272,13 +425,16 @@ function* finishObserveStages(snapshot, options, noise, run) {
     yield 'diff'
     snapshot = applyStableIds(snapshot, diff.idMap)
   }
-  return { snapshot, diff, noise, torn }
+  return { snapshot, diff, noise, torn, privacyTally, privacyApplied: !!privacyTally }
 }
 
 export function observe(root, options = {}) {
   const noise = resolveNoise(options.noise)
-  const run = ++runCounter
-  const gen = finishObserveStages(takeSnapshot(root, noise), options, noise, run)
+  const namespace = randomNamespace()
+  const gen = finishObserveStages(takeSnapshot(root, noise, {
+    strictScope: options.strictScope === true,
+    engineFrame: options.engineFrame,
+  }), options, noise, namespace)
   let r = gen.next()
   while (!r.done) r = gen.next()
   return r.value
@@ -287,7 +443,7 @@ export function observe(root, options = {}) {
 /** Chunked observe: same result shape plus `torn` (see takeSnapshotChunked). */
 export async function observeChunked(root, options = {}) {
   const noise = resolveNoise(options.noise)
-  const run = ++runCounter
+  const namespace = randomNamespace()
   const P = typeof window !== 'undefined' && window.__SD_PROF
   // Inflate BEFORE the walk, sliced: three hash derivations per node made it the
   // biggest post-walk monolith (480ms measured by the panel). Callers that reuse a
@@ -298,12 +454,20 @@ export async function observeChunked(root, options = {}) {
     if (P) P.inflate = (P.inflate || 0) + (performance.now() - t0)
     options = { ...options, previous: prev }
   }
-  const snap = await takeSnapshotChunked(root, noise, { budgetMs: options.budgetMs })
+  const snap = await takeSnapshotChunked(root, noise, {
+    budgetMs: options.budgetMs,
+    strictScope: options.strictScope === true,
+    engineFrame: options.engineFrame,
+  })
+  // Internal lifecycle hook for resident sensors: it fixes the semantic window boundary
+  // at the instant the DOM snapshot is complete, before privacy/diff stages may yield.
+  // The snapshot is not exposed by the hook and the callback must remain synchronous.
+  if (typeof options.onSnapshotCaptured === 'function') options.onSnapshotCaptured()
   // The post-walk stages yield between one another: with a baseline present,
   // inflate + diff + relabel used to run as ONE task and blocked ~1s on 3.5k-node
   // pages (panel probe round) — the walk sliced, its bookends didn't.
   const pause = makeSlicer(options.budgetMs || 40)
-  const gen = finishObserveStages(snap, options, noise, run)
+  const gen = finishObserveStages(snap, options, noise, namespace)
   let t = performance.now()
   let r = gen.next()
   while (!r.done) {
@@ -329,10 +493,18 @@ export const getLastSnapshot = () => LAST_SNAPSHOT
 export function buildUi(observation, options = {}) {
   const { snapshot, diff } = observation
   const privacyRules = normalizePrivacyRules(options.privacy)
-  const tally = privacyRules.length ? createPrivacyTally() : null
-  const viewSnapshot = applyPrivacy(snapshot, options.privacy, tally)
+  const tally = observation.privacyTally || (privacyRules.length ? createPrivacyTally() : null)
+  const viewSnapshot = observation.privacyApplied
+    ? snapshot
+    : applyPrivacy(snapshot, options.privacy, tally)
   const viewDiff = applyDiffPrivacy(diff, options.privacy, tally)
-  const querySnapshot = snapshot
+  // Queries are public output too. Binding them to the raw snapshot leaked configured
+  // secrets through match.name even while context/map/diff were redacted. Element maps
+  // survive applyPrivacy(), so resolution still reaches the original live node.
+  const querySnapshot = viewSnapshot
+  // Privacy applies to predicates as well as returned matches. Consulting the raw graph
+  // here allowed getByTestId(secret) / getByRole({name: secret}) to act as a presence
+  // oracle even when the returned fields themselves were redacted.
   const query = makeQueryApi(querySnapshot)
   LAST_SNAPSHOT = querySnapshot
 
@@ -346,6 +518,18 @@ export function buildUi(observation, options = {}) {
     const n = viewSnapshot.nodes.get(id)
     if (n.semanticsAvailable === false) {
       unobservable.push({ id: n.id, role: n.role, sourceType: n.sourceType, bbox: n.bbox, rasterAvailable: !!n.rasterAvailable })
+    }
+    // Sensitive input values deliberately do not participate in a per-value digest.
+    // Keep role/name/state semantics available, but make the resulting change-detection
+    // limit travel on the existing report surface instead of returning a silent false.
+    if (n.valueChangeUncertainty) {
+      unobservable.push({
+        id: n.id,
+        role: n.role,
+        bbox: n.bbox,
+        semanticsAvailable: true,
+        ...n.valueChangeUncertainty,
+      })
     }
   }
 
@@ -364,6 +548,8 @@ export function buildUi(observation, options = {}) {
     changed: viewDiff ? viewDiff.changed : undefined,
     changes: viewDiff ? viewDiff.changes : undefined,
     actionabilityDelta: viewDiff ? viewDiff.actionabilityDelta : undefined,
+    geometryOnly: viewDiff ? viewDiff.geometryOnly : undefined,
+    foldedWrappers: viewDiff ? viewDiff.foldedWrappers : undefined,
 
     // Auditable redaction report (only when rules are active): counts by rule index
     // and field, never the redacted content or the rule text itself.
@@ -376,10 +562,10 @@ export function buildUi(observation, options = {}) {
     getByLabel: query.getByLabel,
     getByTestId: query.getByTestId,
 
-    __snapshot: querySnapshot,
+    // Kept for compatibility, but never expose a less-private graph than the public API.
+    __snapshot: viewSnapshot,
     // The privacy-filtered view. Consumers that render page strings themselves
-    // (the daemon digest, click echoes) MUST read names/text from here — __snapshot
-    // stays raw for element resolution and the query API.
+    // (the daemon digest, click echoes) MUST read names/text from here.
     __view: viewSnapshot,
   }
   return ui

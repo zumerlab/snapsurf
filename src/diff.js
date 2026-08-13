@@ -6,6 +6,24 @@
  */
 import { matchSnapshots, sameHash } from './match.js'
 
+// These two state bits use presence-only encoding in snapshots: absence means false.
+// Change evidence is consumed as a literal matcher (`to: { disabled: false }`), so make
+// that implicit endpoint explicit only when the transition actually involves the bit.
+// ARIA states deliberately retain their three-way true/false/absent semantics.
+const PRESENCE_BOOLEAN_STATE = ['disabled', 'hasValue']
+
+function stateEvidence(beforeState, afterState) {
+  const before = { ...(beforeState || {}) }
+  const after = { ...(afterState || {}) }
+  for (const key of PRESENCE_BOOLEAN_STATE) {
+    if (Object.hasOwn(before, key) || Object.hasOwn(after, key)) {
+      if (!Object.hasOwn(before, key)) before[key] = false
+      if (!Object.hasOwn(after, key)) after[key] = false
+    }
+  }
+  return { before, after }
+}
+
 /** A deserialized checkpoint keys nodes by id but carries no `id` field (and its
  *  parent link is `parent`, not `parentId`) — normalize before matching. */
 function hydrate(before) {
@@ -39,7 +57,25 @@ export function diffSnapshots(before, after) {
   // `coveredBy` names the occluder for the same reason: an end-to-end loop showed an agent
   // that knows only THAT a button is covered clearing every candidate overlay in turn,
   // spending one wasted action per candidate.
-  const ref = (id, node) => ({ id, role: node.role, name: node.name || undefined, coveredBy: node.coveredBy })
+  const ref = (id, node, identity) => ({
+    id,
+    role: node.role,
+    name: node.name || undefined,
+    coveredBy: node.coveredBy,
+    ...(identity || {}),
+  })
+
+  // Render-level actionability is independent from semantic identity confidence. A
+  // virtualized/remounted button can be an ambiguous replacement *and* become covered
+  // in the same frame. Record the hit-test transition before any semantic early return,
+  // otherwise the uncertainty that most needs escalation disappears from the report.
+  const recordActionability = (b, a, { publicId, beforeId, afterId, match }) => {
+    const was = !!b.interactive && b.visible !== false && !b.covered
+    const now = !!a.interactive && a.visible !== false && !a.covered
+    if (was === now) return
+    const identity = match === 'ambiguous' ? { match, beforeId, afterId } : undefined
+    ;(was ? becameCovered : becameVisible).push(ref(publicId, a, identity))
+  }
 
   const inReplacement = new Set()
   for (const r of replacements) {
@@ -51,6 +87,12 @@ export function diffSnapshots(before, after) {
     const b = bGet(m.beforeId)
     const a = after.nodes.get(aId)
     idMap.set(aId, m.beforeId) // stable identity: matched nodes keep their previous id
+    recordActionability(b, a, {
+      publicId: m.beforeId,
+      beforeId: m.beforeId,
+      afterId: aId,
+      match: m.match,
+    })
 
     // Positional-only match with different content: we are NOT confident this is the
     // same node (virtualized recycling, swapped cards). Report the doubt as an
@@ -61,6 +103,7 @@ export function diffSnapshots(before, after) {
         kind: 'possible-replacement', match: 'ambiguous',
         beforeId: m.beforeId, afterId: aId,
         role: a.role,
+        beforeRole: b.role,
         name: a.name || undefined,        // after-side (what is there now)
         beforeName: b.name || undefined,  // before-side (what was there)
       })
@@ -71,11 +114,15 @@ export function diffSnapshots(before, after) {
 
     // Gate on the COMPONENTS (a stored checkpoint doesn't carry the composed
     // contentHash — and the components are what the taxonomy needs anyway).
+    // textHash also frames authored semantic/resource content (accessible name, href,
+    // img/src). Checkpoints already persist this component, so those changes survive a
+    // serialized baseline without adding a second wire field.
     if (!sameHash(b.textHash, a.textHash)) kinds.push('content')
     if (!sameHash(b.stateHash, a.stateHash)) {
       kinds.push('state')
-      detail.before = { ...(b.state || {}) }
-      detail.after = { ...(a.state || {}) }
+      const evidence = stateEvidence(b.state, a.state)
+      detail.before = evidence.before
+      detail.after = evidence.after
     }
     if (!sameHash(b.styleHash, a.styleHash)) kinds.push('style')
     if (b.tag !== a.tag || b.role !== a.role) kinds.push('content')
@@ -97,12 +144,6 @@ export function diffSnapshots(before, after) {
       for (const kind of kinds) changes.push({ ...detail, kind, role: a.role, name: a.name || undefined })
     }
 
-    const bCov = !!b.covered, aCov = !!a.covered
-    const bVis = b.visible !== false, aVis = a.visible !== false
-    if ((a.interactive || b.interactive)) {
-      if ((!bCov && aCov) || (bVis && !aVis)) becameCovered.push(ref(m.beforeId, a))
-      else if ((bCov && !aCov) || (!bVis && aVis)) becameVisible.push(ref(m.beforeId, a))
-    }
   }
 
   for (const id of addedIds) {
@@ -119,13 +160,46 @@ export function diffSnapshots(before, after) {
   for (const r of replacements) {
     const b = bGet(r.beforeId)
     const a = after.nodes.get(r.afterId)
+    // A replacement has no stable identity. Use the after id so consumers can still
+    // resolve its current geometry/occluder without pretending it is the old node.
+    recordActionability(b, a, {
+      publicId: r.afterId,
+      beforeId: r.beforeId,
+      afterId: r.afterId,
+      match: 'ambiguous',
+    })
     changes.push({
       kind: 'possible-replacement', match: 'ambiguous',
       beforeId: r.beforeId, afterId: r.afterId,
       role: a.role,
+      beforeRole: b.role,
       name: a.name || undefined,
       beforeName: b.name || undefined,
     })
+  }
+
+  // ── Presentation annotations (additive: nothing is removed, totals stay honest) ──
+  // An ADDED subtree reports every node, so the wrapper chain between its top and its
+  // salient leaves is pure reading noise (a suggestion dropdown produced 30 generic
+  // wrappers around 7 meaningful changes). Mark those wrappers `folded` so a projection
+  // can collapse them; matchers and counts keep seeing the full list.
+  // Added-side ONLY: the after snapshot carries full node facts. A removed node may come
+  // from a checkpoint baseline that persists no text/sourceType, where "looks like a
+  // wrapper" is absence of evidence — folding there hid real content (adversarial round).
+  // nameFp is the engine's own identity rule: it is set only for AUTHORED names
+  // (aria-label et al) or name-from-content roles — those never fold; a generic whose
+  // name is merely concatenated content carries no identity and may.
+  const addedSet = new Set()
+  for (const c of changes) {
+    if (c.kind === 'added') addedSet.add(c.id)
+  }
+  const wrapper = (n) => !!n && n.role === 'generic' && !n.testid && !n.interactive &&
+    !n.state && !n.text && !n.nameFp && !n.sourceType
+  let foldedWrappers = 0
+  for (const c of changes) {
+    if (c.kind !== 'added') continue
+    const a = after.nodes.get(c.id)
+    if (wrapper(a) && addedSet.has(a.parentId)) { c.folded = true; foldedWrappers++ }
   }
 
   return {
@@ -133,5 +207,13 @@ export function diffSnapshots(before, after) {
     changes,
     actionabilityDelta: { becameCovered, becameVisible },
     idMap,
+    // Every change is positional AND nothing gained/lost clickability: the scope
+    // reflowed (scrollbar, container resize) with no semantic or actionability effect.
+    // Occlusion is not hashed, so a geometry-only move CAN cover a control — the
+    // actionability delta must be empty before this flag invites skimming past.
+    geometryOnly: changes.length > 0 &&
+      changes.every((c) => c.kind === 'moved' || c.kind === 'resized') &&
+      becameCovered.length === 0 && becameVisible.length === 0,
+    foldedWrappers,
   }
 }

@@ -203,8 +203,12 @@ export function matchSnapshots(before, after) {
   }
   for (const id of addedIds) {
     const n = aGet(id)
-    const hit = remByKey.get(n.tag + '|' + n.role + '|' + n.spHash.slice(0, 8) + '|' + n.ordinal)
-    if (hit) replacements.push({ beforeId: hit, afterId: id })
+    const key = n.tag + '|' + n.role + '|' + n.spHash.slice(0, 8) + '|' + n.ordinal
+    const hit = remByKey.get(key)
+    if (hit) {
+      replacements.push({ beforeId: hit, afterId: id })
+      remByKey.delete(key)
+    }
   }
   return { matches, removedIds, addedIds, replacements }
 }

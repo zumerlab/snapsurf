@@ -1,7 +1,7 @@
 /**
  * Corpus runner (Phase 1): load → inspect → mutate → inspect(previous) → compare
  * against hand-written ground truth. No diff feature exists without a fixture that
- * fails first. Fixtures: packages/agent/corpus/<name>/{page.html, mutate.js, expected.json}
+ * fails first. Fixtures: corpus/<name>/{page.html, mutate.js, expected.json}
  *
  * expected.json vocabulary:
  *   changed:          boolean — required
