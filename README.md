@@ -121,6 +121,11 @@ The MCP server exposes `browser_open`, `browser_find`, `browser_parent`, `browse
 `structuredContent` — consumers read fields, never parse prose. The server starts and
 owns the daemon when needed.
 
+**Not using Claude?** MCP is an open standard: the same server works from Cursor,
+VS Code/Copilot, Gemini CLI, the OpenAI Agents SDK, Windsurf, Zed and any other MCP
+client — and non-MCP frameworks can subprocess the CLI. Copy-paste configs per client:
+[`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md).
+
 ## Reading the reports
 
 **Ids are epoch-scoped.** Every observation renumbers (`obs #N`); an id is valid within
