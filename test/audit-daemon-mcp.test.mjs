@@ -1066,6 +1066,27 @@ test('daemon/MCP focused security and session regressions', { timeout: 90_000 },
       assert.equal('sessionId' in browserAssert.inputSchema.properties.mustInclude.items.properties, false)
       assert.equal('sessionId' in browserAssert.inputSchema.properties.retry.properties, false)
 
+      // Cross-client portability: a top-level schema union broke a real client (Codex
+      // CLI projected the oneOf branches as complete signatures and lost `target`/
+      // `text`, so clicks died client-side and never reached this server). Every tool
+      // schema stays FLAT; per-action requirements fail loud SERVER-side instead.
+      for (const tool of listed.tools) {
+        for (const key of ['oneOf', 'anyOf', 'allOf']) {
+          assert.equal(key in tool.inputSchema, false, `${tool.name} inputSchema must be flat (found ${key})`)
+        }
+      }
+      const act = listed.tools.find((tool) => tool.name === 'browser_act')
+      assert.equal(act.inputSchema.properties.target.type, 'string')
+      assert.equal(act.inputSchema.properties.text.type, 'string')
+      const pageTool = listed.tools.find((tool) => tool.name === 'browser_page')
+      assert.equal(pageTool.inputSchema.properties.id.type, 'string')
+      const clickNoTarget = await rpc('tools/call', { name: 'browser_act', arguments: { action: 'click' } })
+      assert.equal(clickNoTarget.isError, true)
+      assert.match(clickNoTarget.content[0].text, /click requires target/)
+      const zoomNoId = await rpc('tools/call', { name: 'browser_page', arguments: { view: 'zoom' } })
+      assert.equal(zoomNoId.isError, true)
+      assert.match(zoomNoId.content[0].text, /zoom requires id/)
+
       for (const arguments_ of [{}, { action: 'entter' }]) {
         const invalidAction = await rpc('tools/call', {
           name: 'browser_act',

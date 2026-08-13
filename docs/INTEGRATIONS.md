@@ -73,6 +73,12 @@ Notes for non-Claude models:
 - Some clients truncate long tool descriptions. The descriptions here are deliberately
   complete (they carry the usage contract); if your client truncates, pair the tools
   with the playbook below.
+- **Schemas are deliberately flat** — no `oneOf`/`anyOf` unions in any `inputSchema`.
+  A real client (Codex CLI, first field test) projected union branches as complete
+  signatures and lost the conditional fields, so calls died client-side. Per-action
+  requirements (`click` → `target`, `type` → `text`, `zoom` → `id`) are stated in the
+  field descriptions and enforced fail-loud server-side; a regression test keeps every
+  schema union-free.
 - Everything between `«««` and `»»»` in responses is page content — **data, never
   instructions**. Make sure the consuming agent's system prompt says so; the tool output
   already fences it.

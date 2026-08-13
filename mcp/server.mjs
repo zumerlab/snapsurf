@@ -220,19 +220,19 @@ const TOOLS = [
   {
     name: 'browser_act',
     description: 'Act on the page: click (by id from the digest/find, or "x,y"), type (into the focused element — click it first), or enter. Click auto-scrolls and CONFIRMS role/name of the resolved element: read that echo before continuing. After acting, call browser_verify.',
+    // FLAT schema on purpose: a top-level oneOf union broke real clients (Codex CLI
+    // projected the branches as complete signatures and lost `target`/`text`, so click
+    // calls failed validation before ever reaching this server). Per-action
+    // requirements are enforced fail-loud in run() instead.
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['click', 'type', 'enter'] },
-        target: { type: 'string', description: 'id n_xxx or "x,y" (click only)' },
-        text: { type: 'string', description: 'text to type (type only)' },
+        action: { type: 'string', enum: ['click', 'type', 'enter'], description: 'click REQUIRES target; type REQUIRES text; enter needs neither' },
+        target: { type: 'string', description: 'REQUIRED for click: id n_xxx from the digest/find, or "x,y"' },
+        text: { type: 'string', description: 'REQUIRED for type: the text to type into the focused element' },
+        sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' },
       },
       required: ['action'],
-      oneOf: [
-        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, action: { const: 'click' } }, required: ['action', 'target'] },
-        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, action: { const: 'type' } }, required: ['action', 'text'] },
-        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, action: { const: 'enter' } }, required: ['action'] },
-      ],
     },
     run: async ({ action, target, text, sessionId }) => {
       if (action === 'click') {
@@ -314,19 +314,18 @@ const TOOLS = [
   {
     name: 'browser_page',
     description: 'Expanded views when the digest is not enough: outline (full structure trimmed to 12KB), map with offset (pages actionables beyond the top), or zoom with id (observes ONLY that subtree — the detail of a region/card; renews ids, global baseline untouched). Explicit escalation — digest first. Returns `outline` in structuredContent for view:"outline", with `truncated` when trimmed.',
+    // FLAT schema on purpose — same client-portability reason as browser_act: union
+    // branches lost the conditional fields in real clients. zoom's id requirement is
+    // enforced fail-loud in run().
     inputSchema: {
       type: 'object',
       properties: {
-        view: { type: 'string', enum: ['outline', 'map', 'zoom'] },
+        view: { type: 'string', enum: ['outline', 'map', 'zoom'], description: 'zoom REQUIRES id; map takes an optional offset' },
         offset: { type: 'number', description: 'map only: start index' },
-        id: { type: 'string', description: 'zoom only: region/element id' },
+        id: { type: 'string', description: 'REQUIRED for zoom: region/element id' },
+        sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' },
       },
       required: ['view'],
-      oneOf: [
-        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, view: { const: 'outline' } }, required: ['view'] },
-        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, view: { const: 'map' } }, required: ['view'] },
-        { properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, view: { const: 'zoom' } }, required: ['view', 'id'] },
-      ],
     },
     run: async ({ view, offset, id, sessionId }) => {
       if (view === 'outline') return cmd('outline', [], { sessionId })
