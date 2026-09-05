@@ -221,12 +221,19 @@ describe('core honesty regressions', () => {
   })
 
   it('declares same-origin iframe contents unobservable instead of silently complete', async () => {
-    const root = mount('<iframe id="frame" srcdoc="<button>Before</button>"></iframe>')
-    const frame = root.querySelector('#frame')
-    if (!frame.contentDocument || frame.contentDocument.readyState !== 'complete') {
-      await new Promise((resolve) => frame.addEventListener('load', resolve, { once: true }))
-    }
+    const root = mount('')
+    const frame = document.createElement('iframe')
+    // The initial about:blank document can already be complete while srcdoc is
+    // still navigating. Wait for that navigation, with the listener attached first.
+    const loaded = new Promise((resolve) => frame.addEventListener('load', resolve, { once: true }))
+    frame.srcdoc = '<button>Before</button>'
+    root.appendChild(frame)
+    await loaded
+    const frameDocument = frame.contentDocument
+    expect(frameDocument.body.textContent).toBe('Before')
     const before = await inspect(root)
+    expect(frame.contentDocument).toBe(frameDocument)
+    expect(frameDocument.body.textContent).toBe('Before')
     frame.contentDocument.body.innerHTML = '<button>After</button>'
     const after = await inspect(root, { previous: before.checkpoint() })
 

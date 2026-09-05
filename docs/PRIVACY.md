@@ -102,6 +102,35 @@ The companion protocol itself has no pixel-returning response. Its `privacy.appl
 attestation covers only the semantic result produced by the isolated content reader;
 screenshots taken by a consumer remain outside that attestation.
 
+## Library capture redaction
+
+The library APIs `agent.inspect`, `agentOracle` and `sensor` accept the opt-in
+`captureRedaction` option, with the same settings as SnapDOM's `redactInputs` plugin.
+Unlike literal `privacy.redact`, this explicitly selects fields, blocks and named
+attributes for both clone and semantic removal. Fields selected by these rules retain
+presence only in their value signal; filled-to-filled edits are declared unobservable.
+
+Use `selector` for inputs/textareas, `blocks` for whole subtrees, and
+`attributes: [{ selector, names }]` for exact attribute names. Rules are applied before
+semantic hashes and baselines are created and to every attached GIF/video frame.
+`inspect().rasterize()` retains them for regional captures. The source page stays
+unchanged. Blocks retain invisible layout space unless `excludeMode: 'remove'` is used.
+
+This is configured selection, not automatic discovery: attribute removal does not erase
+copies in ordinary text, CSS `content` or bitmap pixels. Masks may change wrapping.
+The CLI/MCP and native screenshots do not inherit this library-only option; their
+existing pixel warnings above remain accurate. Separately installed redactor plugins
+do not share a policy automatically with these semantic readers.
+
+Capture redaction permits one composed configuration per capture. A protected capture
+rejects additional `agentOracle`/`sensor` readers, including unconfigured ones; use
+separate captures for separate readers. In `agentOracle` or
+`agent.inspect`, checkpoints created with `captureRedaction` are bound to that local
+policy. Enabling, removing or changing the selection rules, or reloading the page,
+requires omitting `previous` to establish a fresh baseline. This prevents an older
+checkpoint from reintroducing previously visible names or text into a protected diff.
+
+
 ## Verification
 
 - `test/privacy-probe.test.js`: core redaction, encoded forms and audit behavior

@@ -51,19 +51,62 @@ One plugin instance is stateful. Reuse it sequentially, do not share it across c
 captures of the same root, and call `reset(root?)` or `dispose()` when its history is no
 longer needed.
 
-On a staged SnapDOM v3 runtime the sensor takes the standard `needs` knob (stage
-vocabulary `'dom' | 'clone' | 'render'`): `sensor({ needs: 'dom' })` walks the LIVE DOM
-in `beforeClone` — **no clone is taken** (the ~89% cut) — and the report says so:
-`coverage.source: 'LIVE_DOM_WALK'`, `visual.svg: 'NOT_CAPTURED_STAGE_DOM'`,
-`visual.raster: 'REQUEST_A_NEW_SCOPED_CAPTURE_WITH_CLIP'` (pixels of a later instant are
-a NEW capture — use `clip` to scope it to the uncertain region). The default stays
-`'render'` per the plugin spec: lowering the stage takes the picture away, and that is
-the caller's call. The sensor reads the resolved stage from `ctx.options.needs` (v3
-stamps the max of all plugins' needs there) and `result.needs` reports it — so if
-another plugin raises the stage, the sensor follows it back to the prepared frame
-automatically. On a stage-less legacy runtime, `needs:'dom'` throws
-`SNAPDOM_SENSOR_STAGES_REQUIRED` instead of letting the full pipeline run silently.
-(`'live'` is accepted as a deprecated alias for `'dom'`.)
+On current SnapDOM v3, the supported stages are `'clone' | 'render'`.
+`sensor({ needs: 'clone' })` observes the prepared frame in `afterClone` and skips
+image rendering. The report declares `coverage.source: 'SNAPDOM_AFTER_CLONE_FRAME'`,
+`coverage.stage: 'clone'`, and `visual.svg: 'NOT_RENDERED_STAGE_CLONE'`. Pixels requested
+later need a **new** capture: use `clip` to scope that work to the desired region.
+The default remains `'render'`. Another plugin can raise the resolved stage to render;
+the sensor follows `ctx.options.needs`, and `result.needs` reports the same stage.
+
+The former experimental `'dom'` and `'live'` stages are rejected; core now always
+prepares at least a clone. Historical no-clone timing results do not apply to this
+version. A clone request on a stage-less runtime throws
+`SNAPDOM_SENSOR_STAGES_REQUIRED` instead of silently rendering an image.
+
+## Captured-content privacy
+
+`privacy: { redact: ['literal'] }` filters literal strings in the report only. The
+optional `captureRedaction` field composes SnapDOM's `redactInputs` with the sensor so
+one per-capture policy also protects the selected image content:
+
+```js
+const sensorPlugin = sensor({
+  captureRedaction: {
+    all: true,
+    blocks: '.private-panel',
+    attributes: [{ selector: '.customer', names: ['title', 'aria-label'] }],
+  },
+})
+```
+
+It accepts all `redactInputs` options: `types`, `autocomplete`, `selector`, `all`,
+`mask`, `blocks`, `attributes`. `selector` matches inputs/textareas only. Blocks use
+the capture's `excludeMode` (`hide` by default, or `remove`). Attribute names are exact,
+not wildcard patterns. A matching `value` rule clears an input/textarea's displayed
+value and omits its value from structured state. Filled-to-filled edits hidden by
+these field rules are declared unobservable. Source DOM is never modified.
+
+The shared policy filters source-derived names, text, state and signatures before
+baseline storage. The sanitized clone feeds normal image exports and every deferred
+GIF/video frame. Reports record `privacy.captureRedaction:
+'SELECTED_FIELDS_BLOCKS_ATTRIBUTES'` when enabled. No option is enabled by default.
+
+Masks can change glyph widths/wrapping. Custom masks and nonempty selector, block or
+attribute rules disable unchanged-capture memoization; block/attribute rules add a
+final render hook and require SVG rendering. Rules do not scan text or images for
+secrets: an attribute's visible text, CSS-content or bitmap copies remain unless their
+subtree is blocked. A separately supplied redactor plugin has its own private policy;
+use `captureRedaction` when semantic outputs must follow the same rules.
+
+Capture redaction permits one composed configuration per capture. A protected capture
+rejects additional `agentOracle`/`sensor` readers, including unconfigured ones; use
+separate captures for separate readers. In `agentOracle` or
+`agent.inspect`, checkpoints created with `captureRedaction` are bound to that local
+policy. Enabling, removing or changing the selection rules, or reloading the page,
+requires omitting `previous` to establish a fresh baseline. This prevents an older
+checkpoint from reintroducing previously visible names or text into a protected diff.
+
 
 The package declares `@zumer/snapdom` as a peer dependency and contains no Playwright,
 CDP, MCP, Node runtime or browser controller. It remains private development software;

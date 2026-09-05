@@ -193,14 +193,14 @@ the daemon process, because page realms die with the document.
 
 If your product already runs [snapDOM](https://github.com/zumerlab/snapdom) inside the
 page, the sensor gives that host the same perception loop as a plugin — no daemon, no
-CDP, no controller. One ESM file (40.6 KB raw / 15.1 KB gzip / 13.6 KB brotli), zero
+CDP, no controller. One ESM file (49.2 KB raw / 18.1 KB gzip / 16.4 KB brotli), zero
 dependencies, snapDOM v3 as its only peer.
 
 ```js
 import { snapdom } from '@zumer/snapdom'
 import { sensor } from '@zumer/snapdom-sensor'
 
-const watch = sensor({ needs: 'live' })          // v3 stages: NO clone is taken
+const watch = sensor({ needs: 'clone' })         // prepare the clone; skip image rendering
 const card = document.querySelector('#checkout-card')
 
 await snapdom(card, { plugins: [watch] })         // private baseline, in RAM
@@ -213,13 +213,13 @@ report.coverage.knownSemanticBlindSpots           // canvas/iframes, declared wi
 report.uncertainty.reasons                        // never an omission
 ```
 
-On snapDOM v3's staged pipeline, `needs: 'live'` walks the live DOM and skips the clone
-entirely (~89% of the capture cost); the default stays `'render'` — lowering the stage
-takes the picture away, and that is the caller's call. The report always says which
-world it read (`coverage.source`, `coverage.stage`) and what visual evidence exists
-(`visual.svg: 'NOT_CAPTURED_STAGE_LIVE'` → pixels on demand are a *new* scoped capture
-via snapDOM's `clip`). On a stage-less runtime, `needs:'live'` throws a named error
-instead of silently running the full pipeline.
+On current SnapDOM v3, `needs: 'clone'` prepares the clone and skips image rendering;
+the default stays `'render'`. The report declares `coverage.source:
+'SNAPDOM_AFTER_CLONE_FRAME'` and the resolved stage. A clone-only capture reports
+`visual.svg: 'NOT_RENDERED_STAGE_CLONE'`; pixels on demand require a **new** capture
+of the desired region via `clip`. The earlier experimental `dom`/`live` stages were
+removed and are rejected. Their historical no-clone benchmarks do not describe the
+current pipeline; measure the clone/render tradeoff on your own page.
 
 The sensor's contract is deliberately narrow: `taskAssessment` is always
 `NOT_ASSESSED`, causality is never claimed, `toSensor()` rejects any `expected`/
@@ -228,6 +228,53 @@ The sensor's contract is deliberately narrow: `taskAssessment` is always
 never mistakable for continuous observation. DOM drift between capture start and the
 walk is watched (net of the engine's own prep) and declared, including inside open
 shadow roots.
+
+### Opt-in capture redaction
+
+`privacy.redact` filters matching literal strings in semantic reports. It does not
+change images. To select content to remove from **both** captures and semantic data,
+use `captureRedaction` on `sensor()`, `agentOracle()` or `agent.inspect()`:
+
+```js
+const watch = sensor({
+  captureRedaction: {
+    all: true,
+    blocks: ['.private-panel'],
+    attributes: [{ selector: '[data-token]', names: ['data-token', 'title'] }],
+  },
+})
+const result = await snapdom(card, { plugins: [watch] })
+const report = await result.toSensor()
+const image = await result.toPng()
+```
+
+The option uses the same fields as SnapDOM's `redactInputs`: `types`, `autocomplete`,
+`selector`, `all`, `mask`, `blocks`, `attributes`. `selector` selects only inputs and
+textareas; `blocks` selects whole subtrees. Blocks preserve an invisible layout box by
+default; the capture's `excludeMode: 'remove'` removes that box. Attribute rules name
+exact attributes, without wildcards. The live page stays unchanged.
+
+The library uses one policy for source-derived names, state, checkpoints and clone
+redaction. `inspect().rasterize()` and its scoped captures retain that configuration,
+and attached GIF/video exporters apply it to every new frame. Field masks may change
+text wrapping. Custom masks and nonempty selector/block/attribute rules run on every
+capture; block/attribute rules require the SVG renderer.
+
+These rules do not scan arbitrary text, CSS-generated content or pixels for secrets.
+Removing an attribute does not erase visible copies of its value; block that content
+when needed. This integration uses the redactor bundled here: adding a separate
+`redactInputs` plugin does not automatically share its private policy with the sensor.
+The CLI/MCP's existing literal-redaction setting still covers semantics only; its
+native screenshots and recording commands do not enable `captureRedaction`.
+
+Capture redaction permits one composed configuration per capture. A protected capture
+rejects additional `agentOracle`/`sensor` readers, including unconfigured ones; use
+separate captures for separate readers. In `agentOracle` or
+`agent.inspect`, checkpoints created with `captureRedaction` are bound to that local
+policy. Enabling, removing or changing the selection rules, or reloading the page,
+requires omitting `previous` to establish a fresh baseline. This prevents an older
+checkpoint from reintroducing previously visible names or text into a protected diff.
+
 
 ## Library
 
@@ -309,7 +356,7 @@ Two artifacts you can open right now:
 - **Live bench** — serve the repo root (`python3 -m http.server 8763`) and open
   `/demo-sensor/`: act on a card and read exactly what an agent would read, including
   the fail-loud stamps (`HISTORY_NOT_CARRIED`, `INDETERMINATE`) and the v3
-  `needs: render/live` toggle.
+  `needs: render/clone` toggle.
 - **Consumer report** — [`demo-sensor/informe.html`](demo-sensor/informe.html): an
   agent's own dogfood verdict, an oracle-vs-screenshots A/B with real API token usage,
   and the adversarial review round over this instrument's fixes.

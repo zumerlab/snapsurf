@@ -6,8 +6,10 @@
  * @module agent/aria
  */
 
+import { attribute } from './capture-redaction.js'
+
 const IMPLICIT_ROLES = {
-  a: (el) => (el.hasAttribute('href') ? 'link' : 'generic'),
+  a: (el, policy) => (attribute(el, 'href', policy) !== null ? 'link' : 'generic'),
   button: () => 'button',
   select: () => 'combobox',
   textarea: () => 'textbox',
@@ -31,8 +33,8 @@ const IMPLICIT_ROLES = {
   h4: () => 'heading', h5: () => 'heading', h6: () => 'heading',
   option: () => 'option',
   progress: () => 'progressbar',
-  input: (el) => {
-    const t = (el.getAttribute('type') || 'text').toLowerCase()
+  input: (el, policy) => {
+    const t = (attribute(el, 'type', policy) || 'text').toLowerCase()
     if (t === 'checkbox') return 'checkbox'
     if (t === 'radio') return 'radio'
     if (t === 'range') return 'slider'
@@ -45,11 +47,11 @@ const IMPLICIT_ROLES = {
 }
 
 /** @param {Element} el @returns {string} */
-export function computeRole(el) {
-  const explicit = el.getAttribute('role')
+export function computeRole(el, policy) {
+  const explicit = attribute(el, 'role', policy)
   if (explicit) return explicit.trim().split(/\s+/)[0]
   const f = IMPLICIT_ROLES[el.localName]
-  return f ? f(el) : 'generic'
+  return f ? f(el, policy) : 'generic'
 }
 
 /** Composed containment crosses open-shadow host boundaries and slot assignment. */
@@ -96,16 +98,22 @@ const NON_TEXTUAL = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'])
  * as "(function() { if (false) { var firstViewUrl = …". Walk text nodes and skip those.
  * @param {Element} el
  */
-export function visibleText(el, maxRaw = Infinity) {
+export function visibleText(el, maxRaw = Infinity, policy) {
   // maxRaw: names are capped at 80 normalized chars, yet this walked ENTIRE subtrees
   // — 72% of the whole walk went here (perf round profile, 13k-node article). A raw
   // cap of ~1000 yields identical first-80 normalized chars except in pathological
   // all-whitespace subtrees, and turns O(document) per container into O(cap).
   let out = ''
   const walk = (node) => {
+    if (node.localName === 'textarea') return false
+    if (policy && (policy.isBlocked(node) || policy.isField(node))) return false
     for (let c = node.firstChild; c; c = c.nextSibling) {
       if (out.length >= maxRaw) return true
-      if (c.nodeType === 3) out += c.nodeValue
+      if (c.nodeType === 3) {
+        // Text is slottable too. Its light-DOM parent can be public while its
+        // assigned slot renders under a blocked shadow ancestor.
+        if (!policy?.isBlocked(c.assignedSlot)) out += c.nodeValue
+      }
       else if (c.nodeType === 1 && !NON_TEXTUAL.has(c.tagName)) { if (walk(c)) return true }
     }
     return out.length >= maxRaw
@@ -120,60 +128,65 @@ export function visibleText(el, maxRaw = Infinity) {
  *   authored source (aria-label/labelledby, <label>, alt, title, value), not from
  *   subtree text.
  */
-export function computeName(el, labelFor, boundaryRoot) {
-  const ariaLabel = el.getAttribute('aria-label')
+export function computeName(el, labelFor, boundaryRoot, policy) {
+  if (policy?.isBlocked(el)) return { name: '', explicit: false }
+  const ariaLabel = attribute(el, 'aria-label', policy)
   if (ariaLabel) return { name: norm(ariaLabel), explicit: true }
 
-  const labelledBy = el.getAttribute('aria-labelledby')
+  const labelledBy = attribute(el, 'aria-labelledby', policy)
   if (labelledBy) {
     // IDREFs are resolved in the element's own tree scope. ownerDocument lookup can
     // cross from an open shadow root into light DOM and import an unrelated duplicate id.
     const tree = el.getRootNode?.() || el.ownerDocument
     const parts = labelledBy.split(/\s+/)
-      .map((id) => tree.getElementById?.(id) || null)
-      .filter((node) => node && (!boundaryRoot || composedContains(boundaryRoot, node)))
-      .map((n) => norm(visibleText(n)))
+      .map((id) => {
+        const node = tree.getElementById?.(id) || null
+        return node && (!policy || attribute(node, 'id', policy) === id) ? node : null
+      })
+      .filter((node) => node && !policy?.isBlocked(node) && (!boundaryRoot || composedContains(boundaryRoot, node)))
+      .map((n) => norm(visibleText(n, Infinity, policy)))
       .filter(Boolean)
     if (parts.length) return { name: parts.join(' '), explicit: true }
   }
 
-  if (el.id) {
+  const id = policy ? attribute(el, 'id', policy) : el.id
+  if (id) {
     // labelFor: one document scan per walk instead of one full-document
     // querySelector per id'd element (thousands on a large article)
     if (boundaryRoot && el.labels) {
-      const label = [...el.labels].find((candidate) => composedContains(boundaryRoot, candidate))
-      if (label) return { name: norm(visibleText(label, 1000)), explicit: true }
+      const label = [...el.labels].find((candidate) => composedContains(boundaryRoot, candidate) && !policy?.isBlocked(candidate) && (!policy || attribute(candidate, 'for', policy) === id))
+      if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, 1000, policy)), explicit: true }
     } else if (labelFor) {
-      const label = labelFor.get(el.id)
-      if (label) return { name: norm(visibleText(label, 1000)), explicit: true }
+      const label = labelFor.get(id)
+      if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, 1000, policy)), explicit: true }
     } else {
       try {
-        const label = el.ownerDocument.querySelector(`label[for="${CSS.escape(el.id)}"]`)
-        if (label) return { name: norm(visibleText(label)), explicit: true }
+        const label = el.ownerDocument.querySelector(`label[for="${CSS.escape(id)}"]`)
+        if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, Infinity, policy)), explicit: true }
       } catch { }
     }
   }
   const wrappingLabel = el.closest && el.closest('label')
-  if (wrappingLabel && wrappingLabel !== el &&
+  if (wrappingLabel && wrappingLabel !== el && !policy?.isBlocked(wrappingLabel) &&
       (!boundaryRoot || composedContains(boundaryRoot, wrappingLabel))) {
-    const t = norm(visibleText(wrappingLabel, 1000))
+    const t = norm(visibleText(wrappingLabel, 1000, policy))
     if (t) return { name: t, explicit: true }
   }
 
-  if (el.localName === 'img') return { name: norm(el.getAttribute('alt')), explicit: true }
+  if (el.localName === 'img') return { name: norm(attribute(el, 'alt', policy)), explicit: true }
   if (el.localName === 'input') {
-    const t = (el.getAttribute('type') || '').toLowerCase()
+    const t = (attribute(el, 'type', policy) || '').toLowerCase()
     if (t === 'submit' || t === 'button' || t === 'reset') {
-      return { name: norm(el.getAttribute('value')) || t, explicit: true }
+      return { name: policy?.isField(el) ? t : norm(attribute(el, 'value', policy)) || t, explicit: true }
     }
-    const ph = el.getAttribute('placeholder')
+    const ph = attribute(el, 'placeholder', policy)
     if (ph) return { name: norm(ph), explicit: true }
   }
 
-  const title = el.getAttribute('title')
+  const title = attribute(el, 'title', policy)
   if (title) return { name: norm(title), explicit: true }
 
   // Content-derived name, capped: identity wants a fingerprint, not a transcript.
-  const text = norm(visibleText(el, 1000))
+  const text = norm(visibleText(el, 1000, policy))
   return { name: text.length > 80 ? text.slice(0, 80) : text, explicit: false }
 }

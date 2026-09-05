@@ -19,7 +19,7 @@ const forbidden = [
   ['XMLHttpRequest', /\bXMLHttpRequest\b/],
   ['WebSocket', /\bWebSocket\b/],
   ['sendBeacon', /\bsendBeacon\b/],
-  ['node: import', /\bnode:/],
+  ['node: import', /['"`]node:[^'"`]+['"`]/],
   ['Playwright', /(?:@playwright|\bplaywright\b)/i],
 ]
 
@@ -73,7 +73,7 @@ const manifest = {
   externalImports,
   buildInputs: {
     semanticKernel: '../../src/',
-    interpretation: 'The browser artifact bundles the semantic projection used by the plugin. It runs only from SnapDOM standard afterClone/defineExports hooks. The host supplies the @zumer/snapdom peer; Playwright, MCP and a browser controller are not imported.',
+    interpretation: 'The browser artifact bundles the semantic projection used by the plugin. It uses SnapDOM standard capture and export hooks, observing the prepared clone frame. The host supplies the @zumer/snapdom peer; Playwright, MCP and a browser controller are not imported.',
   },
   staticEvidence: {
     scope: 'generated sensor bundle only',

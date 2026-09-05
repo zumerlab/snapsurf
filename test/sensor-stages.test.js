@@ -42,19 +42,19 @@ describe('sensor × SnapDOM v3 stages', () => {
     expect(report.visual.svg).toBe('CAPTURED_BY_SNAPDOM')
   })
 
-  it("needs:'dom' walks the live DOM, takes no clone, and says so", async () => {
+  it("needs:'clone' prepares the frame without rendering pixels", async () => {
     const card = makeCard()
-    const plugin = sensor({ needs: 'dom' })
+    const plugin = sensor({ needs: 'clone' })
     plugins.push(plugin)
 
     const first = await capture(card, plugin)
-    expect(first.needs).toBe('dom')
+    expect(first.needs).toBe('clone')
     const baseline = await first.toSensor()
     expect(baseline.observation.status).toBe('BASELINE_ESTABLISHED')
-    expect(baseline.coverage.source).toBe('LIVE_DOM_WALK')
-    expect(baseline.coverage.stage).toBe('dom')
-    expect(baseline.coverage.engineFrame.clonePrepared).toBe(false)
-    expect(baseline.visual.svg).toBe('NOT_CAPTURED_STAGE_DOM')
+    expect(baseline.coverage.source).toBe('SNAPDOM_AFTER_CLONE_FRAME')
+    expect(baseline.coverage.stage).toBe('clone')
+    expect(baseline.coverage.engineFrame.clonePrepared).toBe(true)
+    expect(baseline.visual.svg).toBe('NOT_RENDERED_STAGE_CLONE')
     expect(baseline.visual.raster).toBe('REQUEST_A_NEW_SCOPED_CAPTURE_WITH_CLIP')
 
     card.querySelector('[data-testid="mode"]').setAttribute('aria-pressed', 'true')
@@ -66,21 +66,16 @@ describe('sensor × SnapDOM v3 stages', () => {
     ]))
 
     // What was never produced is never faked: pixels must throw, not lie.
-    await expect(Promise.resolve().then(() => second.toPng())).rejects.toThrow(/dom/)
+    await expect(Promise.resolve().then(() => second.toPng())).rejects.toThrow(/clone/)
   })
 
-  it("'live' is accepted as a deprecated alias for 'dom'", async () => {
-    const card = makeCard()
-    const plugin = sensor({ needs: 'live' })
-    plugins.push(plugin)
-    const result = await capture(card, plugin)
-    expect(result.needs).toBe('dom')
-    expect((await result.toSensor()).coverage.stage).toBe('dom')
+  it.each(['live', 'dom'])('rejects removed stage %s before capture', (needs) => {
+    expect(() => sensor({ needs })).toThrow(/'clone' or 'render'.*removed/)
   })
 
   it('another render plugin raises the stage and the sensor follows to the frame walk', async () => {
     const card = makeCard()
-    const plugin = sensor({ needs: 'dom' })
+    const plugin = sensor({ needs: 'clone' })
     plugins.push(plugin)
     const raise = { name: 'raise-to-render' }
 
@@ -91,9 +86,9 @@ describe('sensor × SnapDOM v3 stages', () => {
     expect(result.url).toMatch(/^data:image\/svg\+xml/)
   })
 
-  it("needs:'dom' on a stage-less legacy runtime fails loud, never a silent clone", () => {
+  it("needs:'clone' on a stage-less legacy runtime fails loud, never a silent clone", () => {
     const card = makeCard()
-    const plugin = sensor({ needs: 'dom' })
+    const plugin = sensor({ needs: 'clone' })
     plugins.push(plugin)
 
     // A legacy runtime never stamps the resolved stage on options.needs.
@@ -101,13 +96,13 @@ describe('sensor × SnapDOM v3 stages', () => {
       .toThrow(/staged SnapDOM runtime/)
   })
 
-  it('declares drift in dom stage when another dom plugin mutates before the walk', async () => {
+  it('declares drift when another clone plugin mutates before the frame walk', async () => {
     const card = makeCard()
-    const plugin = sensor({ needs: 'dom' })
+    const plugin = sensor({ needs: 'clone' })
     plugins.push(plugin)
     const mutator = {
-      name: 'dom-mutator',
-      needs: 'dom',
+      name: 'clone-mutator',
+      needs: 'clone',
       beforeClone() {
         card.querySelector('[data-testid="status"]').textContent = 'Drifted'
       },
@@ -119,7 +114,7 @@ describe('sensor × SnapDOM v3 stages', () => {
       embedFonts: false,
       cache: 'disabled',
     })
-    expect(result.needs).toBe('dom')
+    expect(result.needs).toBe('clone')
     const report = await result.toSensor()
     expect(report.uncertainty.reasons).toContain('mutated-during-capture-prep')
   })

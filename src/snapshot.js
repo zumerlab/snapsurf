@@ -6,6 +6,7 @@
  * @module agent/snapshot
  */
 import { hash } from './hash.js'
+import { attribute } from './capture-redaction.js'
 import { computeRole, computeName, visibleText, NAME_FROM_CONTENT_ROLES } from './aria.js'
 import { normalizeText, isIgnored, collectAnimatedProps } from './noise.js'
 
@@ -83,8 +84,8 @@ function composedNodes(el) {
 }
 
 const composedChildren = (el) => composedNodes(el).filter((node) => node.nodeType === 1)
-const composedOwnText = (el) => composedNodes(el)
-  .filter((node) => node.nodeType === 3)
+const composedOwnText = (el, policy) => composedNodes(el)
+  .filter((node) => node.nodeType === 3 && !policy?.isBlocked(node.assignedSlot))
   .map((node) => node.nodeValue || '')
   .join('')
 
@@ -179,12 +180,12 @@ function makeGeometry(root, styleCache) {
   }
 }
 
-function interactionState(el) {
+function interactionState(el, policy) {
   const s = {}
   try {
-    if (el.matches(':disabled')) s.disabled = true
-    if (el.matches(':checked')) s.checked = true
-    else if (el.type === 'checkbox' || el.type === 'radio') s.checked = false
+    if (!policy?.redactsAttribute(el, 'disabled') && el.matches(':disabled')) s.disabled = true
+    if (!policy?.redactsAttribute(el, 'checked') && el.matches(':checked')) s.checked = true
+    else if (!policy?.redactsAttribute(el, 'checked') && (el.type === 'checkbox' || el.type === 'radio')) s.checked = false
   } catch { }
   const bools = [
     ['aria-expanded', 'expanded'],
@@ -193,20 +194,26 @@ function interactionState(el) {
     ['aria-checked', 'checked'],
   ]
   for (const [attr, key] of bools) {
-    const v = el.getAttribute(attr)
+    const v = attribute(el, attr, policy)
     if (v === 'true') s[key] = true
     else if (v === 'false') s[key] = false
   }
-  if (el.localName === 'details') s.open = el.hasAttribute('open')
-  const sensitive = isSensitiveInput(el)
+  if (el.localName === 'details' && !policy?.redactsAttribute(el, 'open')) s.open = el.hasAttribute('open')
+  const selected = policy && el.localName === 'select' ? [...el.selectedOptions] : []
+  const fieldRedacted = policy?.isField(el) || policy?.redactsAttribute(el, 'value') ||
+    selected.some(option => policy.isBlocked(option) || policy.redactsAttribute(option, 'value'))
+  const sensitive = fieldRedacted || isSensitiveInput(el)
   let valueSignal = ''
   const isValueControl = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'
-  const rawValue = isValueControl ? String(el.value || '') : null
+  let rawValue = isValueControl ? String(el.value || '') : null
+  if (selected.length && !fieldRedacted && !selected[0].hasAttribute('value')) {
+    rawValue = visibleText(selected[0], Infinity, policy).replace(/[\t\n\f\r ]+/g, ' ').replace(/^ | $/g, '')
+  }
   if (isValueControl && rawValue) {
     // Sensitive values must never feed a deterministic checkpoint hash: that turns
     // the checkpoint into an offline password/email/card-number guessing oracle.
     // Presence plus a coarse length bucket still detects empty/fill and larger edits.
-    valueSignal = sensitive
+    valueSignal = fieldRedacted ? 'redacted-value' : sensitive
       ? `sensitive:${sensitiveValueBucket(rawValue)}`
       : hash('v', rawValue)
     if (!sensitive) s.value = '•'.repeat(Math.min(rawValue.length, 12))
@@ -215,7 +222,10 @@ function interactionState(el) {
   return {
     state: Object.keys(s).length ? s : null,
     valueSignal,
-    valueChangeUncertainty: sensitive ? SENSITIVE_VALUE_UNCERTAINTY : null,
+    valueChangeUncertainty: fieldRedacted ? {
+      sourceType: 'capture-redacted-input-value', scope: 'value-change-detection',
+      detection: 'presence-only', uncertainty: 'filled-to-filled edits hidden by captureRedaction are not observed',
+    } : sensitive ? SENSITIVE_VALUE_UNCERTAINTY : null,
     // A sensitive value is never needed for semantic output. Do not even retain it in
     // the realm-local privacy sidecar: presence/coarse bucket plus explicit uncertainty
     // are the full supported observation contract for these controls.
@@ -238,16 +248,16 @@ function styleSubset(el, cs, animatedProps) {
  *  alter what an agent can understand or where it will navigate, so they belong in the
  *  content component of the signature. Values are hashed immediately and never exposed
  *  through this field (privacy views still govern the readable name/text surfaces). */
-function authoredContentParts(el, name, nameExplicit) {
+function authoredContentParts(el, name, nameExplicit, policy) {
   const parts = []
   if (nameExplicit) parts.push(['accessible-name', name])
-  if (el.hasAttribute('href')) parts.push(['href', el.getAttribute('href') || ''])
-  if (el.hasAttribute('src')) parts.push(['src', el.getAttribute('src') || ''])
+  if (attribute(el, 'href', policy) !== null) parts.push(['href', attribute(el, 'href', policy) || ''])
+  if (attribute(el, 'src', policy) !== null) parts.push(['src', attribute(el, 'src', policy) || ''])
   if (el.localName === 'img') {
-    if (el.hasAttribute('srcset')) parts.push(['srcset', el.getAttribute('srcset') || ''])
+    if (attribute(el, 'srcset', policy) !== null) parts.push(['srcset', attribute(el, 'srcset', policy) || ''])
     // currentSrc catches responsive-source changes caused by <picture>/media selection;
     // the authored src/srcset above still catches a mutation before the new image loads.
-    if (el.currentSrc) parts.push(['current-src', el.currentSrc])
+    if (el.currentSrc && !policy?.redactsAttribute(el, 'src') && !policy?.redactsAttribute(el, 'srcset')) parts.push(['current-src', el.currentSrc])
   }
   return parts
 }
@@ -296,7 +306,8 @@ function occluderAt(el, rect) {
  * @returns {{ nodes: Map<string, object>, order: string[], rootId: string,
  *             byElement: Map<Element, string>, elements: Map<string, Element>, rootHash: string }}
  */
-function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
+function makeWalker(root, noise, { strictScope = false, engineFrame, capturePolicy } = {}) {
+  const policy = capturePolicy || engineFrame?.capturePolicy
   const styleCache = engineFrame?.styleCache
   const includedElements = engineFrame?.nodeMap instanceof Map
     ? new Set([...engineFrame.nodeMap.values()].filter((node) => node?.nodeType === 1))
@@ -312,8 +323,8 @@ function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
   if (labelFor) {
     try {
       for (const l of (root.ownerDocument || document).querySelectorAll('label[for]')) {
-        const f = l.getAttribute('for')
-        if (f && !labelFor.has(f)) labelFor.set(f, l)
+        const f = attribute(l, 'for', policy)
+        if (f && !policy?.isBlocked(l) && !labelFor.has(f)) labelFor.set(f, l)
       }
     } catch { /* no doc */ }
   }
@@ -334,7 +345,7 @@ function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
   const pnow = P ? () => performance.now() : () => 0
   const pacc = (k, t) => { if (P) P[k] = (P[k] || 0) + (performance.now() - t) }
   function* visit(el, parentId, semanticPath, ordinalKeyCounts, depth, frozenGeo) {
-    if (el.nodeType !== 1 || SKIP_TAGS.has(el.tagName)) return null
+    if (el.nodeType !== 1 || SKIP_TAGS.has(el.tagName) || policy?.isBlocked(el)) return null
     if (includedElements && !includedElements.has(el)) return null
     if (isIgnored(el, noise)) return null
     if (el.localName === 'slot' && el.assignedNodes) {
@@ -355,10 +366,10 @@ function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
     const id = 'n_' + (++seq).toString(36)
     const tag = el.localName
     _t = pnow()
-    const role = computeRole(el)
+    const role = computeRole(el, policy)
     pacc('computeRole', _t)
     _t = pnow()
-    const { name, explicit: nameExplicit } = computeName(el, labelFor, strictScope ? root : undefined)
+    const { name, explicit: nameExplicit } = computeName(el, labelFor, strictScope ? root : undefined, policy)
     pacc('computeName', _t)
     // Identity may only trust the name when it's authored, or when the role takes its
     // name from content per ARIA. A content-derived name on a generic container is
@@ -367,7 +378,7 @@ function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
     // Identity compares a FINGERPRINT, never the text: an excludeText checkpoint can then
     // omit every human-readable string and still match.
     const nameFp = nameForIdentity ? hash('nm', nameForIdentity) : ''
-    const testid = el.getAttribute('data-testid') || null
+    const testid = attribute(el, 'data-testid', policy) || null
     const ordKey = tag + '|' + role
     const ordinal = (ordinalKeyCounts[ordKey] = (ordinalKeyCounts[ordKey] || 0) + 1)
     const path = semanticPath + '/' + tag + (role !== 'generic' ? `[${role}]` : '')
@@ -392,7 +403,7 @@ function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
       }
     }
     const interactive = INTERACTIVE_ROLES.has(role) ||
-      el.hasAttribute('onclick') || el.tabIndex >= 0
+      attribute(el, 'onclick', policy) !== null || (!policy?.redactsAttribute(el, 'tabindex') && el.tabIndex >= 0)
     _t = pnow()
     const occluder = interactive && visible ? occluderAt(el, bbox.viewport) : null
     pacc('occluderAt', _t)
@@ -401,14 +412,14 @@ function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
 
     // Own COMPOSED text only — subtree text belongs to the children (Merkle locality).
     // This includes a Text node directly under an open ShadowRoot or assigned to a slot.
-    const ownText = composedOwnText(el)
+    const ownText = tag === 'textarea' || policy?.isField(el) ? '' : composedOwnText(el, policy)
     const normText = normalizeText(ownText, el, noise)
-    const authoredParts = authoredContentParts(el, name, nameExplicit)
+    const authoredParts = authoredContentParts(el, name, nameExplicit, policy)
     const authoredHash = authoredParts.length
       ? hash('authored', ...authoredParts.flat())
       : ''
     _t = pnow()
-    const { state, valueSignal, valueChangeUncertainty, rawValue, sensitive } = interactionState(el)
+    const { state, valueSignal, valueChangeUncertainty, rawValue, sensitive } = interactionState(el, policy)
     pacc('interactionState', _t)
 
     const isCanvas = tag === 'canvas'
@@ -531,16 +542,16 @@ function makeWalker(root, noise, { strictScope = false, engineFrame } = {}) {
     // The occluding element's full text is the label an agent can act on ("the bar that
     // says Usamos cookies…"); a bare overlay div has no role and no accessible name.
     const label = !strictScope || n
-      ? visibleText(el, 600).replace(/\s+/g, ' ').trim().slice(0, 60)
+      ? visibleText(el, 600, policy).replace(/\s+/g, ' ').trim().slice(0, 60)
       : ''
     // An occluder outside the capture root has no snapshot node, but its authored
     // accessible name is still the safest compact description of what blocks the
     // target. Scope reports disclose this external render reference explicitly.
-    const externalName = !n && !strictScope ? computeName(el).name : ''
+    const externalName = !n && !strictScope ? computeName(el, null, undefined, policy).name : ''
     const name = n && n.name ? n.name : externalName
     nodes.get(id).coveredBy = {
       ...(hitId ? { id: hitId } : {}),
-      role: n ? n.role : computeRole(el),
+      role: n ? n.role : policy?.isBlocked(el) ? 'generic' : computeRole(el, policy),
       ...(name ? { name } : {}),
       ...(label && label !== name ? { label } : {}),
     }
@@ -626,10 +637,11 @@ export async function takeSnapshotChunked(root, noise, {
   budgetMs = 40,
   strictScope = false,
   engineFrame,
+  capturePolicy,
 } = {}) {
   const P = typeof window !== 'undefined' && window.__SD_PROF
   let t = P ? performance.now() : 0
-  const w = makeWalker(root, noise, { strictScope, engineFrame })
+  const w = makeWalker(root, noise, { strictScope, engineFrame, capturePolicy })
   if (P) P.prelude = (P.prelude || 0) + (performance.now() - t)
   let torn = 0
   let mo = null

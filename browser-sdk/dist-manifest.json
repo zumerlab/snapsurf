@@ -15,10 +15,10 @@
     "probeCapabilities",
     "redactString"
   ],
-  "bytes": 40777,
-  "gzipBytes": 15314,
-  "brotliBytes": 13793,
-  "sha256": "3d1306a0b9235f8a76667b5850bfce1addc219a468af3015b9524575f2f08171",
+  "bytes": 42103,
+  "gzipBytes": 15790,
+  "brotliBytes": 14214,
+  "sha256": "f64c2c9402cd1a759c056dd6d87f60b79f118176cf1b5d6a21389bcd217cc8c4",
   "dependencies": [],
   "staticEvidence": {
     "scope": "generated browser bundle only",

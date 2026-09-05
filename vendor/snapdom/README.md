@@ -1,16 +1,26 @@
-# Vendored snapDOM runtime
+# Vendored SnapDOM runtime
 
-This directory makes `snapdom-agent` installable and testable from a clean clone. It
-contains the browser runtime that the agent was developed against, rather than relying
-on an undocumented sibling checkout.
+This directory pins the browser engine and capture plugins used by the agent. A clean
+clone needs no sibling checkout at runtime. `manifest.json` records the exact source
+commit, source version and SHA-256 of every artifact.
 
-- Source repository: `https://github.com/zumerlab/snapdom-v3`
-- Source commit: `8e84c68b7f624c7fd1690c672725095289de3fe1`
-- Source version: `3.0.0-beta.0`
-- License: MIT (see `LICENSE` in this directory)
-- `dist/snapdom.mjs` was produced by the source repository's `npm run compile`.
-- The two export plugins are source copies with only their snapDOM import rewritten to
-  the vendored runtime.
+- Source: https://github.com/zumerlab/snapdom
+- Version: `3.0.0-beta.0`; source revision is in `manifest.json`.
+- License: MIT (see `LICENSE`).
+- Runtime: an ESM bundle built from the pinned source, with the experimental native
+  canvas engine disabled, matching the normal upstream distribution.
+- Plugins: GIF/video exporters, their frame helper, and redactInputs with its clone
+  sanitizer and per-capture privacy policy. The only source rewrite redirects the
+  published SnapDOM import to this vendored runtime.
 
-Do not edit the generated runtime by hand. Update the pinned source, rebuild it, copy
-the three artifacts, and record the new commit here.
+Refresh all artifacts together from a clean source revision:
+
+```sh
+node tools/update-snapdom-vendor.mjs /path/to/snapdom
+node packages/sensor/build.mjs
+node browser-sdk/build.mjs
+node companion/build.mjs
+```
+
+Run the repository gates before using the refreshed runtime. Updating the vendor does
+not update a machine-global installation; that is a separate explicit action.

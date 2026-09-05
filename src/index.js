@@ -22,6 +22,7 @@
 import { snapdom } from '../vendor/snapdom/dist/snapdom.mjs'
 import { agentOracle, probeCapabilities, getLastSnapshot } from './plugin.js'
 import { MATCH_ELEMENTS } from './query.js'
+import { createCaptureRedactor } from './capture-redaction.js'
 
 export { agentOracle }
 
@@ -35,7 +36,7 @@ export { agentOracle }
  *
  * @param {Element} root
  * @param {{previous?: object, noise?: 'agent'|'none'|object, excludeText?: boolean,
- *          privacy?: { redact?: string[] }, capture?: object}} [options]
+ *          privacy?: { redact?: string[] }, captureRedaction?: object, capture?: object}} [options]
  */
 export async function inspect(root, options = {}) {
   if (!root || root.nodeType !== 1) throw new Error('[agent.inspect] element required')
@@ -60,7 +61,8 @@ export async function inspect(root, options = {}) {
     if (!target) return result
     const el = resolve(target)
     if (!el) throw new Error('[agent.rasterize] target no longer in the DOM')
-    return snapdom(el, options.capture || {})
+    const redactor = createCaptureRedactor(options.captureRedaction)
+    return snapdom(el, { ...capture, plugins: [...callerPlugins, ...(redactor ? [redactor] : [])] })
   }
   return ui
 }

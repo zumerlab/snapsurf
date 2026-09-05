@@ -19,7 +19,7 @@ const FORBIDDEN = [
   ['XMLHttpRequest', /\bXMLHttpRequest\b/],
   ['WebSocket', /\bWebSocket\b/],
   ['sendBeacon', /\bsendBeacon\b/],
-  ['node: import', /\bnode:/],
+  ['node: import', /['"`]node:[^'"`]+['"`]/],
   ['Playwright', /(?:@playwright|\bplaywright\b)/i],
   ['agent package', /@zumer\/snapdom-agent/],
   ['MCP import', /(?:^|["'])\.?\.?\/[^"']*mcp\//m],

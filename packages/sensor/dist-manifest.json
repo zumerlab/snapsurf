@@ -9,17 +9,17 @@
     "SENSOR_REPORT_CONTRACT",
     "sensor"
   ],
-  "bytes": 40636,
-  "gzipBytes": 15083,
-  "brotliBytes": 13632,
-  "sha256": "0075bb095f461b9b5ca01079adece4261c26e092ff077610cd9e43b4407500c4",
+  "bytes": 49185,
+  "gzipBytes": 18139,
+  "brotliBytes": 16372,
+  "sha256": "7849d96c187e307ac4127795a0911b0955ccc6ad4fc534c2cca533777346aaba",
   "peerDependencies": {
     "@zumer/snapdom": ">=3.0.0-beta.0 <4"
   },
   "externalImports": [],
   "buildInputs": {
     "semanticKernel": "../../src/",
-    "interpretation": "The browser artifact bundles the semantic projection used by the plugin. It runs only from SnapDOM standard afterClone/defineExports hooks. The host supplies the @zumer/snapdom peer; Playwright, MCP and a browser controller are not imported."
+    "interpretation": "The browser artifact bundles the semantic projection used by the plugin. It uses SnapDOM standard capture and export hooks, observing the prepared clone frame. The host supplies the @zumer/snapdom peer; Playwright, MCP and a browser controller are not imported."
   },
   "staticEvidence": {
     "scope": "generated sensor bundle only",

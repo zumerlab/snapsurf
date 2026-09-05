@@ -7,7 +7,7 @@ import { sensor } from '../packages/sensor/src/sensor.js'
  * semantic diff. They live on different layers — snapdomDIFF re-produces the SAME
  * PICTURE faster on repeat captures; the sensor produces MEANING (typed delta).
  * The question with a measurable answer: does the winning agent loop combine them —
- * sensor at needs:'live' for semantics each step, plain plugin-less captures for
+ * sensor at needs:'clone' for semantics each step, plain plugin-less captures for
  * pixels on demand (which stay eligible for memo/differential)?
  */
 
@@ -73,30 +73,30 @@ describe('sensor × snapdomDIFF (differential recapture) convergence', () => {
       renderMs.push(ms() - t)
     }
 
-    // ── Arm C: sensor at needs:'dom' — no clone, no render, nothing to memoize ──
-    const watchLive = sensor({ needs: 'dom' })
-    plugins.push(watchLive)
-    const liveMs = []
+    // ── Arm C: sensor at needs:'clone' — prepared clone, no render ──
+    const watchClone = sensor({ needs: 'clone' })
+    plugins.push(watchClone)
+    const cloneMs = []
     let lastReport = null
     for (let i = 0; i < K; i++) {
       card.querySelector('[data-testid="status"]').textContent = `step ${i}`
       t = ms()
-      const r = await snapdom(card, { plugins: [watchLive], embedFonts: false })
-      liveMs.push(ms() - t)
+      const r = await snapdom(card, { plugins: [watchClone], embedFonts: false })
+      cloneMs.push(ms() - t)
       lastReport = await r.toSensor()
       if (i > 0) expect(lastReport.observation.status).toBe('DELTA_DETECTED')
     }
 
-    // ── Arm D: the hybrid agent loop — live semantics each step, plain pixels on
-    // demand. The plain capture interleaves with live sensor captures and must stay
+    // ── Arm D: the hybrid agent loop — clone-stage semantics each step, plain pixels on
+    // demand. The plain capture interleaves with clone-stage sensor captures and must stay
     // correct (and, when the engine can, memoized).
     card.querySelector('[data-testid="status"]').textContent = 'hybrid'
-    await snapdom(card, { plugins: [watchLive], embedFonts: false })
+    await snapdom(card, { plugins: [watchClone], embedFonts: false })
     t = ms()
     const hybridPixels = await snapdom(card, { embedFonts: false })
     const hybridPixelsMs = ms() - t
     expect(decodeURIComponent(hybridPixels.url)).toContain('hybrid')
-    const hybridReport = await (await snapdom(card, { plugins: [watchLive], embedFonts: false })).toSensor()
+    const hybridReport = await (await snapdom(card, { plugins: [watchClone], embedFonts: false })).toSensor()
     expect(hybridReport.observation.status).toBe('NO_SUPPORTED_DELTA_DETECTED')
 
     const med = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]
@@ -108,14 +108,15 @@ describe('sensor × snapdomDIFF (differential recapture) convergence', () => {
       memoHits: `${memoHits}/${K}`,
       plainDirtySubtreeMs: +plainDirtyMs.toFixed(1),
       sensorRenderMedianMs: +med(renderMs).toFixed(1),
-      sensorLiveMedianMs: +med(liveMs).toFixed(1),
+      sensorCloneMedianMs: +med(cloneMs).toFixed(1),
       hybridPixelsOnDemandMs: +hybridPixelsMs.toFixed(1),
     }))
 
-    // Qualitative contract (no flaky timing thresholds): the live walk must not be
-    // slower than the sensor-attached full pipeline, and the repeat plain capture
-    // must not be slower than the first (memo may serve it outright).
-    expect(med(liveMs)).toBeLessThanOrEqual(med(renderMs) + 1)
-    expect(med(plainRepeatMs)).toBeLessThanOrEqual(plainFirstMs + 1)
+    // Timing is diagnostic: hardware/load can reverse short measurements. Assert the
+    // observable contracts instead of making a flaky claim about relative speed.
+    expect(memoHits).toBeGreaterThan(0)
+    expect(lastReport.coverage.stage).toBe('clone')
+    expect(lastReport.coverage.engineFrame.clonePrepared).toBe(true)
+    expect(lastReport.visual.svg).toBe('NOT_RENDERED_STAGE_CLONE')
   })
 })

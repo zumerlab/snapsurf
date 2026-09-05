@@ -15,6 +15,7 @@
  * Core is untouched and knows nothing about this package (§Anti-goals).
  * @module agent/plugin
  */
+import { createCaptureRedactor, beginCaptureRedaction, capturePrivacyPolicy, assertCaptureBaseline, assertCaptureReader } from './capture-redaction.js'
 import { takeSnapshot, takeSnapshotChunked, makeSlicer, getPrivacyInputs } from './snapshot.js'
 import { resolveNoise } from './noise.js'
 import { diffSnapshots } from './diff.js'
@@ -434,6 +435,7 @@ export function observe(root, options = {}) {
   const gen = finishObserveStages(takeSnapshot(root, noise, {
     strictScope: options.strictScope === true,
     engineFrame: options.engineFrame,
+    capturePolicy: options.capturePolicy,
   }), options, noise, namespace)
   let r = gen.next()
   while (!r.done) r = gen.next()
@@ -458,6 +460,7 @@ export async function observeChunked(root, options = {}) {
     budgetMs: options.budgetMs,
     strictScope: options.strictScope === true,
     engineFrame: options.engineFrame,
+    capturePolicy: options.capturePolicy,
   })
   // Internal lifecycle hook for resident sensors: it fixes the semantic window boundary
   // at the instant the DOM snapshot is complete, before privacy/diff stages may yield.
@@ -581,27 +584,40 @@ export function buildUi(observation, options = {}) {
  * job is to read fresh state.
  *
  * @param {{previous?: object, noise?: any, excludeText?: boolean,
- *          privacy?: { redact?: string[] }}} [options]
+ *          privacy?: { redact?: string[] }, captureRedaction?: object}} [options]
  */
 export function agentOracle(options = {}) {
+  const redactor = createCaptureRedactor(options.captureRedaction)
+  assertCaptureBaseline(options.previous, redactor)
   const state = { observation: null, ui: null }
 
   return {
     name: 'agent-oracle',
+    ...(redactor ? {
+      beforeSnap: ctx => beginCaptureRedaction(redactor, ctx),
+      afterClone: ctx => redactor.afterClone(ctx),
+      ...(redactor.beforeRender ? { beforeRender: ctx => redactor.beforeRender(ctx) } : {}),
+    } : {}),
 
     /**
      * The walk. Runs before `prepareClone`, synchronously, in the same task — so the
      * snapshot, the clone and therefore the pixels all describe one instant.
      */
     beforeClone(ctx) {
+      assertCaptureReader(redactor, ctx)
       // A single snapdom() call can run the pipeline more than once — on real pages a
       // pass over `document.body` is followed by one over `documentElement`. Keeping
       // whichever ran last silently replaced the caller's subtree with `<html>`, which
       // is how three of five field sites reported an empty snapshot. The first pass is
       // the element the caller asked about; later passes are the engine's own business.
       if (state.observation) return
-      state.observation = observe(ctx.element, options)
+      state.observation = observe(ctx.element, { ...options, capturePolicy: redactor ? capturePrivacyPolicy(ctx) : null })
       state.ui = buildUi(state.observation, options)
+      if (redactor) {
+        const checkpoint = state.ui.checkpoint
+        state.ui.checkpoint = opts => ({ ...checkpoint(opts), captureRedactionPolicy: redactor.capturePolicyId })
+        state.ui.__snapshot.captureRedactionPolicy = redactor.capturePolicyId
+      }
     },
 
     // The exports read this instance's closure, not the hook context: lifecycle hooks
