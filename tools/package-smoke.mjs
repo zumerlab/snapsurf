@@ -27,6 +27,9 @@ try {
       throw new Error('package.json must declare mcpName io.github.zumerlab/snapsurf for the MCP Registry')
     }
     const registry = JSON.parse(readFileSync(join(ROOT, 'server.json'), 'utf8'))
+    if (typeof registry.description !== 'string' || registry.description.length > 100) {
+      throw new Error('server.json description must be at most 100 characters (MCP Registry limit)')
+    }
     if (registry.name !== unpacked.mcpName || registry.version !== unpacked.version || registry.packages?.[0]?.identifier !== unpacked.name || registry.packages?.[0]?.version !== unpacked.version) {
       throw new Error(`server.json must name ${unpacked.mcpName} ${unpacked.version} (npm ${unpacked.name}@${unpacked.version})`)
     }
