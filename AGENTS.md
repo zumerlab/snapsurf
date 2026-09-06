@@ -9,7 +9,7 @@ SnapSurf MCP tools if your client has them (`browser_open`, `browser_find`,
 `browser_parent`, `browser_act`, `browser_verify`, `browser_assert`, `browser_checkpoint`,
 `browser_diff`, `browser_text`, `browser_page`, `browser_screenshot`,
 `browser_session_*`), or the CLI: `node tools/browse.mjs <verb>` against a daemon
-started with `node tools/browse.mjs serve`.
+started with `node tools/browse.mjs serve` (`npx snapsurf <verb>` from an npm install).
 
 The loop, and the rules previous agents paid to learn:
 
@@ -39,18 +39,27 @@ The loop, and the rules previous agents paid to learn:
    result. The daemon browses anonymously in its own cookie jar: `authState` tells you
    the truth; it never sees the user's logged-in sessions.
 
+The same method, as a Claude Code skill, is in `skill/SKILL.md`.
+
 ## Working on the code
 
 - Node 22; `npm ci && npx playwright install chromium`.
 - `npm test` = real-browser core suite + daemon/MCP security and session regressions.
   Also: `npm run test:lint`, `npm run test:doc-contract` (every field a tool
-  description promises must be demonstrably delivered), `npm run test:regression`.
+  description promises must be demonstrably delivered), `npm run test:regression`,
+  `npm run test:pack` (the npm archive, its `mcpName` and `server.json` parity).
 - The house rule is fail-loud honesty: no silent greens, counts never shrink silently,
   uncertainty is declared (`INDETERMINATE`, `unobservable`, `uncertainty.reasons`) —
   keep every change on that side of the line, and extend the tests when you extend a
   contract.
+- Configuration is read from `SNAPSURF_*` environment variables (`PORT`, `TOKEN`,
+  `TOKEN_FILE`, `LOGDIR`, `MAX_BODY_BYTES`); the development-era `SNAPDOM_AGENT_*`
+  names remain read fallbacks. Tests run against an isolated port through
+  `tools/run-isolated.mjs`, never against a developer's live daemon.
 - `vendor/snapdom/` is the pinned engine build; `tools/sdk-bundle.mjs` defines the ONE
   in-page SDK bundle; `node tools/install-global.mjs` refreshes the machine-global copy
-  under `~/.claude/snapdom-agent/` after source changes.
+  under `~/.snapsurf/` (and the `snapsurf` skill under `~/.claude/skills/`) after source
+  changes.
+- Releases: bump `package.json` and `server.json` together (see `docs/RELEASING.md`).
 - See `README.md` for the full map and `docs/INTEGRATIONS.md` for hooking the
   instrument into MCP clients.

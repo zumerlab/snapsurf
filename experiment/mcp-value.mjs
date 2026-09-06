@@ -855,10 +855,10 @@ async function startSnapdomClient({ tempRoot, label }) {
     commandArgs: [join(ROOT, 'mcp', 'server.mjs')],
     cwd: ROOT,
     env: sanitizedEnvironment({
-      SNAPDOM_AGENT_PORT: String(daemonPort),
-      SNAPDOM_AGENT_TOKEN: token,
-      SNAPDOM_AGENT_TOKEN_FILE: tokenFile,
-      SNAPDOM_AGENT_LOGDIR: logDir,
+      SNAPSURF_PORT: String(daemonPort),
+      SNAPSURF_TOKEN: token,
+      SNAPSURF_TOKEN_FILE: tokenFile,
+      SNAPSURF_LOGDIR: logDir,
     }),
   })
   await client.initialize()

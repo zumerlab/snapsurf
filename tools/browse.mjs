@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * agent-browse — the oracle as MY browsing harness (Claude Code dogfooding).
+ * SnapSurf CLI and daemon (`snapsurf` from the npm package, `node tools/browse.mjs` in
+ * a checkout).
  *
- * A long-lived daemon holds one Playwright page with the agent SDK injected on every
- * navigation; a thin CLI talks to it over localhost HTTP. The whole point is the
- * observation economics the experiments measured: navigate by reading 19-token diffs
- * (`look`) and full-page `find`, and only pay for pixels (`shot`/`snap`) when unsure.
+ * A long-lived daemon holds Playwright pages with the SnapSurf SDK injected on every
+ * navigation; a thin CLI talks to it over localhost HTTP. The point is observation
+ * economics: navigate by reading small typed diffs (`look`) and whole-page `find`, and
+ * only pay for pixels (`shot`/`snap`) when unsure.
  *
  *   node tools/browse.mjs serve [--headed] [--readonly] [--allow d1,d2] [--redact t1,t2]
  *   node tools/browse.mjs open <url>           # navigate + ~2KB digest
@@ -49,7 +50,7 @@ import { homedir, tmpdir } from 'node:os'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-// Standalone install (~/.claude/snapdom-agent via install-global.mjs): paths.json points
+// Standalone install (~/.snapsurf via install-global.mjs): paths.json points
 // at that self-contained copy (including its pinned Playwright runtime) and sdk.js is
 // prebuilt, so moving or deleting the source checkout cannot break the daemon.
 let AGENT = join(HERE, '..')
@@ -61,29 +62,38 @@ try {
 } catch {
   // dev mode: dependencies resolve from this package like any other Node application
 }
-const PORT = Number(process.env.SNAPDOM_AGENT_PORT || 8377)
+// Settings come from SNAPSURF_* variables. The SNAPDOM_AGENT_* names of the development
+// era are still read as fallbacks so existing local setups keep working.
+const envSetting = (name) => process.env[`SNAPSURF_${name}`] || process.env[`SNAPDOM_AGENT_${name}`] || ''
+const PORT = Number(envSetting('PORT') || 8377)
 const [, , CMD, ...ARGS] = process.argv
 // Canonical discovery path in the HOME directory, not tmpdir(): TMPDIR is per-process
 // environment, so a daemon spawned by one app published its token on an island another
 // consumer's tmpdir() never named — measured 2026-08-13 as a 401→EADDRINUSE→20s-timeout
 // deadlock between a CLI session's MCP server and a desktop-app server's daemon. The
-// home directory is the one path every same-user process resolves identically. The old
-// tmpdir path remains a READ fallback so a still-running old daemon stays discoverable.
-const TOKEN_FILE = process.env.SNAPDOM_AGENT_TOKEN_FILE || join(homedir(), '.claude', 'snapdom-agent', `daemon-${PORT}.token`)
-const LEGACY_TOKEN_FILE = join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`)
-const SERVER_AUTH_TOKEN = process.env.SNAPDOM_AGENT_TOKEN || randomBytes(32).toString('hex')
+// home directory is the one path every same-user process resolves identically. The
+// pre-0.1.1 home path and the old tmpdir path remain READ fallbacks so a still-running
+// older daemon stays discoverable; new tokens are published only at TOKEN_FILE.
+const TOKEN_FILE = envSetting('TOKEN_FILE') || join(homedir(), '.snapsurf', `daemon-${PORT}.token`)
+const LEGACY_TOKEN_FILES = [
+  join(homedir(), '.claude', 'snapdom-agent', `daemon-${PORT}.token`),
+  join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`),
+]
+const SERVER_AUTH_TOKEN = envSetting('TOKEN') || randomBytes(32).toString('hex')
 const DAEMON_STARTED_AT = new Date().toISOString()
 let tokenFilePublished = false
 
 async function clientAuthToken() {
-  if (process.env.SNAPDOM_AGENT_TOKEN) return process.env.SNAPDOM_AGENT_TOKEN
-  try {
-    const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
-    if (token) return token
-  } catch { /* fall through to legacy */ }
-  const token = (await readFile(LEGACY_TOKEN_FILE, 'utf8')).trim()
-  if (!token) throw new Error('daemon token is empty')
-  return token
+  if (envSetting('TOKEN')) return envSetting('TOKEN')
+  let lastError = null
+  for (const file of [TOKEN_FILE, ...LEGACY_TOKEN_FILES]) {
+    try {
+      const token = (await readFile(file, 'utf8')).trim()
+      if (token) return token
+      lastError = new Error(`daemon token is empty: ${file}`)
+    } catch (error) { lastError = lastError || error }
+  }
+  throw lastError || new Error(`daemon token not found: ${TOKEN_FILE}`)
 }
 
 async function publishServerToken() {
@@ -166,13 +176,13 @@ async function callDaemon(token, payload, signal) {
 //
 // SECURITY: the trust root is "only a same-uid reader of the 0600 token file is
 // trusted". Adoption candidates are therefore ONLY the client-resolved TOKEN_FILE /
-// LEGACY_TOKEN_FILE — never a path named by the /owner response. /owner is an
+// LEGACY_TOKEN_FILES — never a path named by the /owner response. /owner is an
 // UNAUTHENTICATED card served by whatever holds the port; trusting a path it supplies
 // would let a different-uid port squatter point us at a world-readable file whose token
 // it chose, defeating the boundary. /owner is used ONLY to name the owner in diagnostics
-// and to tell "another snapdom daemon" apart from an alien/absent listener.
+// and to tell "another SnapSurf daemon" apart from an alien/absent listener.
 const AUTH_MISMATCH = /identity verification failed|response authentication failed/
-// Classify the port holder in one request: an `owner` card (a genuine snapdom daemon),
+// Classify the port holder in one request: an `owner` card (a genuine SnapSurf daemon),
 // `stale` (answers HTTP but not /owner — likely a pre-upgrade daemon), `alien` (answers
 // but is not snapdom), or `down` (nothing accepted the connection).
 async function ownerProbe(signal) {
@@ -183,19 +193,19 @@ async function ownerProbe(signal) {
   if (r.status === 404) { await r.text().catch(() => {}); return { reach: 'stale' } }
   let o = null
   try { o = await r.json() } catch { return { reach: 'alien' } }
-  if (o && o.daemon === 'snapdom-agent' && o.v === 1 && typeof o.pid === 'number') return { reach: 'owner', card: o }
+  if (o && (o.daemon === 'snapsurf' || o.daemon === 'snapdom-agent') && o.v === 1 && typeof o.pid === 'number') return { reach: 'owner', card: o }
   return { reach: 'alien' }
 }
 function foreignDaemonError(probe) {
   const c = probe && probe.card
-  if (c) return new Error(`⛔ 127.0.0.1:${PORT} is owned by another snapdom daemon (pid ${c.pid}, since ${c.startedAt}, log session ${c.logSession}) and this client's credentials do not match its published token — stop it (node tools/browse.mjs stop) or set SNAPDOM_AGENT_PORT elsewhere`)
-  if (probe && probe.reach === 'stale') return new Error(`⛔ 127.0.0.1:${PORT} answers HTTP but not /owner — likely an older snapdom daemon; stop it (node tools/browse.mjs stop) or set SNAPDOM_AGENT_PORT elsewhere`)
-  if (probe && probe.reach === 'down') return new Error('daemon not running — start it with:\n  node tools/browse.mjs serve')
-  return new Error(`⛔ 127.0.0.1:${PORT} is bound by a process that does not speak the snapdom daemon protocol — free the port or set SNAPDOM_AGENT_PORT elsewhere`)
+  if (c) return new Error(`⛔ 127.0.0.1:${PORT} is owned by another SnapSurf daemon (pid ${c.pid}, since ${c.startedAt}, log session ${c.logSession}) and this client's credentials do not match its published token — stop it (snapsurf stop, or node tools/browse.mjs stop from a checkout) or set SNAPSURF_PORT elsewhere`)
+  if (probe && probe.reach === 'stale') return new Error(`⛔ 127.0.0.1:${PORT} answers HTTP but not /owner — likely an older SnapSurf daemon; stop it (snapsurf stop, or node tools/browse.mjs stop from a checkout) or set SNAPSURF_PORT elsewhere`)
+  if (probe && probe.reach === 'down') return new Error('daemon not running — start it with:\n  snapsurf serve   (node tools/browse.mjs serve from a checkout)')
+  return new Error(`⛔ 127.0.0.1:${PORT} is bound by a process that does not speak the SnapSurf daemon protocol — free the port or set SNAPSURF_PORT elsewhere`)
 }
 async function adoptDaemonToken(currentToken) {
   const probe = await ownerProbe()
-  for (const file of [...new Set([TOKEN_FILE, LEGACY_TOKEN_FILE])]) {
+  for (const file of [...new Set([TOKEN_FILE, ...LEGACY_TOKEN_FILES])]) {
     let token
     try { token = (await readFile(file, 'utf8')).trim() } catch { continue }
     if (!token || token === currentToken) continue
@@ -237,7 +247,7 @@ if (CMD !== 'serve') {
     } catch (tokenErr) {
       // No local token to present (both files ENOENT/empty). This is NOT proof the
       // daemon is down: it may own the port with a token file we cannot read — a custom
-      // SNAPDOM_AGENT_TOKEN_FILE, a wiped ~/.claude, or a pre-upgrade daemon on another
+      // SNAPSURF_TOKEN_FILE, a wiped ~/.snapsurf, or a pre-upgrade daemon on another
       // TMPDIR island. Diagnose via the unauthenticated /owner card before concluding
       // "not running"; a live foreign owner surfaces its name instead of misleading the
       // user into `serve` (which then dies in EADDRINUSE).
@@ -293,7 +303,7 @@ if (CMD !== 'serve') {
     const msg = String((e && e.message) || e)
     console.error(msg.startsWith('⛔') || AUTH_MISMATCH.test(msg)
       ? msg
-      : 'daemon not running — start it with:\n  node tools/browse.mjs serve')
+      : 'daemon not running — start it with:\n  snapsurf serve   (node tools/browse.mjs serve from a checkout)')
     process.exit(1)
   }
 }
@@ -494,6 +504,32 @@ const isCheckpointName = (name) => typeof name === 'string' && name !== '.' && n
 // is itself a bot signal and lost 3/5 sites where a real browser lost 0. No disguise
 // beyond that: sites the full binary still cannot pass belong to the companion arm
 // (the user's real Chrome), not to a fingerprint arms race here.
+// First run on a machine without Playwright's Chromium build: install it instead of
+// failing with "Executable doesn't exist". `playwright install chromium` is idempotent
+// and writes to Playwright's shared browser cache (PLAYWRIGHT_BROWSERS_PATH honoured).
+async function ensureChromium() {
+  const { existsSync } = await import('node:fs')
+  let executable = ''
+  try { executable = chromium.executablePath() } catch { /* the installer resolves it */ }
+  if (executable && existsSync(executable)) return
+  const cli = STANDALONE
+    ? join(AGENT, 'node_modules', 'playwright', 'cli.js')
+    : join(dirname(fileURLToPath(import.meta.resolve('playwright/package.json'))), 'cli.js')
+  console.error(`Chromium for Playwright is not installed; running: node ${cli} install chromium`)
+  const { execFileSync } = await import('node:child_process')
+  try {
+    // Playwright prints a misleading "install your project's dependencies first" box when
+    // process.argv[1] contains "_npx" — exactly where npx runs this daemon from. Loading the
+    // CLI through -e keeps argv[1] a plain name; commander still sees `install chromium`.
+    execFileSync(process.execPath, ['-e', 'require(process.env.SNAPSURF_PLAYWRIGHT_CLI)', 'playwright', 'install', 'chromium'], {
+      stdio: ['ignore', 'inherit', 'inherit'],
+      env: { ...process.env, SNAPSURF_PLAYWRIGHT_CLI: cli },
+    })
+  } catch (error) {
+    throw new Error(`could not install Chromium automatically (${error.message || error}) — run \`npx playwright install chromium\` (on Linux: --with-deps) and start again`)
+  }
+}
+await ensureChromium()
 const browser = await chromium.launch({ headless: !ARGS.includes('--headed'), channel: 'chromium' })
 let terminating = false
 async function terminateDaemon(code = 0) {
@@ -752,7 +788,7 @@ setInterval(() => {
 
 // ── Session log: one JSONL line per command, durable, typed text redacted ────────────
 const SESSION = `${new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace('Z', '').replace('.', '-')}-${process.pid}`
-const LOGDIR = process.env.SNAPDOM_AGENT_LOGDIR || (STANDALONE ? join(HERE, 'logs') : join(HERE, '..', 'logs'))
+const LOGDIR = envSetting('LOGDIR') || (STANDALONE ? join(HERE, 'logs') : join(HERE, '..', 'logs'))
 await mkdir(LOGDIR, { recursive: true, mode: 0o700 })
 await chmod(LOGDIR, 0o700)
 const LOGFILE = join(LOGDIR, `${SESSION}.jsonl`)
@@ -1336,7 +1372,7 @@ const inLocate = (id) => {
 // readiness first, and if the context is torn down mid-evaluate, wait again and retry
 // ONCE — a second failure is a real error and should surface.
 const isolatedSessions = new WeakMap()
-const ISOLATED_WORLD = 'snapdom-agent-isolated-v1'
+const ISOLATED_WORLD = 'snapsurf-isolated-v1'
 
 async function isolatedContext(page) {
   let cdp = isolatedSessions.get(page)
@@ -2170,7 +2206,7 @@ const HANDLERS = {
       : `privacy: rules cleared — previous observation baseline invalidated; ${namedCheckpointsStale} named checkpoint(s) require recapture`
   },
   async shot([file], S) {
-    const path = file || '/tmp/agent-browse-shot.jpg'
+    const path = file || '/tmp/snapsurf-shot.jpg'
     const buf = await S.page.screenshot({ type: 'jpeg', quality: 80 })
     await writePrivate(path, buf)
     S.meta = { image: { path, sha256: sha256(buf) }, ...pixelPrivacyMeta(S) }
@@ -2182,7 +2218,7 @@ const HANDLERS = {
     // agent asks for the region it cares about, never the whole page).
     let [target, file] = args
     if (target && /\.(png|jpg)$/.test(target)) { file = target; target = null }
-    const path = file || '/tmp/agent-browse-snap.png'
+    const path = file || '/tmp/snapsurf-snap.png'
     const src = await inPage(S, async (nid) => {
       if (nid) {
         const resolved = window.__agentResolveUi(nid, { requireBox: true })
@@ -2775,7 +2811,7 @@ const HANDLERS = {
 }
 
 const { createServer } = await import('node:http')
-const MAX_BODY_BYTES = Math.max(1024, Number(process.env.SNAPDOM_AGENT_MAX_BODY_BYTES) || 1024 * 1024)
+const MAX_BODY_BYTES = Math.max(1024, Number(envSetting('MAX_BODY_BYTES')) || 1024 * 1024)
 const LOCAL_HOST = /^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i
 const USED_REQUEST_NONCES = new Set()
 // One page and one module-global `meta`: commands MUST serialize. Pipelined MCP
@@ -2802,7 +2838,7 @@ createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/owner') {
     res.setHeader('content-type', 'application/json')
     res.end(JSON.stringify({
-      v: 1, daemon: 'snapdom-agent', pid: process.pid, startedAt: DAEMON_STARTED_AT,
+      v: 1, daemon: 'snapsurf', pid: process.pid, startedAt: DAEMON_STARTED_AT,
       logSession: SESSION, port: PORT, tokenFile: TOKEN_FILE,
     }) + '\n')
     return
@@ -2892,7 +2928,7 @@ createServer((req, res) => {
 }).listen(PORT, '127.0.0.1', async () => {
   try {
     await publishServerToken()
-    console.log(`agent-browse daemon at http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · session ${SESSION}\nlog: ${LOGFILE}`)
+    console.log(`snapsurf daemon at http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · session ${SESSION}\nlog: ${LOGFILE}`)
   } catch (error) {
     console.error(`cannot publish private daemon token at ${TOKEN_FILE}: ${error.message || error}`)
     try { await browser.close() } catch { /* exiting */ }

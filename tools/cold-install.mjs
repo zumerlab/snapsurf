@@ -11,8 +11,8 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const TEMP = mkdtempSync(join(tmpdir(), 'snapdom-agent-cold-'))
-const BROWSERS = mkdtempSync(join(tmpdir(), 'snapdom-agent-browsers-'))
+const TEMP = mkdtempSync(join(tmpdir(), 'snapsurf-cold-'))
+const BROWSERS = mkdtempSync(join(tmpdir(), 'snapsurf-browsers-'))
 const env = { ...process.env, PLAYWRIGHT_BROWSERS_PATH: BROWSERS }
 
 try {

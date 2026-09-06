@@ -149,8 +149,8 @@ let daemonSpawnError = null
 let primaryError = null
 const cleanupErrors = []
 const savedClientEnv = new Map([
-  ['SNAPDOM_AGENT_TOKEN', process.env.SNAPDOM_AGENT_TOKEN],
-  ['SNAPDOM_AGENT_TOKEN_FILE', process.env.SNAPDOM_AGENT_TOKEN_FILE],
+  ['SNAPSURF_TOKEN', process.env.SNAPSURF_TOKEN],
+  ['SNAPSURF_TOKEN_FILE', process.env.SNAPSURF_TOKEN_FILE],
 ])
 let clientEnvChanged = false
 
@@ -178,16 +178,16 @@ try {
   while (daemonPort === 8377)
   const tokenFile = join(RUNTIME, 'daemon.token')
   const logDir = join(RUNTIME, 'daemon-logs')
-  process.env.SNAPDOM_AGENT_TOKEN_FILE = tokenFile
-  delete process.env.SNAPDOM_AGENT_TOKEN
+  process.env.SNAPSURF_TOKEN_FILE = tokenFile
+  delete process.env.SNAPSURF_TOKEN
   clientEnvChanged = true
   const daemonEnv = {
     ...process.env,
-    SNAPDOM_AGENT_PORT: String(daemonPort),
-    SNAPDOM_AGENT_TOKEN_FILE: tokenFile,
-    SNAPDOM_AGENT_LOGDIR: logDir,
+    SNAPSURF_PORT: String(daemonPort),
+    SNAPSURF_TOKEN_FILE: tokenFile,
+    SNAPSURF_LOGDIR: logDir,
   }
-  delete daemonEnv.SNAPDOM_AGENT_TOKEN
+  delete daemonEnv.SNAPSURF_TOKEN
 
   daemon = spawn(process.execPath, [join(AGENT, 'tools/browse.mjs'), 'serve'], {
     stdio: 'ignore',

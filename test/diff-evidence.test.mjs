@@ -78,10 +78,10 @@ test('immutable diff evidence through the real browser daemon and MCP', { timeou
   const token = randomBytes(32).toString('hex')
   const env = {
     ...process.env,
-    SNAPDOM_AGENT_PORT: String(port),
-    SNAPDOM_AGENT_LOGDIR: logDir,
-    SNAPDOM_AGENT_TOKEN: token,
-    SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'daemon.token'),
+    SNAPSURF_PORT: String(port),
+    SNAPSURF_LOGDIR: logDir,
+    SNAPSURF_TOKEN: token,
+    SNAPSURF_TOKEN_FILE: join(logDir, 'daemon.token'),
   }
   let daemon
   let mcp

@@ -14,7 +14,7 @@ import { Buffer } from 'node:buffer'
 import { createInterface } from 'node:readline'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const INSTALLER = process.env.SNAPDOM_AGENT_INSTALLER || join(ROOT, 'tools', 'install-global.mjs')
+const INSTALLER = process.env.SNAPSURF_INSTALLER || join(ROOT, 'tools', 'install-global.mjs')
 const hmac = (token, message) => createHmac('sha256', token).update(message).digest('hex')
 const signedPost = async (port, token, payload) => {
   const body = JSON.stringify(payload)
@@ -70,17 +70,17 @@ async function playwrightBrowserRoot() {
 }
 
 test('global installer creates a self-contained runnable copy', { timeout: 60_000 }, async () => {
-  const home = await mkdtemp(join(tmpdir(), 'snapdom-agent-install-'))
+  const home = await mkdtemp(join(tmpdir(), 'snapsurf-install-'))
   const port = await freePort()
   const authToken = randomBytes(32).toString('hex')
   assert.notEqual(port, 8377)
   const env = {
     ...process.env,
-    SNAPDOM_AGENT_INSTALL_HOME: home,
-    SNAPDOM_AGENT_PORT: String(port),
-    SNAPDOM_AGENT_LOGDIR: join(home, 'logs'),
-    SNAPDOM_AGENT_TOKEN: authToken,
-    SNAPDOM_AGENT_TOKEN_FILE: join(home, 'daemon.token'),
+    SNAPSURF_INSTALL_HOME: home,
+    SNAPSURF_PORT: String(port),
+    SNAPSURF_LOGDIR: join(home, 'logs'),
+    SNAPSURF_TOKEN: authToken,
+    SNAPSURF_TOKEN_FILE: join(home, 'daemon.token'),
   }
   let daemon
   let mcp
@@ -90,7 +90,7 @@ test('global installer creates a self-contained runnable copy', { timeout: 60_00
       env,
       stdio: 'pipe',
     })
-    const installed = join(home, '.claude', 'snapdom-agent')
+    const installed = join(home, '.snapsurf')
     const paths = JSON.parse(await readFile(join(installed, 'paths.json'), 'utf8'))
     assert.equal(paths.agent, installed)
     for (const file of [
@@ -106,9 +106,9 @@ test('global installer creates a self-contained runnable copy', { timeout: 60_00
       assert.equal(await readFile(join(installed, prefix + 'SNAPDOM-LICENSE'), 'utf8'),
         await readFile(join(ROOT, 'vendor', 'snapdom', 'LICENSE'), 'utf8'))
     }
-    const installedSkill = await readFile(join(home, '.claude', 'skills', 'agent-browse', 'SKILL.md'), 'utf8')
+    const installedSkill = await readFile(join(home, '.claude', 'skills', 'snapsurf', 'SKILL.md'), 'utf8')
     assert.equal(installedSkill.includes('/ABS/PATH'), false)
-    assert.equal(installedSkill.includes('/Users/martin/.claude/snapdom-agent/browse.mjs'), false)
+    assert.equal(installedSkill.includes('/Users/martin/.snapsurf/browse.mjs'), false)
     assert.equal(installedSkill.includes(join(installed, 'browse.mjs')), true)
     assert.equal(installedSkill.includes(join(installed, 'companion', 'PROMPT-extension.md')), true)
     assert.match(installedSkill, /Each session has its own BrowserContext, cookies,/)
@@ -128,7 +128,7 @@ test('global installer creates a self-contained runnable copy', { timeout: 60_00
     }
     assert.equal(ready, true, 'installed daemon did not start')
     const cliEnv = { ...env }
-    delete cliEnv.SNAPDOM_AGENT_TOKEN
+    delete cliEnv.SNAPSURF_TOKEN
     const statusText = execFileSync(process.execPath, [join(installed, 'browse.mjs'), 'status'], {
       cwd: home,
       env: cliEnv,

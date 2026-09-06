@@ -46,9 +46,9 @@ async function freePort() {
   return address.port
 }
 
-if (!process.env.SNAPDOM_AGENT_PORT) process.env.SNAPDOM_AGENT_PORT = String(await freePort())
-if (!process.env.SNAPDOM_AGENT_TOKEN_FILE) process.env.SNAPDOM_AGENT_TOKEN_FILE = join(TMP, 'daemon.token')
-if (!process.env.SNAPDOM_AGENT_LOGDIR) process.env.SNAPDOM_AGENT_LOGDIR = join(TMP, 'logs')
+if (!process.env.SNAPSURF_PORT) process.env.SNAPSURF_PORT = String(await freePort())
+if (!process.env.SNAPSURF_TOKEN_FILE) process.env.SNAPSURF_TOKEN_FILE = join(TMP, 'daemon.token')
+if (!process.env.SNAPSURF_LOGDIR) process.env.SNAPSURF_LOGDIR = join(TMP, 'logs')
 const { daemonFetch } = await import('../tools/daemon-client.mjs')
 
 // 4 real changes + 4 noise: agreement has to hold in both directions — all of them say

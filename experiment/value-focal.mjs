@@ -299,8 +299,8 @@ async function snapdomArm() {
   await mkdir(logDir, { recursive: true, mode: 0o700 })
   const daemonEnv = {
     ...process.env,
-    SNAPDOM_AGENT_PORT: String(port), SNAPDOM_AGENT_LOGDIR: logDir,
-    SNAPDOM_AGENT_TOKEN: token, SNAPDOM_AGENT_TOKEN_FILE: tokenFile,
+    SNAPSURF_PORT: String(port), SNAPSURF_LOGDIR: logDir,
+    SNAPSURF_TOKEN: token, SNAPSURF_TOKEN_FILE: tokenFile,
   }
   // A caller may run the direct arm from a different Playwright browser store.
   // The product arm must retain its own pinned runtime and empty transient profile.

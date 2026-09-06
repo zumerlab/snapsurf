@@ -18,7 +18,7 @@ if (!command) {
   console.error('usage: node tools/run-isolated.mjs <command> [args...]')
   process.exitCode = 2
 } else {
-  const runtime = await mkdtemp(join(tmpdir(), 'snapdom-agent-gate-'))
+  const runtime = await mkdtemp(join(tmpdir(), 'snapsurf-gate-'))
   const reserve = createServer()
   await new Promise((resolve, reject) => {
     reserve.once('error', reject)
@@ -32,11 +32,11 @@ if (!command) {
 
   const env = {
     ...process.env,
-    SNAPDOM_AGENT_PORT: String(port),
-    SNAPDOM_AGENT_TOKEN_FILE: join(runtime, 'daemon.token'),
-    SNAPDOM_AGENT_LOGDIR: join(runtime, 'logs'),
+    SNAPSURF_PORT: String(port),
+    SNAPSURF_TOKEN_FILE: join(runtime, 'daemon.token'),
+    SNAPSURF_LOGDIR: join(runtime, 'logs'),
   }
-  delete env.SNAPDOM_AGENT_TOKEN
+  delete env.SNAPSURF_TOKEN
   const child = spawn(command, args, { cwd: process.cwd(), env, stdio: 'inherit' })
   const outcome = await new Promise((resolve, reject) => {
     child.once('error', reject)
@@ -58,9 +58,9 @@ if (!command) {
   let cleanupError = null
   if (leaked) {
     try {
-      process.env.SNAPDOM_AGENT_PORT = env.SNAPDOM_AGENT_PORT
-      process.env.SNAPDOM_AGENT_TOKEN_FILE = env.SNAPDOM_AGENT_TOKEN_FILE
-      process.env.SNAPDOM_AGENT_LOGDIR = env.SNAPDOM_AGENT_LOGDIR
+      process.env.SNAPSURF_PORT = env.SNAPSURF_PORT
+      process.env.SNAPSURF_TOKEN_FILE = env.SNAPSURF_TOKEN_FILE
+      process.env.SNAPSURF_LOGDIR = env.SNAPSURF_LOGDIR
       const { daemonFetch } = await import(`./daemon-client.mjs?gate=${Date.now()}`)
       await daemonFetch({
         method: 'POST',
