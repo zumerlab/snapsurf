@@ -1,0 +1,15 @@
+<style>
+  .pr-card { width: 360px; padding: 16px; border: 1px solid #999; background: #fff; }
+  .pr-card h2 { font-size: 16px; margin: 0 0 8px; }
+  .pr-card p { margin: 0 0 12px; }
+  .pr-card button { padding: 6px 12px; }
+</style>
+<div class="pr-source" data-testid="notice-slot">
+  <div role="dialog" aria-label="Session expiring" class="pr-card">
+    <h2>Session expiring</h2>
+    <p>Your session ends in 5 minutes.</p>
+    <button type="button">Stay signed in</button>
+  </div>
+</div>
+<p>Main page content that keeps its place while the dialog is portaled.</p>
+<div id="portal-root" data-testid="portal-root"></div>

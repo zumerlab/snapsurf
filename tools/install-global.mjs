@@ -1,0 +1,119 @@
+/**
+ * install-global.mjs — installs the oracle harness as a MACHINE-GLOBAL tool
+ * (~/.claude/snapdom-agent), independent of which branch the repo sits on:
+ *
+ *   node tools/install-global.mjs
+ *
+ * Writes:
+ *   ~/.claude/snapdom-agent/browse.mjs   copy of the CLI/daemon
+ *   ~/.claude/snapdom-agent/server.mjs   copy of the MCP server (for Claude Code/Desktop)
+ *   ~/.claude/snapdom-agent/sdk.js       prebuilt bundle (oracle + snapdom + plugins)
+ *   ~/.claude/snapdom-agent/companion/   the Chrome extension, loadable from here
+ *   ~/.claude/snapdom-agent/paths.json   self-contained installed runtime path
+ *   ~/.claude/skills/agent-browse/       USER-level skill (every session)
+ *
+ * Everything a consumer points at lives under ~/.claude, so checking out another branch
+ * cannot break a registered MCP server or an extension Chrome loaded unpacked. Runtime
+ * dependencies are resolved during installation and copied into that fixed tree.
+ *
+ * Re-run after changing src or browse.mjs to refresh.
+ * NOTHING is published: everything stays in this machine's ~/.claude.
+ */
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+import { mkdir, writeFile, readFile, copyFile, readdir, access, cp } from 'node:fs/promises'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+const HOME = process.env.SNAPDOM_AGENT_INSTALL_HOME || process.env.HOME
+if (!HOME) throw new Error('HOME (or SNAPDOM_AGENT_INSTALL_HOME for an isolated install) is required')
+const DEST = join(HOME, '.claude', 'snapdom-agent')
+const SKILLDIR = join(HOME, '.claude', 'skills', 'agent-browse')
+
+const exists = async (p) => { try { await access(p); return true } catch { return false } }
+
+const AGENT = join(HERE, '..')
+const STANDALONE = await exists(join(AGENT, 'src', 'plugin.js'))
+if (!STANDALONE) {
+  console.error(`⛔ standalone agent sources not found under ${AGENT}`)
+  process.exit(2)
+}
+
+// Same bundle definition the daemon builds in dev mode — one source, no drift.
+const { buildSdk } = await import(join(HERE, 'sdk-bundle.mjs'))
+const SDK = await buildSdk(AGENT)
+
+// Copying a file that does not parse is silent until the client fails to start: this
+// installer shipped a broken server.mjs once, because it validates the SDK bundle's
+// globals but never checked the sources it copies. Parse them first.
+const { execFileSync } = await import('node:child_process')
+for (const f of [join(HERE, 'browse.mjs'), join(HERE, '..', 'mcp', 'server.mjs')]) {
+  try { execFileSync(process.execPath, ['--check', f], { stdio: 'pipe' }) } catch (e) {
+    console.error(`⛔ ${f} does not parse — refusing to install:\n${(e.stderr || '').toString().split('\n').slice(0, 3).join('\n')}`)
+    process.exit(2)
+  }
+}
+
+await mkdir(DEST, { recursive: true })
+await mkdir(join(DEST, 'logs'), { recursive: true })
+await copyFile(join(AGENT, 'LICENSE'), join(DEST, 'LICENSE'))
+await copyFile(join(AGENT, 'vendor', 'snapdom', 'LICENSE'), join(DEST, 'SNAPDOM-LICENSE'))
+await writeFile(join(DEST, 'sdk.js'), SDK)
+await copyFile(join(HERE, 'browse.mjs'), join(DEST, 'browse.mjs'))
+// The installed daemon must survive the checkout moving or disappearing. It only needs
+// Playwright at runtime because sdk.js is already built; copy the pinned runtime instead
+// of pointing back at the repository's node_modules. Resolve from this module rather
+// than assuming dependencies are nested under AGENT/node_modules: npm normally hoists
+// them when this installer itself is running from an installed tarball.
+await mkdir(join(DEST, 'node_modules'), { recursive: true })
+for (const [dep, required] of [['playwright', true], ['playwright-core', true], ['fsevents', false]]) {
+  let source
+  try {
+    source = dirname(fileURLToPath(import.meta.resolve(`${dep}/package.json`)))
+  } catch (error) {
+    if (required) throw new Error(`required runtime dependency ${dep} could not be resolved`, { cause: error })
+    continue
+  }
+  await cp(source, join(DEST, 'node_modules', dep), { recursive: true, force: true })
+}
+await writeFile(join(DEST, 'paths.json'), JSON.stringify({ agent: DEST }))
+
+// The MCP server, so Claude Code and Claude Desktop can be registered against a path
+// that does not disappear when the repo changes branch. It finds the daemon by looking
+// next to itself, which is exactly where browse.mjs was just copied.
+await copyFile(join(HERE, '..', 'mcp', 'server.mjs'), join(DEST, 'server.mjs'))
+
+// The extension, for the same reason: Chrome loads it unpacked from a fixed path and
+// disables it if that path goes away.
+const COMPANION = join(DEST, 'companion')
+await mkdir(COMPANION, { recursive: true })
+await copyFile(join(AGENT, 'LICENSE'), join(COMPANION, 'LICENSE'))
+await copyFile(join(AGENT, 'vendor', 'snapdom', 'LICENSE'), join(COMPANION, 'SNAPDOM-LICENSE'))
+for (const f of await readdir(join(HERE, '..', 'companion'))) {
+  if (f === 'content.bundle.js' || f === 'manifest.json' || f === 'worker.js' || f === 'PROMPT-extension.md') {
+    await copyFile(join(HERE, '..', 'companion', f), join(COMPANION, f))
+  }
+}
+
+// User-level skill: the versioned one, with the global harness paths. The rewrites are
+// idempotent so re-installing from an already-rewritten copy cannot double the header.
+const SKILLSRC = [join(AGENT, 'skill', 'SKILL.md')]
+const skillPath = (await Promise.all(SKILLSRC.map(async (p) => (await exists(p)) ? p : null))).find(Boolean)
+if (!skillPath) {
+  console.error(`⛔ no SKILL.md source found. Tried:\n  ${SKILLSRC.join('\n  ')}`)
+  process.exit(2)
+}
+const HEADING = '# agent-browse — browse with the oracle instead of screenshots'
+const NOTE = `> MACHINE-GLOBAL install (~/.claude/snapdom-agent). Refresh after agent changes:\n> \`node ${join(AGENT, 'tools', 'install-global.mjs')}\``
+const skill = (await readFile(skillPath, 'utf8'))
+  .replaceAll('packages/agent/tools/browse.mjs', join(DEST, 'browse.mjs'))
+  .replaceAll('$HOME/.claude/snapdom-agent/browse.mjs', join(DEST, 'browse.mjs'))
+  .replaceAll('companion/PROMPT-extension.md', join(COMPANION, 'PROMPT-extension.md'))
+  .replace(new RegExp(`${HEADING}\\n\\n> MACHINE-GLOBAL install[\\s\\S]*?\\n\\n`), `${HEADING}\n\n`)
+await mkdir(SKILLDIR, { recursive: true })
+await writeFile(join(SKILLDIR, 'SKILL.md'), skill.replace(HEADING, `${HEADING}\n\n${NOTE}`))
+
+console.log(`installed:
+  ${join(DEST, 'browse.mjs')} (+ sdk.js ${Math.round(SDK.length / 1024)}KB, paths.json, logs/)
+  ${join(DEST, 'server.mjs')} (MCP server — register Claude Code/Desktop against THIS path)
+  ${COMPANION}/ (Chrome extension — load unpacked from here)
+  ${join(SKILLDIR, 'SKILL.md')} (user-level global skill)`)

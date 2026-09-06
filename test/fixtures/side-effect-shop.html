@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Side-effect shop</title>
+<style>
+  body { font: 15px system-ui; margin: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 260px); gap: 16px; }
+  .item { border: 1px solid #ccc; padding: 12px; border-radius: 8px; }
+  button { padding: 6px 12px; }
+  #checkout { margin-top: 20px; padding: 10px 20px; }
+  #ship { color: #333; }
+</style>
+
+<h1>Shop</h1>
+<div class="grid">
+  <div class="item"><h3>Backpack</h3><p class="price">$29.99</p><button data-add>Add to cart</button></div>
+  <div class="item"><h3>Bike Light</h3><p class="price">$9.99</p><button data-add>Add to cart</button></div>
+  <div class="item"><h3>Bolt T-Shirt</h3><p class="price">$15.99</p><button data-add>Add to cart</button></div>
+  <div class="item"><h3>Fleece Jacket</h3><p class="price">$49.99</p><button data-add>Add to cart</button></div>
+</div>
+
+<p id="ship">Envío: gratis</p>
+<button id="checkout">Checkout</button>
+
+<script>
+  // El "add" hace lo obvio... y dos cosas más que nadie pone en su lista a mano.
+  document.querySelectorAll('[data-add]').forEach((b) => {
+    b.addEventListener('click', () => {
+      b.textContent = 'Remove'                                  // 1. lo obvio
+      document.getElementById('ship').textContent = 'Envío: $7.50'  // 2. fuera de la lista
+      document.getElementById('checkout').disabled = true           // 3. fuera de la lista
+    })
+  })
+</script>

@@ -1,0 +1,5 @@
+{
+  "changed": false,
+  "expectEmpty": true,
+  "stableIdQueries": [{ "role": "button", "name": "Refrescar" }]
+}

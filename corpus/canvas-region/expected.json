@@ -1,0 +1,5 @@
+{
+  "changed": false,
+  "expectEmpty": true,
+  "stableIdQueries": [{ "role": "img", "name": "Sales chart" }]
+}

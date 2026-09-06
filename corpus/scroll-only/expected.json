@@ -1,0 +1,5 @@
+{
+  "changed": false,
+  "expectEmpty": true,
+  "stableIdQueries": [{ "role": "heading", "name": "Registro de eventos" }]
+}

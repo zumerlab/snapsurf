@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Todo — QA demo</title>
+<style>
+  body { font-family: system-ui, sans-serif; width: 480px; margin: 40px auto; }
+  .spinner { width: 22px; height: 22px; border: 3px solid #ddd; border-top-color: #4a7dff;
+             border-radius: 50%; animation: spin 1.2s linear infinite; display: inline-block;
+             vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg) } }
+  header { display: flex; align-items: center; gap: 8px; color: #666; font-size: 14px; }
+  ul { padding-left: 20px; } li { margin: 6px 0; }
+  input, button { font-size: 15px; padding: 6px 10px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="spinner" role="presentation"></span>
+  <span>sync</span>
+  <span id="clock" data-testid="clock">--:--:--</span>
+</header>
+<h1>Groceries</h1>
+<form id="form">
+  <input id="item" type="text" placeholder="New item" aria-label="New item">
+  <button id="add" type="submit">Add</button>
+  <button id="refresh" type="button">Refresh</button>
+</form>
+<ul id="list">
+  <li>Bread</li>
+</ul>
+<script>
+  // Ambient noise that makes PIXEL assertions flaky: a live clock (ticks every
+  // second) and a spinning loader. Neither is a semantic change.
+  const clock = document.getElementById('clock')
+  const tick = () => { clock.textContent = new Date().toTimeString().slice(0, 8) }
+  tick(); setInterval(tick, 1000)
+
+  document.getElementById('form').addEventListener('submit', (e) => {
+    e.preventDefault()
+    const input = document.getElementById('item')
+    if (!input.value.trim()) return
+    const li = document.createElement('li')
+    li.textContent = input.value.trim()
+    document.getElementById('list').appendChild(li)
+    input.value = ''
+  })
+  // Refresh is deliberately a NO-OP: the assertion "my click did nothing" is a
+  // first-class QA check with the oracle (changed:false), impossible with pixels.
+  document.getElementById('refresh').addEventListener('click', () => {})
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "changed": true,
+  "mustInclude": [{ "kind": "content" }],
+  "forbidKinds": ["added", "removed", "state", "style"],
+  "maxChanges": 2,
+  "stableIdQueries": [{ "role": "button", "name": "Actualizar" }]
+}
