@@ -1,3 +1,0 @@
-{"ts":"2026-08-01T17:43:39.098Z","session":"20260801-174338","seq":1,"cmd":"status","args":[],"epoch":0,"urlBefore":"nullblank","urlAfter":"nullblank","durationMs":0,"ok":true}
-{"ts":"2026-08-01T17:43:39.170Z","session":"20260801-174338","seq":2,"cmd":"status","args":[],"epoch":0,"urlBefore":"nullblank","urlAfter":"nullblank","durationMs":1,"ok":true}
-{"ts":"2026-08-01T17:43:39.239Z","session":"20260801-174338","seq":3,"cmd":"stop","args":[],"epoch":0,"urlBefore":"nullblank","urlAfter":"nullblank","durationMs":0,"ok":true}

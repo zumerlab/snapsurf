@@ -1,25 +1,25 @@
-# Formal benchmark — Claude native vs ChatGPT (Codex) native vs snapDOM Agent
+# Formal benchmark — Claude native vs ChatGPT (Codex) native vs SnapSurf
 
-The reproducible benchmark behind `packages/agent/PAPER.md` §6. Everything a run
-produces is a JSON file; everything a claim cites is judged by code in this folder.
+Historical benchmark runners and external judges. Each run produces a JSON file;
+the judges in this folder check the reported results against the task definitions.
 
 ## Arms
 
 | arm id | runner | perception/action stack |
 |---|---|---|
 | `claude-native` | Claude Code session | claude-in-chrome extension ONLY (screenshots, read_page, find, computer) |
-| `claude-agent` | Claude Code session | snapDOM Agent ONLY (CLI `browse.mjs` or MCP tools) |
+| `claude-agent` | Claude Code session | SnapSurf ONLY (CLI `browse.mjs` or MCP tools) |
 | `codex-native` | Codex (ChatGPT) | Codex's own stack as it comes — anything EXCEPT `packages/agent/*` |
-| `codex-agent` | Codex (ChatGPT) | snapDOM Agent ONLY (CLI `browse.mjs` or MCP tools) |
+| `codex-agent` | Codex (ChatGPT) | SnapSurf ONLY (CLI `browse.mjs` or MCP tools) |
 
-Prompts: `PROMPT-claude-native.md`, `PROMPT-codex-native.md`, `PROMPT-agent-arm.md`
-(shared by both `*-agent` arms). Tasks: `TASKS.md` (10 tasks, cap 15 actions each).
+Task definitions and judges are in `tasks.mjs`. The original working prompts,
+task-plan Markdown and session reviews are kept locally and excluded from Git.
 
 ## Protocol
 
 1. **Reps**: ≥3 per arm. One rep = one fresh session running all 10 tasks in order.
 2. **Never two rounds at once** — the agent daemon shares port 8377; parallel rounds
-   contaminated a previous evaluation (`../results/codex-self-v5.md`). Agent arms:
+   contaminated a previous evaluation. Agent arms:
    start a fresh daemon per rep, `stop` it at the end.
 3. **demo-qa (T8/T9)**: agent arms open
    `file://<repo>/packages/agent/demo-qa/app.html` directly. Native arms that can't

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Focal, descriptive comparison of direct Playwright Test assertions and the
- * SnapDOM Agent assertion envelope on public pages.
+ * SnapSurf assertion envelope on public pages.
  *
  * This is not a throughput benchmark. Each arm gets an isolated Chromium context.
  * Schema 2 aligns its timing boundary (precondition/baseline outside; target lookup,

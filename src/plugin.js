@@ -1,6 +1,6 @@
 /**
  * The semantic visitor, as a snapDOM lifecycle plugin.
- * PRIVATE, PROPRIETARY, NEVER PUBLISHED. See package.json / LICENSE.
+ * MIT License. Copyright (c) 2026 Juan Martin Muda / zumerlab.
  *
  * This module is the product's single integration point with snapdom core: the walk
  * runs inside `beforeClone`, in the same task as the clone walk that follows it, with

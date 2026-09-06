@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * snapdom-agent MCP server — PLAN phase F1: the oracle as native tools for any MCP
+ * SnapSurf MCP server — PLAN phase F1: the oracle as native tools for any MCP
  * client (Claude Code, Claude Desktop, other agents).
  *
  * Architecture: a thin translator over the browse.mjs daemon (HTTP :8377) — inherits
@@ -11,9 +11,9 @@
  * MCP stdio protocol implemented by hand (JSON-RPC 2.0, one message per line):
  * zero dependencies. stdout is protocol ONLY; all logging goes to stderr.
  *
- * Register (once):  claude mcp add --scope user snapdom-agent -- node <path>/server.mjs
+ * Register (once):  claude mcp add --scope user snapsurf -- node <path>/server.mjs
  *
- * Private development package; see the repository LICENSE.
+ * MIT License. Copyright (c) 2026 Juan Martin Muda / zumerlab.
  */
 import { createInterface } from 'node:readline'
 import { spawn } from 'node:child_process'
@@ -30,7 +30,7 @@ const PORT = Number(process.env.SNAPDOM_AGENT_PORT || 8377)
 // 401→EADDRINUSE→20s deadlock, 2026-08-13). Legacy tmpdir path kept as READ fallback.
 const TOKEN_FILE = process.env.SNAPDOM_AGENT_TOKEN_FILE || join(homedir(), '.claude', 'snapdom-agent', `daemon-${PORT}.token`)
 const LEGACY_TOKEN_FILE = join(tmpdir(), `snapdom-agent-${process.getuid?.() ?? 'user'}-${PORT}.token`)
-const log = (...a) => console.error('[snapdom-agent-mcp]', ...a)
+const log = (...a) => console.error('[snapsurf-mcp]', ...a)
 let daemonAuthToken = process.env.SNAPDOM_AGENT_TOKEN || null
 
 async function authToken() {
@@ -319,7 +319,7 @@ async function ensureDaemon() {
 const TOOLS = [
   {
     name: 'browser_open',
-    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. A `top` entry with `placeholder: true` is an EMPTY form field whose name is its placeholder — a prompt, never data from the site. Every observation reports `authState` and `cookiesForOrigin`: this tool drives ITS OWN isolated per-session BrowserContext, cookie jar and storage. `authState` is conservatively `unknown`; a cookie count is evidence, not proof of identity, because authentication can also live in storage, bearer state or the URL. For a task that needs the real signed-in session from another browser, this is the wrong instrument. If the site answered with a bot-mitigation interstitial, structuredContent carries `blocked: true` and `challenge` {vendor, reason, status, signal, and `vendors` when more than one is detected — vendors chain, and a confidently wrong name is worse than unknown for per-vendor retry routing}: the content was WITHHELD, which is a different answer from a page that has little on it — fall back to another fetcher rather than recording an empty result. A request that never reached an HTTP response returns `failure` {layer: dns|tls|transport|http, code, hostUp} instead of a thrown string — a DNS or certificate failure is neither a block nor an empty page. The open waits (bounded) for window.onload AND briefly watches the fresh document for timer-delayed first paints (entry ads armed via setTimeout at parse time), so late overlays/modals enter the FIRST digest; if the document is STILL not complete, structuredContent carries `loading` {readyState, waitedMs} and the prose says so — treat the digest as a truthful walk of an UNFINISHED page and re-observe before trusting completeness. Returns `digest` in structuredContent (marks/heads/top) as well as prose — read the field, do not parse the text. After a SAME-ORIGIN navigation, structuredContent may also carry `carried`: which strong-identity elements (data-testid / authored accessible names) persisted from the previous page and how their state/content moved (the cart badge "1"→"2"), plus only-before/only-after COUNTS of page-specific content — those counts are "different page", never removals/additions. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Raw form values are never returned; sensitive categories use coarse change signals and declare same-bucket uncertainty.',
+    description: 'Navigate to a URL and get the semantic DIGEST (~2-3KB): landmark regions with ids, headings with their section, and the top-15 RANKED actionables with hrefs. Ids (n_xxx) expire on every new observation. A `top` entry with `placeholder: true` is an EMPTY form field whose name is its placeholder — a prompt, never data from the site. Every observation reports `authState` and `cookiesForOrigin`: this tool drives ITS OWN isolated per-session BrowserContext, cookie jar and storage. `authState` is conservatively `unknown`; a cookie count is evidence, not proof of identity, because authentication can also live in storage, bearer state or the URL. For a task that needs the real signed-in session from another browser, this is the wrong instrument. If the site answered with a bot-mitigation interstitial, structuredContent carries `blocked: true` and `challenge` {vendor, reason, status, signal, and `vendors` when more than one is detected — vendors chain, and a confidently wrong name is worse than unknown for per-vendor retry routing}: the content was WITHHELD, which is a different answer from a page that has little on it — fall back to another fetcher rather than recording an empty result. A request that never reached an HTTP response returns `failure` {layer: dns|tls|transport|http, code, hostUp} instead of a thrown string — a DNS or certificate failure is neither a block nor an empty page. The open waits (bounded) for window.onload AND briefly watches the fresh document for timer-delayed first paints (entry ads armed via setTimeout at parse time), so late overlays/modals enter the FIRST digest; if the document is STILL not complete, structuredContent carries `loading` {readyState, waitedMs} and the prose says so — treat the digest as a truthful walk of an UNFINISHED page and re-observe before trusting completeness. Returns `observationId` (opaque identity of this observation) in structuredContent, and `digest` (marks/heads/top) in both structuredContent and prose — read the fields, do not parse the text. After a SAME-ORIGIN navigation, structuredContent may also carry `carried`: which strong-identity elements (data-testid / authored accessible names) persisted from the previous page and how their state/content moved (the cart badge "1"→"2"), plus only-before/only-after COUNTS of page-specific content — those counts are "different page", never removals/additions. Optional `redact`: session privacy rules — any name/label/text/state string containing a listed term leaves every observation as [redacted], and each observation carries an attestation that the policy ran (`policyRevision`, `rulesActive`) — never hit counts, which would tell you whether and how often the hidden term occurs. Raw form values are never returned; sensitive categories use coarse change signals and declare same-bucket uncertainty.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' }, waitForChallenge: { type: 'number', description: 'ms to wait for a bot-mitigation interstitial to clear by itself (capped at 30000). Many do within a few seconds. Omitted = do not wait, just report.' }, digest: { type: 'string', enum: ['full', 'compact'], description: 'compact = the extraction profile: no bbox, no section, and the prose collapses to one line because the digest is already in structuredContent. Halves the per-page cost for a sweep that reads fields and never clicks.' }, url: { type: 'string', description: 'URL (https implied; file:/data: accepted)' }, redact: { type: 'array', items: { type: 'string' }, description: 'Session privacy rules: strings to redact from every observation from now on (replaces any previous rules)' } }, required: ['url'] },
     run: async ({ url, redact, digest, waitForChallenge, sessionId }) =>
       // Rules as JSON, in the SAME call as the navigation. It used to be two calls with
@@ -372,7 +372,7 @@ const TOOLS = [
   },
   {
     name: 'browser_verify',
-    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Possible replacements also carry `beforeName`, so the prior and current identities are both explicit. Call it after EVERY action instead of comparing screenshots. structuredContent carries `changed`, `changes` (list of {kind, role, name, beforeName?, id}) and `changesTotal` — read those rather than parsing the prose. Reading aids: `changes` lists signal first and omits folded wrapper nodes of an ADDED subtree (identity-free generic wrappers only — authored names never fold; `foldedWrappers` counts them and `changesTotal` is the full diff count), and `geometryOnly: true` flags a diff that is ONLY moved/resized AND changed no actionability — a scope reflow (scrollbar, container resize) you can skim past. After a same-origin navigation, `carried` reports the strong-identity elements that persisted across pages and their state/content transitions (see browser_open).',
+    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Possible replacements also carry `beforeName`, so the prior and current identities are both explicit. Call it after EVERY action instead of comparing screenshots, then pass its `diffId` to browser_assert to check THIS exact transition. When a baseline exists, a full observation returns `diffId`, `beforeObservationId`, `afterObservationId`, `observationId` (the after observation), and `baselineAdvanced`: true. A stored diff covers the FULL evidence, including changes beyond the presentation cap and folded wrappers. No baseline means no diffId. Retention is bounded per session (32 records, 8 MiB total, 10 minutes); an individually oversized record returns diffAvailable: false and diffError: {code: DIFF_TOO_LARGE, message}, without a diffId. structuredContent carries `changed`, `changes` (list of {kind, role, name, beforeName?, id}) and `changesTotal` — read those rather than parsing the prose. Reading aids: `changes` lists signal first and omits folded wrapper nodes of an ADDED subtree (identity-free generic wrappers only — authored names never fold; `foldedWrappers` counts them and `changesTotal` is the full diff count), and `geometryOnly: true` flags a diff that is ONLY moved/resized AND changed no actionability — a scope reflow (scrollbar, container resize) you can skim past. After a same-origin navigation, `carried` reports the strong-identity elements that persisted across pages and their state/content transitions (see browser_open).',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' } } },
     run: async ({ sessionId } = {}) => cmd('look', [], { sessionId }),
   },
@@ -390,13 +390,14 @@ const TOOLS = [
   },
   {
     name: 'browser_assert',
-    description: 'Deterministic QA assertion built ON the diff — the replacement for fragile visual assertions. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized — a framework re-render that REPLACES a node reports kind `possible-replacement`, and added/removed matchers accept it with STRICT side reading: an added matcher matches the after-side name/role, a removed matcher matches ONLY the before-side name/role (never the after side; selector specs never match through the alias), and the check result says "found (via possible-replacement — identity ambiguous)" instead of a plain green), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). FAIL-LOUD CONTRACT: unknown spec keys, empty specs and missing baselines are hard pass:false with a reason — confusion never looks green. Returns structured {pass, hasBaseline, attempts, checks[], changes[]}; the diff evidence (with state from/to) travels with every result. Also: mustNotInclude (assert side-effect ABSENCE), maxChanges, becameVisible/becameCovered (actionability deltas), mustInclude entries accept selector and to:{state:value} (directional state — assert the menu IS open), settleMs and retry:{budgetMs} re-walk against the SAME baseline until pass or budget (CSS transitions land mid-flight). exists searches accessible names AND page text. It consumes the diff baseline at the END unless keepBaseline:true. SPA soft navs: results with a baseline include navigated:true + baselineUrl when the URL moved since the baseline was taken — that diff spans two pages of one document; re-observe on settled content (non-zero, stable actionables) before trusting change-based checks.',
+    description: 'Assert the EXACT transition already read from browser_verify by passing its `diffId`: immutable, full diff evidence; no new observation and no baseline or id-epoch advance. Stored results return `diffId`, `beforeObservationId`, `afterObservationId`, `observationId` (the historical after observation), `baselineAdvanced`: false and `evidenceSource`: stored. Historical evidence survives later navigation; its element ids are historical, not actionable — find again before acting. Stored diffs support ONLY changed, mustInclude, mustNotInclude, only, maxChanges, becameVisible and becameCovered. Mixing diffId with exists, notCovered, url/urlIncludes, ignore, settleMs, retry or keepBaseline (even false) is pass:false; use a separate live assertion for current page predicates. Unknown, expired, evicted, foreign-session or privacy-invalidated ids return pass:false with `error` {code: DIFF_UNAVAILABLE, message}, never a live fallback. Without diffId, the existing LIVE assertion mode checks the diff since the last observation and consumes its baseline at the END unless keepBaseline:true; calling it after verify therefore checks a NEW interval. Checks any combination of: url (substring of the current URL), changed (expect the diff since the last observation to be true/false — the faithful negative makes "my action did nothing" ASSERTABLE), mustInclude ([{kind, role, name}] entries that must appear in the diff; kind ∈ added/removed/content/state/style/moved/resized — a framework re-render that REPLACES a node reports kind `possible-replacement`, and added/removed matchers accept it with STRICT side reading: an added matcher matches the after-side name/role, a removed matcher matches ONLY the before-side name/role (never the after side; selector specs never match through the alias), and the check result says "found (via possible-replacement — identity ambiguous)" instead of a plain green), exists (text findable anywhere on the page), notCovered (text whose best match must not be occluded). FAIL-LOUD CONTRACT: unknown spec keys, empty specs and missing baselines are hard pass:false with a reason — confusion never looks green. Returns structured {pass, hasBaseline, attempts, checks[], changes[]}; the diff evidence (with state from/to) travels with every result. Also: mustNotInclude (assert side-effect ABSENCE), maxChanges, becameVisible/becameCovered (actionability deltas), mustInclude entries accept selector and to:{state:value} (directional state — assert the menu IS open), settleMs and retry:{budgetMs} re-walk against the SAME baseline until pass or budget (CSS transitions land mid-flight). exists searches accessible names AND page text. SPA soft navs: results with a baseline include navigated:true + baselineUrl when the URL moved since the baseline was taken — that diff spans two pages of one document; re-observe on settled content (non-zero, stable actionables) before trusting change-based checks.',
     inputSchema: {
       type: 'object',
       properties: {
         sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' },
-        url: { type: 'string', description: 'substring the current URL must contain' },
-        changed: { type: 'boolean', description: 'expected value of the diff since the last observation' },
+        diffId: { type: 'string', description: 'opaque evidence id from browser_verify: assert that stored full transition without observing; accepts only diff predicates, never live page checks or retry/ignore/baseline options' },
+        url: { type: 'string', description: 'live mode only: substring the current URL must contain' },
+        changed: { type: 'boolean', description: 'expected changed value for the stored diffId, or for the diff since the last observation in live mode' },
         mustInclude: {
           type: 'array',
           items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, nameExact: { type: 'string' }, selector: { type: 'string' }, to: { type: 'object' } } },
@@ -410,17 +411,17 @@ const TOOLS = [
         only: {
           type: 'array',
           items: { type: 'object', properties: { kind: { type: 'string' }, role: { type: 'string' }, name: { type: 'string' }, selector: { type: 'string' } } },
-          description: 'causal scoping: EVERY change must match one of these matchers',
+          description: 'change scoping: EVERY change must match one of these matchers; this does not establish causality',
         },
-        ignore: { type: 'array', items: { type: 'string' }, description: 'CSS selectors whose subtree changes are excluded (e.g. the agent toolbar)' },
-        maxChanges: { type: 'number', description: 'diff must contain at most N changes (after ignore)' },
+        ignore: { type: 'array', items: { type: 'string' }, description: 'live mode only: CSS selectors whose subtree changes are excluded (e.g. the agent toolbar)' },
+        maxChanges: { type: 'number', description: 'full diff must contain at most N changes (after ignore in live mode)' },
         becameVisible: { type: 'string', description: 'an actionable matching this text must have become visible' },
         becameCovered: { type: 'string', description: 'an actionable matching this text must have become covered' },
-        settleMs: { type: 'number', description: 'wait before the first walk' },
-        retry: { type: 'object', properties: { budgetMs: { type: 'number' }, intervalMs: { type: 'number' } }, description: 're-walk against the SAME baseline until pass or budget' },
-        exists: { type: 'string', description: 'text that must be findable on the page' },
-        notCovered: { type: 'string', description: 'text whose best match must not be occluded' },
-        keepBaseline: { type: 'boolean', description: 'do not consume the diff baseline (peek mode — safe to retry)' },
+        settleMs: { type: 'number', description: 'live mode only: wait before the first walk' },
+        retry: { type: 'object', properties: { budgetMs: { type: 'number' }, intervalMs: { type: 'number' } }, description: 'live mode only: re-walk against the SAME baseline until pass or budget' },
+        exists: { type: 'string', description: 'live mode only: text that must be findable on the current page' },
+        notCovered: { type: 'string', description: 'live mode only: text whose best match must not be occluded on the current page' },
+        keepBaseline: { type: 'boolean', description: 'live mode only: do not consume the diff baseline (peek mode — safe to retry); incompatible with diffId even when false' },
       },
     },
     // Routing metadata belongs in the envelope, never inside the assertion spec: the
@@ -574,7 +575,7 @@ rl.on('line', async (line) => {
     return reply(id, {
       protocolVersion: params?.protocolVersion || '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'snapdom-agent', version: '0.1.0' },
+      serverInfo: { name: 'snapsurf', version: '0.1.0' },
     })
   }
   if (method === 'notifications/initialized' || method === 'notifications/cancelled') return
@@ -608,7 +609,9 @@ rl.on('line', async (line) => {
       return reply(id, {
         content,
         structuredContent: { v: 1, ok: env.ok, sessionId: env.sessionId, epoch: env.epoch, url: env.url, ...env.meta, ...(env.meta && env.meta.assert ? env.meta.assert : {}) },
-        isError: !env.ok,
+        // An assertion failure is a tool-level failure for MCP clients, while ok
+        // still reports whether the instrument executed successfully.
+        isError: !env.ok || env.meta?.assert?.pass === false,
       })
     } catch (e) {
       return reply(id, { content: [{ type: 'text', text: String(e.message || e) }], isError: true })

@@ -1,9 +1,13 @@
-# Using snapDOM Agent from any LLM
+# Using SnapSurf from any LLM
 
 The instrument is model-agnostic by construction. There are three integration surfaces,
 in order of preference:
 
 ## 1. MCP — works with any MCP-capable client (the normal path)
+
+Install with `npm install @zumer/snapsurf` and `npx playwright install chromium`
+as shown in the [README](../README.md). In the examples below, `/ABS/PATH` is the
+absolute directory where you ran `npm install`.
 
 `mcp/server.mjs` is a standard MCP **stdio** server: any client that can run a local
 command speaks to it. The tool descriptions ARE the instructions — they teach the loop
@@ -12,21 +16,69 @@ field, so the consuming model needs no extra prompt to use the tools correctly.
 Structured clients read `structuredContent`; clients that only read text get the same
 facts as prose.
 
-The invariant for every client: **command `node`, args `["/ABS/PATH/snapdom-agent/mcp/server.mjs"]`**.
+After every action, verify once and pass its `diffId` to assert. For example, with an
+MCP client exposing `callTool`:
+
+```js
+await client.callTool({
+  name: 'browser_act', arguments: { action: 'click', target: currentButtonId },
+})
+const verified = await client.callTool({ name: 'browser_verify', arguments: {} })
+const evidence = verified.structuredContent
+if (!evidence.diffId) throw new Error('No retained diff: inspect verify evidence before continuing')
+const result = await client.callTool({
+  name: 'browser_assert',
+  arguments: {
+    diffId: evidence.diffId,
+    changed: true,
+    mustInclude: [{ kind: 'added', role: 'dialog', name: 'Settings' }],
+    mustNotInclude: [{ kind: 'removed' }],
+  },
+})
+```
+
+For an explicit session, pass the same `sessionId` in all three calls. The stored
+assertion checks the full transition even when verify displays a capped list. It does
+not observe or consume the current baseline: `baselineAdvanced` is `false` and
+`evidenceSource` is `"stored"`. Both responses carry `beforeObservationId`,
+`afterObservationId`, and `observationId` (the historical after observation). A later
+navigation does not rewrite this evidence; ids inside it are historical, so use
+`browser_find` to obtain current action targets.
+
+Use separate assertions without `diffId` for current page predicates such as `exists`,
+`notCovered` or `url`. Mixing them with stored evidence fails, as does adding `ignore`,
+`settleMs`, `retry` or `keepBaseline` (even `false`). Without `diffId`, assert retains
+its live behavior: after verify it compares a new interval. Stored assertions support
+`changed`, `mustInclude`, `mustNotInclude`, `only`, `maxChanges`, `becameVisible` and
+`becameCovered`.
+
+Retention is per session: at most 32 diffs, 8 MiB total, for 10 minutes; privacy-rule
+changes invalidate stored evidence. An unknown, expired, evicted, invalidated or
+other-session `diffId` produces `pass: false` and `error.code: "DIFF_UNAVAILABLE"`,
+never a live fallback. If one diff exceeds the retention budget, verify returns
+`diffAvailable: false` and `diffError.code: "DIFF_TOO_LARGE"`, without a `diffId`.
+A verify without a baseline also has no `diffId`.
+
+For both live and stored assertions, distinguish command execution from the verdict:
+the daemon can return `ok: true` with `meta.assert.pass: false`. MCP exposes that
+verdict as `structuredContent.pass: false` and sets `isError: true`, retaining the
+checks and evidence for diagnosis.
+
+The invariant for every client: **command `node`, args `["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"]`**.
 The server starts and owns the daemon on demand. Exact config file names drift between
 clients — check yours if a snippet below has moved.
 
 **Claude Code**
 
 ```bash
-claude mcp add --scope user snapdom-agent -- node /ABS/PATH/snapdom-agent/mcp/server.mjs
+claude mcp add --scope user snapsurf -- node /ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs
 ```
 
 **Codex CLI** (registers globally in `~/.codex/config.toml` under
-`[mcp_servers.snapdom-agent]`; verify with `codex mcp list`):
+`[mcp_servers.snapsurf]`; verify with `codex mcp list`):
 
 ```bash
-codex mcp add snapdom-agent -- node /ABS/PATH/snapdom-agent/mcp/server.mjs
+codex mcp add snapsurf -- node /ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs
 ```
 
 Codex also reads `AGENTS.md` — this repo ships one with the browsing playbook, and a
@@ -36,22 +88,22 @@ truncate long tool descriptions.
 **Cursor** — `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
 
 ```json
-{ "mcpServers": { "snapdom-agent": {
-  "command": "node", "args": ["/ABS/PATH/snapdom-agent/mcp/server.mjs"] } } }
+{ "mcpServers": { "snapsurf": {
+  "command": "node", "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"] } } }
 ```
 
 **VS Code (Copilot agent mode)** — `.vscode/mcp.json`:
 
 ```json
-{ "servers": { "snapdom-agent": {
-  "type": "stdio", "command": "node", "args": ["/ABS/PATH/snapdom-agent/mcp/server.mjs"] } } }
+{ "servers": { "snapsurf": {
+  "type": "stdio", "command": "node", "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"] } } }
 ```
 
 **Gemini CLI** — `~/.gemini/settings.json`:
 
 ```json
-{ "mcpServers": { "snapdom-agent": {
-  "command": "node", "args": ["/ABS/PATH/snapdom-agent/mcp/server.mjs"] } } }
+{ "mcpServers": { "snapsurf": {
+  "command": "node", "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"] } } }
 ```
 
 **OpenAI Agents SDK** (Python):
@@ -61,7 +113,7 @@ from agents.mcp import MCPServerStdio
 
 snapdom = MCPServerStdio(params={
     "command": "node",
-    "args": ["/ABS/PATH/snapdom-agent/mcp/server.mjs"],
+    "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"],
 })
 ```
 
@@ -100,11 +152,11 @@ is automatic; both sides must run as the same OS user):
 ```python
 import subprocess
 out = subprocess.run(
-    ["node", "/ABS/PATH/snapdom-agent/tools/browse.mjs", "open", "example.com"],
+    ["node", "/ABS/PATH/node_modules/@zumer/snapsurf/tools/browse.mjs", "open", "example.com"],
     capture_output=True, text=True).stdout
 ```
 
-Verbs, output shapes and policies are in the README. For batch flows use
+Verbs, output shapes and policies are in the [usage reference](USAGE.md). For batch flows use
 `browse.mjs run "open …" "find …"` (one process, N verbs). Structured metadata for
 every command also lands in the session JSONL under `logs/`.
 

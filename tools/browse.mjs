@@ -40,7 +40,7 @@
  * policy denials. Typed text never lands raw in the log. Observations are numbered
  * (obs #N = epoch); ids only resolve within the epoch that minted them.
  *
- * Private development package; see the repository LICENSE.
+ * MIT License. Copyright (c) 2026 Juan Martin Muda / zumerlab.
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -557,6 +557,42 @@ async function configureContext(sessionContext, sessionId) {
 // IndexedDB, service workers and permissions cannot bleed across callers.
 const MAX_SESSIONS = Number(process.env.SNAPDOM_MAX_SESSIONS || 8)
 const SESSION_TTL_MS = Number(process.env.SNAPDOM_SESSION_TTL_MS || 10 * 60 * 1000)
+// Historical evidence is bounded independently of the live observation/resolver.
+// Keep serialized records: each read gets a fresh value, never a mutable shared diff.
+const DIFF_TTL_MS = 10 * 60 * 1000
+const MAX_DIFFS = 32
+const MAX_DIFF_BYTES = 8 * 1024 * 1024
+function pruneDiffs(S, now = Date.now()) {
+  for (const [id, entry] of S.diffs) {
+    if (entry.expiresAt > now && S.diffs.size <= MAX_DIFFS && S.diffBytes <= MAX_DIFF_BYTES) break
+    S.diffs.delete(id)
+    S.diffBytes -= entry.bytes
+  }
+}
+function retainDiff(S, o, { navigated, baselineUrl } = {}) {
+  pruneDiffs(S)
+  if (!o.beforeObservationId || !o.assertionChanges) return {}
+  const diffId = `d_${randomBytes(16).toString('hex')}`
+  const record = {
+    diffId, beforeObservationId: o.beforeObservationId, afterObservationId: o.observationId,
+    observationId: o.observationId, policyRevision: S.policyRev,
+    changes: o.assertionChanges, delta: o.delta, torn: o.torn,
+    unobservableDetails: o.unobservableDetails, unobservable: o.unobservable,
+    ...(navigated !== undefined ? { navigated, baselineUrl: safeUrl(baselineUrl, S.redact) } : {}),
+  }
+  const json = JSON.stringify(record)
+  const bytes = Buffer.byteLength(json)
+  if (bytes > MAX_DIFF_BYTES) return {
+    beforeObservationId: record.beforeObservationId, afterObservationId: record.afterObservationId,
+    diffAvailable: false,
+    diffError: { code: 'DIFF_TOO_LARGE', message: 'Complete diff exceeds the 8 MiB retention budget; no partial evidence was stored.' },
+  }
+  S.diffs.set(diffId, { json, bytes, expiresAt: Date.now() + DIFF_TTL_MS })
+  S.diffBytes += bytes
+  pruneDiffs(S)
+  return { diffId, beforeObservationId: record.beforeObservationId, afterObservationId: record.afterObservationId }
+}
+
 const sessions = new Map()
 let sessionSeq = 0
 let sessionsCreating = 0
@@ -599,6 +635,8 @@ async function newSession(id) {
     policyRev: INITIAL_REDACT ? 1 : 0,
     redactWarnings: ruleWarnings(INITIAL_REDACT),
     checkpoints: new Map(),
+    diffs: new Map(),
+    diffBytes: 0,
     openers: new WeakMap(),
     queue: Promise.resolve(),
     lastUsed: Date.now(),
@@ -740,7 +778,7 @@ async function writePrivate(file, data) {
 }
 
 // ── In-page protocol (same shapes the realloop experiments validated) ────────────────
-const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compact, rehydrated } = {}) => {
+const observe = async ({ previous, previousObservationId, scopeId, parentOfId, peek, changesCap, captureDiff, compact, rehydrated } = {}) => {
   // Walk-only (§lite): an agent with a mission needs semantics every turn but pixels
   // almost never — the full capture cost per look was Codex's top complaint (20s on
   // wikipedia). Pixels are requested explicitly and SCOPED via `snap <id>`.
@@ -749,6 +787,9 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
   // parentOfId = climb: walk the nearest CARD around that node (T5 lesson — found the
   // "Pre-Owned" span inside an eBay listing, no way up to the sibling title link).
   const scoped = !!(scopeId || parentOfId)
+  const beforeObservationId = previous ? (previousObservationId || window.__lastCpObservationId || null) : null
+  // getRandomValues also works on HTTP/data pages; randomUUID requires a secure context.
+  const observationId = `o_${[...crypto.getRandomValues(new Uint32Array(4))].map((word) => word.toString(16).padStart(8, '0')).join('')}`
   // Full observations own the epoch-wide resolver. Zoom/card observations get their
   // own resolver views and may coexist until the next FULL walk, so an id printed by a
   // scope never invalidates an id the immediately preceding full map just published.
@@ -876,6 +917,7 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
     return built
   }
   const ui = exposeFreshIds(window.__agentBuildUi(obs, window.__SD_PRIVACY ? { privacy: window.__SD_PRIVACY } : {}))
+  ui.__observationId = observationId
   if (scoped) {
     if (!window.__scopedUis) window.__scopedUis = []
     window.__scopedUis.push(ui)
@@ -916,8 +958,9 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
   // flag, ported from the companion's github field round)
   if (!scoped && !peek) {
     window.__lastCp = ui.checkpoint()
-    window.__lastCpUrl = location.origin + location.pathname
+    window.__lastCpUrl = (location.origin === 'null' ? location.href : location.origin + location.pathname)
     window.__lastCpPolicyRev = window.__SD_PRIVACY_REV
+    window.__lastCpObservationId = observationId
   }
   // Compaction: full-page observations ship a ~2KB DIGEST (landmarks + headings +
   // top-15 RANKED actionables) instead of the 12KB outline — the sweep measured the
@@ -1016,7 +1059,47 @@ const observe = async ({ previous, scopeId, parentOfId, peek, changesCap, compac
     }
     digest = { marks, heads, top }
   }
+  // Capture the full assertion evidence while this observation owns the resolver.
+  // Display caps never limit the predicates evaluated later by assert(diffId).
+  let assertionChanges
+  if (captureDiff) {
+    const selectorOf = (el) => {
+      if (!el) return null
+      if (el.id) return '#' + CSS.escape(el.id)
+      const parts = []
+      let cur = el
+      while (cur && cur !== document.documentElement) {
+        if (cur.id) { parts.unshift('#' + CSS.escape(cur.id)); break }
+        let part = cur.localName
+        const parent = cur.parentElement
+        if (parent) {
+          const siblings = [...parent.children].filter((x) => x.localName === cur.localName)
+          if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(cur) + 1})`
+        }
+        parts.unshift(part)
+        cur = parent
+      }
+      const selector = parts.join(' > ')
+      try { return document.querySelector(selector) === el ? selector : null } catch { return null }
+    }
+    const labelOf = (c) => {
+      if (c.name) return String(c.name)
+      const n = c.id && (ui.__view || ui.__snapshot).nodes.get(c.id)
+      if (n && (n.name || n.text)) return String(n.name || n.text)
+      const el = c.id && ui.__snapshot.elements.get(c.id)
+      return el ? window.__agentRedact((el.textContent || '').replace(/\s+/g, ' ').trim()) : ''
+    }
+    assertionChanges = (ui.changes || []).map((c) => {
+      const el = (c.id && ui.__snapshot.elements.get(c.id)) || (c.afterId && ui.__snapshot.elements.get(c.afterId))
+      return { ...c, label: labelOf(c), selector: selectorOf(el) || undefined }
+    })
+  }
   return {
+    observationId,
+    observedUrl: (location.origin === 'null' ? location.href : location.origin + location.pathname),
+    beforeObservationId,
+    baselineAdvanced: !scoped && !peek,
+    assertionChanges,
     context: digest ? undefined : ui.context,
     digest,
     mapTotal: ui.agentMap.map.length,
@@ -1300,6 +1383,7 @@ async function evaluateIsolated(S, page, fn, arg) {
       if (globalThis.__lastCp && globalThis.__lastCpPolicyRev !== payload.revision) {
         globalThis.__lastCp = null;
         globalThis.__lastCpUrl = null;
+        globalThis.__lastCpObservationId = null;
         globalThis.__lastCpPolicyRev = payload.revision;
       }
       if ((globalThis.__lastUi || (globalThis.__scopedUis && globalThis.__scopedUis.length)) &&
@@ -1365,6 +1449,8 @@ async function inPage(S, fn, arg = null) {
 // not a valid diff baseline. Clear every live page (including hidden openers) now, while
 // the revision guard in evaluateIsolated also fails closed if one page races navigation.
 async function invalidatePageBaselines(S) {
+  S.diffs.clear()
+  S.diffBytes = 0
   const results = await Promise.allSettled([...S.pages]
     .filter((page) => !page.isClosed())
     .map(async (page) => {
@@ -1373,6 +1459,7 @@ async function invalidatePageBaselines(S) {
         const hadBaseline = !!globalThis.__lastCp
         globalThis.__lastCp = null
         globalThis.__lastCpUrl = null
+        globalThis.__lastCpObservationId = null
         globalThis.__lastCpPolicyRev = globalThis.__SD_PRIVACY_REV
         return hadBaseline
       }, null)
@@ -1418,6 +1505,14 @@ function fmtCarried(carried) {
 }
 
 async function ensureActivePageObservation(S, cmd, args) {
+  // Historical assertions must not rehydrate a popup, renew ids or advance a live
+  // baseline, including when the requested evidence is invalid or unavailable.
+  if (cmd === 'assert') {
+    try {
+      const spec = JSON.parse(args.join(' '))
+      if (spec && Object.hasOwn(spec, 'diffId')) return null
+    } catch { /* the assertion handler reports malformed JSON */ }
+  }
   if (!S.pageNeedsObservation || !VIEW_COMMANDS.has(cmd)) return null
   if (cmd === 'look' && !args[0]) {
     // The bare-look path skips the rehydrated observe below, but crossing realms is
@@ -1841,7 +1936,7 @@ const HANDLERS = {
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
-    S.meta = { mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(stillLoading ? { loading: { readyState, waitedMs: loadMs } } : {}), ...(latePaint ? { latePaint: true } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(carried ? { carried } : {}), nav: navMs, ...(loadMs > 50 ? { loadWait: loadMs } : {}), settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    S.meta = { observationId: o.observationId, baselineAdvanced: o.baselineAdvanced, mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(stillLoading ? { loading: { readyState, waitedMs: loadMs } } : {}), ...(latePaint ? { latePaint: true } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(carried ? { carried } : {}), nav: navMs, ...(loadMs > 50 ? { loadWait: loadMs } : {}), settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
@@ -1865,22 +1960,27 @@ const HANDLERS = {
       S.meta = { scope: id, mapTotal: o.mapTotal, map: o.map }
       return `SCOPE ${id} (global baseline untouched)\n${fmtFirst(o, S.page.url(), S.epoch, undefined, S)}`
     }
-    const prev = await inPage(S, () => window.__lastCp || null)
     // both sides computed PAGE-side: Node's new URL().origin and the page's
     // location.origin disagree on file:// ("null" vs "file://") — the demo fired a
-    // false navigated warning on a same-page file:// assert
-    const baseUrl = prev ? await inPage(S, () => window.__lastCpUrl || null) : null
-    const here = await inPage(S, () => location.origin + location.pathname)
-    const navigated = !!(baseUrl && here !== baseUrl)
-    const o = await inPage(S, observe, { previous: prev })
+    // false navigated warning on a same-page file:// assert. Read the checkpoint and
+    // its provenance atomically; a popup/navigation must not borrow another realm's id.
+    const base = await inPage(S, () => ({ cp: window.__lastCp || null, observationId: window.__lastCpObservationId, url: window.__lastCpUrl || null }))
+    const baseUrl = base.cp ? base.url : null
+    const o = await inPage(S, observe, { previous: base.cp, previousObservationId: base.observationId, captureDiff: true })
+    const navigated = !!(baseUrl && o.observedUrl !== baseUrl)
     S.epoch++
     S.pageNeedsObservation = false
     const carried = await noteCarried(S, o)
+    const retained = retainDiff(S, o, { navigated, baselineUrl: baseUrl })
     // enough summary that the JSONL alone says WHAT was seen, not just that a look ran
     // `changes` is now the LIST (kind/role/name/id), with the count in `changesTotal` —
     // same shape `assert` already publishes, so a consumer learns one contract, not two.
     S.meta = { mapTotal: o.mapTotal, changed: o.changed, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, walkDetail: o.walkDetail, ...(o.delta ? { actionabilityDelta: o.delta } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(o.changes ? { changesTotal: o.changesTotal ?? o.changes.length, ...(o.foldedWrappers ? { foldedWrappers: o.foldedWrappers } : {}), ...(o.geometryOnly ? { geometryOnly: true } : {}), changes: o.changes.filter((c) => !c.folded).slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: c.name, beforeName: c.beforeName, id: c.id })) } : {}), ...(navigated ? { navigated: true, baselineUrl: safeUrl(baseUrl, S.redact) } : {}), ...(carried ? { carried } : {}), ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
-    return (navigated ? `⚠ navigated since baseline (${safeUrl(baseUrl, S.redact)}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, S.page.url(), S.epoch, S) + fmtCarried(carried)
+    Object.assign(S.meta, { observationId: o.observationId, baselineAdvanced: o.baselineAdvanced, ...retained })
+    const diffNote = retained.diffId
+      ? `\nDIFF ${retained.diffId} (${retained.beforeObservationId} → ${retained.afterObservationId}) — assert with diffId to evaluate this evidence without re-observing`
+      : retained.diffError ? `\n⚠ ${retained.diffError.code}: ${retained.diffError.message}` : ''
+    return (navigated ? `⚠ navigated since baseline (${safeUrl(baseUrl, S.redact)}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, S.page.url(), S.epoch, S) + fmtCarried(carried) + diffNote
   },
   async find(args, S) {
     const query = args.join(' ')
@@ -2110,10 +2210,10 @@ const HANDLERS = {
     if (sub === 'save') {
       if (!name) throw new Error('usage: cp save <name>')
       if (!isCheckpointName(name)) throw new Error('⛔ invalid checkpoint name: use 1–64 letters, digits, dots, underscores or hyphens; path separators and "."/".." are forbidden')
-      const baseline = await inPage(S, () => ({ cp: window.__lastCp || null, policyRevision: window.__lastCpPolicyRev }))
+      const baseline = await inPage(S, () => ({ cp: window.__lastCp || null, observationId: window.__lastCpObservationId, policyRevision: window.__lastCpPolicyRev }))
       if (!baseline.cp) throw new Error('no observation yet — run open/look first')
       if (baseline.policyRevision !== S.policyRev) throw new Error('⛔ current observation baseline belongs to a different privacy policy revision — run look first')
-      const entry = { name, session: SESSION, sessionId: S.id, epoch: S.epoch, policyRevision: S.policyRev, url: safeUrl(S.page.url(), S.redact), rawUrl: S.page.url(), ts: new Date().toISOString(), cp: baseline.cp }
+      const entry = { name, session: SESSION, sessionId: S.id, epoch: S.epoch, observationId: baseline.observationId, policyRevision: S.policyRev, url: safeUrl(S.page.url(), S.redact), rawUrl: S.page.url(), ts: new Date().toISOString(), cp: baseline.cp }
       S.checkpoints.set(name, entry)
       const file = join(LOGDIR, `${SESSION}-${S.id}-cp-${name}.json`)
       // `rawUrl` lives in memory only, to compare documents. The file gets the sanitized
@@ -2132,7 +2232,7 @@ const HANDLERS = {
       if (!saved) throw new Error(`unknown checkpoint: ${name} — see cp list`)
       if (saved.policyRevision !== S.policyRev) throw new Error(`⛔ checkpoint "${name}" belongs to privacy policy revision ${saved.policyRevision}; current revision is ${S.policyRev} — recapture it before diffing`)
       const warn = (saved.rawUrl || saved.url) !== S.page.url() ? `⚠ checkpoint belongs to a different URL (${saved.url}) — a diff across documents may be pure noise\n` : ''
-      const o = await inPage(S, observe, { previous: saved.cp })
+      const o = await inPage(S, observe, { previous: saved.cp, previousObservationId: saved.observationId })
       S.epoch++
       S.meta = { checkpoint: name, fromEpoch: saved.epoch, ...(o.delta ? { actionabilityDelta: o.delta } : {}) }
       return `${warn}DIFF vs "${name}" (obs #${saved.epoch} → #${S.epoch}) — note: the next look baseline becomes the CURRENT state\n${fmtLook(o, S.page.url(), S.epoch, S)}`
@@ -2188,7 +2288,7 @@ const HANDLERS = {
       return 'FAIL (0/1 checks)\n  ✗ spec · expected valid JSON · actual parse error'
     }
     const CHECK_KEYS = new Set(['url', 'urlIncludes', 'changed', 'mustInclude', 'mustNotInclude', 'only', 'maxChanges', 'exists', 'notCovered', 'becameVisible', 'becameCovered'])
-    const MOD_KEYS = new Set(['settleMs', 'retry', 'keepBaseline', 'ignore'])
+    const MOD_KEYS = new Set(['settleMs', 'retry', 'keepBaseline', 'ignore', 'diffId'])
     const ENTRY_FIELDS = new Set(['kind', 'role', 'name', 'nameExact', 'selector', 'to'])
     const KINDS = new Set(['added', 'removed', 'content', 'state', 'style', 'moved', 'resized', 'possible-replacement'])
     const STATE_KEYS = new Set(['disabled', 'checked', 'expanded', 'pressed', 'selected', 'open', 'value', 'hasValue'])
@@ -2207,6 +2307,15 @@ const HANDLERS = {
       spec = {}
     }
     for (const k of Object.keys(spec)) if (!CHECK_KEYS.has(k) && !MOD_KEYS.has(k)) push(preChecks, 'spec', 'known key', `unknown key "${k}"`, false)
+    const storedRequested = Object.hasOwn(spec, 'diffId')
+    if (storedRequested) {
+      if (!nonEmptyString(spec.diffId)) push(preChecks, 'spec', 'diffId is a non-empty string', typeOf(spec.diffId), false)
+      // These predicates/modifiers depend on live DOM or a new walk. Mixing them
+      // into a historical assertion would silently judge two different intervals.
+      for (const key of ['url', 'urlIncludes', 'exists', 'notCovered', 'ignore', 'settleMs', 'retry', 'keepBaseline']) {
+        if (Object.hasOwn(spec, key)) push(preChecks, 'spec', 'diffId accepts diff checks only', `${key} requires a separate live assertion`, false)
+      }
+    }
     for (const k of ['url', 'urlIncludes', 'exists', 'notCovered', 'becameVisible']) {
       if (spec[k] !== undefined && !nonEmptyString(spec[k])) push(preChecks, 'spec', `${k} is a non-empty string`, typeOf(spec[k]), false)
     }
@@ -2272,32 +2381,47 @@ const HANDLERS = {
       push(preChecks, 'spec', 'at least one assertion check', 'none', false)
     }
     const invalidSpec = preChecks.some((check) => check.type === 'spec' && !check.pass)
+    let savedDiff = null
+    let diffError = null
+    if (storedRequested && !invalidSpec) {
+      pruneDiffs(S)
+      const entry = S.diffs.get(spec.diffId)
+      if (entry) savedDiff = JSON.parse(entry.json)
+      if (!savedDiff || savedDiff.policyRevision !== S.policyRev) {
+        savedDiff = null
+        diffError = { code: 'DIFF_UNAVAILABLE', message: 'Diff is unknown, expired, evicted, or invalidated in this session. No new observation was taken.' }
+        push(preChecks, 'diffId', 'retained evidence in this session and privacy policy', diffError.code, false)
+      }
+    }
     const urlWant = spec.url ?? spec.urlIncludes
     const privacyBlocked = (query) => touchesPrivacy(query, S.redact)
     // here computed PAGE-side like the stored baseline url (Node URL.origin vs
     // location.origin disagree on file:// — false warning caught by the demo run)
-    const baseInfo = await inPage(S, () => ({ has: !!window.__lastCp, url: window.__lastCpUrl || null, here: location.origin + location.pathname }))
+    const baseInfo = storedRequested
+      ? { has: !!savedDiff, url: savedDiff?.baselineUrl }
+      : await inPage(S, () => ({ has: !!window.__lastCp, url: window.__lastCpUrl || null, here: (location.origin === 'null' ? location.href : location.origin + location.pathname) }))
     const hasBaseline = baseInfo.has
-    const navigated = hasBaseline && baseInfo.url ? baseInfo.here !== baseInfo.url : undefined
+    const navigated = storedRequested ? savedDiff?.navigated : hasBaseline && baseInfo.url ? baseInfo.here !== baseInfo.url : undefined
     const needsDiff = !invalidSpec && (spec.changed !== undefined || spec.mustInclude || spec.mustNotInclude ||
       spec.only || spec.maxChanges !== undefined || spec.becameVisible || spec.becameCovered
     )
-    if (needsDiff && !hasBaseline) push(preChecks, 'baseline', 'established (open/verify first)', 'missing', false)
+    if (needsDiff && !hasBaseline && !storedRequested) push(preChecks, 'baseline', 'established (open/verify first)', 'missing', false)
 
     const evalOnce = async () => {
       const checks = [...preChecks]
-      if (invalidSpec) return { checks, changes: [], unobservableDetails: [], torn: 0, pass: false }
-      let o = null
-      if (needsDiff || spec.exists || spec.notCovered) {
+      if (invalidSpec || diffError) return { checks, changes: [], unobservableDetails: [], unobservable: 0, torn: 0, pass: false }
+      let o = savedDiff
+      if (!storedRequested && (needsDiff || spec.exists || spec.notCovered)) {
         const prev = await inPage(S, () => window.__lastCp || null)
-        o = await inPage(S, observe, { previous: prev, changesCap: 2000, peek: true })
+        o = await inPage(S, observe, { previous: prev, captureDiff: true, peek: true })
         S.epoch++
       }
-      let changes = (o && o.changes) || []
+      let changes = (storedRequested ? o?.changes : o?.assertionChanges) || []
       const unobservableDetails = (o && o.unobservableDetails) || []
+      const unobservable = o?.unobservable ?? unobservableDetails.length
       const torn = (o && o.torn) || 0
       const uncertainty = [
-        ...(unobservableDetails.length ? [`${unobservableDetails.length} unobservable region(s)`] : []),
+        ...(unobservable ? [`${unobservable} unobservable region(s)`] : []),
         ...(torn ? [`torn capture (${torn} mutation(s) during observation)`] : []),
       ]
       const unknownCoverage = uncertainty.length ? `unknown: ${uncertainty.join(' + ')}` : null
@@ -2327,40 +2451,7 @@ const HANDLERS = {
             !uncertain && eff === spec.changed)
         }
       }
-      const matches = await inPage(S, (mm) => {
-        const ui = window.__lastUi
-        if (!ui) return []
-        const selectorOf = (el) => {
-          if (!el) return null
-          if (el.id) return '#' + CSS.escape(el.id)
-          const parts = []
-          let cur = el
-          while (cur && cur !== document.documentElement) {
-            if (cur.id) { parts.unshift('#' + CSS.escape(cur.id)); break }
-            let part = cur.localName
-            const parent = cur.parentElement
-            if (parent) {
-              const siblings = [...parent.children].filter((x) => x.localName === cur.localName)
-              if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(cur) + 1})`
-            }
-            parts.unshift(part)
-            cur = parent
-          }
-          const selector = parts.join(' > ')
-          try { return document.querySelector(selector) === el ? selector : null } catch { return null }
-        }
-        const labelOf = (c) => {
-          if (c.name) return String(c.name)
-          const n = c.id && (ui.__view || ui.__snapshot).nodes.get(c.id)
-          if (n && (n.name || n.text)) return String(n.name || n.text)
-          const el = c.id && ui.__snapshot.elements.get(c.id)
-          return el ? window.__agentRedact((el.textContent || '').replace(/\s+/g, ' ').trim()) : ''
-        }
-        return mm.changes.map((c) => {
-          const el = (c.id && ui.__snapshot.elements.get(c.id)) || (c.afterId && ui.__snapshot.elements.get(c.afterId))
-          return { ...c, label: labelOf(c), selector: selectorOf(el) || undefined }
-        })
-      }, { changes })
+      const matches = changes
       // A framework re-render replaces the node instead of mutating it, so the diff
       // honestly reports `possible-replacement` — but the author's intent "X appeared" /
       // "X disappeared" is still satisfied. Accept the replacement for added/removed
@@ -2412,7 +2503,7 @@ const HANDLERS = {
         push(checks, 'mustNotInclude', m, uncertain || (found || (hasBaseline ? 'absent' : 'no-baseline')), hasBaseline && !c && !uncertain)
       }
       if (Array.isArray(spec.only) && spec.only.length) {
-        // Causal scoping must vet BOTH sides of a replacement: the disappearance AND
+        // Scope checks must vet BOTH sides of a replacement: the disappearance AND
         // the appearance each need a sanctioning matcher, or the entry is an offender.
         const virtual = (c) => c.kind !== 'possible-replacement' ? [c] : [
           { ...c, kind: 'removed', label: c.beforeName ? String(c.beforeName) : '', role: c.beforeRole ?? c.role, selector: undefined },
@@ -2563,7 +2654,7 @@ const HANDLERS = {
         push(checks, 'notCovered', spec.notCovered, cov && cov.found ? ((cov.covered ? 'covered' : 'clear') + (cov.off ? '·offscreen' : '')) : 'absent', !!(cov && cov.found && !cov.covered && !cov.off))
       }
       if (!checks.some((c) => c.type !== 'spec')) push(checks, 'spec', 'at least one check emitted', 'none', false)
-      return { checks, changes: matches, unobservableDetails, torn, pass: checks.every((c) => c.pass) }
+      return { checks, changes: matches, unobservableDetails, unobservable, torn, observationId: o?.observationId, pass: checks.every((c) => c.pass) }
     }
 
     const t0 = Date.now()
@@ -2578,28 +2669,38 @@ const HANDLERS = {
       await S.page.waitForTimeout(interval)
     }
     // consume the baseline only at the END (retry re-walked against the original)
-    if (!spec.keepBaseline && (needsDiff || spec.exists || spec.notCovered)) {
+    const baselineAdvanced = !storedRequested && !invalidSpec && !spec.keepBaseline && !!(needsDiff || spec.exists || spec.notCovered)
+    if (baselineAdvanced) {
       await inPage(S, () => {
         if (window.__lastUi) {
           window.__lastCp = window.__lastUi.checkpoint()
-          window.__lastCpUrl = location.origin + location.pathname
+          window.__lastCpUrl = (location.origin === 'null' ? location.href : location.origin + location.pathname)
           window.__lastCpPolicyRev = window.__SD_PRIVACY_REV
+          window.__lastCpObservationId = window.__lastUi.__observationId
         }
       })
     }
     const evidence = (needsDiff && hasBaseline)
       ? r.changes.slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, beforeRole: c.beforeRole, name: (c.label || '').slice(0, 60) || undefined, beforeName: c.beforeName ? String(c.beforeName).slice(0, 60) : undefined, id: c.id, selector: c.selector, from: c.before, to: c.after }))
       : undefined
-    S.meta = { assert: { pass: r.pass, hasBaseline, attempts, ...(navigated !== undefined ? { navigated, baselineUrl: safeUrl(baseInfo.url, S.redact) || undefined } : {}), torn: r.torn, unobservable: r.unobservableDetails.length, unobservableDetails: r.unobservableDetails, changesTotal: (needsDiff && hasBaseline) ? r.changes.length : undefined, evidenceCap: 60, checks: r.checks, ...(evidence ? { changes: evidence } : {}) } }
+    S.meta = { assert: { pass: r.pass, hasBaseline, attempts, ...(navigated !== undefined ? { navigated, baselineUrl: (storedRequested ? baseInfo.url : safeUrl(baseInfo.url, S.redact)) || undefined } : {}), torn: r.torn, unobservable: r.unobservable, unobservableDetails: r.unobservableDetails, changesTotal: (needsDiff && hasBaseline) ? r.changes.length : undefined, evidenceCap: 60, checks: r.checks, ...(evidence ? { changes: evidence } : {}) } }
+    Object.assign(S.meta.assert, {
+      baselineAdvanced,
+      ...(r.observationId ? { observationId: r.observationId } : {}),
+      ...(storedRequested ? { evidenceSource: 'stored' } : {}),
+      ...(savedDiff ? { diffId: savedDiff.diffId, beforeObservationId: savedDiff.beforeObservationId, afterObservationId: savedDiff.afterObservationId } : {}),
+      ...(diffError ? { error: diffError } : {}),
+    })
     let out = `${r.pass ? 'PASS' : 'FAIL'} (${r.checks.filter((c) => c.pass).length}/${r.checks.length} checks${attempts > 1 ? ` · ${attempts} attempts` : ''})\n` +
       r.checks.map((c) => `  ${c.pass ? '✓' : '✗'} ${c.type} · expected ${JSON.stringify(c.expected)} · actual ${JSON.stringify(c.actual)}`).join('\n')
     if (navigated) {
-      out = `⚠ navigated since baseline (${safeUrl(baseInfo.url, S.redact)}): diff-based checks span two pages of one document — re-baseline on settled content before trusting them\n` + out
+      out = `⚠ navigated since baseline (${(storedRequested ? baseInfo.url : safeUrl(baseInfo.url, S.redact))}): diff-based checks span two pages of one document — re-baseline on settled content before trusting them\n` + out
     }
     if (!r.pass && evidence && evidence.length) {
       out += `\nDIFF EVIDENCE (${evidence.length} change(s)):\n` +
         evidence.slice(0, 15).map((c) => `  ${c.kind} ${c.role || ''}${c.name ? ` "${String(c.name).slice(0, 50)}"` : ''} ${c.id || ''}`).join('\n')
     }
+    if (storedRequested) out = `STORED DIFF${savedDiff ? ` ${savedDiff.diffId}` : ''} — no new observation; live baseline unchanged\n` + out
     return out
   },
   async session([sub, arg], S) {

@@ -21,7 +21,7 @@ const FORBIDDEN = [
   ['sendBeacon', /\bsendBeacon\b/],
   ['node: import', /['"`]node:[^'"`]+['"`]/],
   ['Playwright', /(?:@playwright|\bplaywright\b)/i],
-  ['agent package', /@zumer\/snapdom-agent/],
+  ['agent package', /@zumer\/(?:snapsurf|snapdom-agent)/],
   ['MCP import', /(?:^|["'])\.?\.?\/[^"']*mcp\//m],
 ]
 

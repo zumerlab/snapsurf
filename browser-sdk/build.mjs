@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
+import { checkDistributionManifest } from '../tools/distribution-manifest.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const DIST = join(HERE, 'dist')
@@ -87,6 +88,7 @@ const manifest = {
   bytes: bundle.byteLength,
   gzipBytes: gzipSync(bundle, { level: 9 }).byteLength,
   brotliBytes: brotliCompressSync(bundle).byteLength,
+  compressionEnvironment: { zlib: process.versions.zlib, brotli: process.versions.brotli },
   sha256,
   dependencies: [],
   staticEvidence: {
@@ -109,9 +111,11 @@ if (CHECK) {
   } catch (error) {
     throw new Error(`[browser-sdk] checked-in distribution is missing: ${error.message}`)
   }
-  if (!bundle.equals(currentBundle) || !manifestBytes.equals(currentManifest)) {
+  if (!bundle.equals(currentBundle)) {
     throw new Error('[browser-sdk] checked-in distribution is stale; run node browser-sdk/build.mjs')
   }
+  const notCompared = checkDistributionManifest(currentManifest, manifest)
+  for (const detail of notCompared) process.stdout.write(`[browser-sdk] compression estimate not compared across codec versions — ${detail}\n`)
   process.stdout.write(`[browser-sdk] fresh ${bundle.byteLength} bytes sha256:${sha256}\n`)
 } else {
   await mkdir(DIST, { recursive: true })

@@ -1,17 +1,16 @@
 {
-  "name": "@zumer/snapdom-agent",
+  "name": "@zumer/snapsurf",
   "version": "0.1.0",
-  "private": true,
-  "license": "SEE LICENSE IN LICENSE",
-  "description": "Post-layout change oracle for in-page AI agents.",
+  "license": "MIT",
+  "description": "Web navigation, page observations and change verification for AI agents.",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "main": "./src/index.js",
   "bin": {
-    "snapdom-agent": "./tools/browse.mjs",
-    "snapdom-agent-mcp": "./mcp/server.mjs"
+    "snapsurf": "./tools/browse.mjs",
+    "snapsurf-mcp": "./mcp/server.mjs"
   },
   "exports": {
     ".": "./src/index.js",
@@ -19,7 +18,16 @@
   },
   "files": [
     "src/",
-    "vendor/snapdom/",
+    "vendor/snapdom/LICENSE",
+    "vendor/snapdom/README.md",
+    "vendor/snapdom/manifest.json",
+    "vendor/snapdom/dist/snapdom.mjs",
+    "vendor/snapdom/plugins/gif-export.js",
+    "vendor/snapdom/plugins/video-export.js",
+    "vendor/snapdom/plugins/capture-frames.js",
+    "vendor/snapdom/plugins/redact-inputs.js",
+    "vendor/snapdom/plugins/privacy-policy.js",
+    "vendor/snapdom/plugins/redact-clone.js",
     "tools/browse.mjs",
     "tools/daemon-client.mjs",
     "tools/install-global.mjs",
@@ -35,11 +43,17 @@
     "companion/PROMPT-extension.md",
     "skill/SKILL.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs/INTEGRATIONS.md",
+    "docs/USAGE.md",
+    "docs/PRIVACY.md",
+    "docs/RELEASING.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
+    "compile": "node companion/build.mjs && npm run build:sensor && npm run build:browser-sdk",
     "test": "npm run test:vendor && node tools/run-bin.mjs vitest run && npm run test:daemon-mcp && npm run test:multisite-manifest && npm run test:sensor-package && npm run test:browser-sdk",
-    "test:daemon-mcp": "node --test test/audit-daemon-mcp.test.mjs",
+    "test:daemon-mcp": "node --test test/audit-daemon-mcp.test.mjs test/diff-evidence.test.mjs",
     "test:pack": "node companion/build.mjs --check && node tools/package-smoke.mjs",
     "test:install": "node --test test/global-install-smoke.test.mjs",
     "test:lint": "node tools/run-bin.mjs eslint src test tools mcp companion packages/sensor browser-sdk/build.mjs browser-sdk/receipt.js browser-sdk/sensor.js experiment/multisite-pilot.mjs experiment/multisite-review-score.mjs experiment/multisite experiment/client-side-attention.mjs experiment/client-side-egress-v2.mjs experiment/client-side-egress-v2-audit.mjs experiment/client-side-egress-v3.mjs experiment/client-side-egress-v3-audit.mjs experiment/client-side-footprint.mjs experiment/oem-embed-gate.mjs experiment/directed-host-receipt-value.mjs experiment/schema-drift-receipt-value.mjs --ext .js,.mjs",
@@ -52,7 +66,7 @@
     "test:doc-contract": "node experiment/doc-contract.mjs",
     "test:adversarial": "node tools/run-isolated.mjs node experiment/adversarial-round.mjs",
     "test:multisite-manifest": "node --test test/multisite-manifest.test.mjs",
-    "test:sensor-package": "node packages/sensor/build.mjs --check && node --test test/sensor-package.test.mjs",
+    "test:sensor-package": "node packages/sensor/build.mjs --check && node --test test/distribution-manifest.test.mjs test/sensor-package.test.mjs",
     "test:browser-sdk": "node browser-sdk/build.mjs --check && node --test test/client-sdk-package.test.mjs",
     "build:sensor": "node packages/sensor/build.mjs",
     "build:browser-sdk": "node browser-sdk/build.mjs",
@@ -64,7 +78,11 @@
     "experiment:multisite:pilot": "node tools/run-isolated.mjs node experiment/multisite-pilot.mjs --run",
     "test:cold": "node tools/cold-install.mjs",
     "test:vendor": "node --test test/vendor-runtime.test.mjs",
-    "vendor:update": "node tools/update-snapdom-vendor.mjs"
+    "vendor:update": "node tools/update-snapdom-vendor.mjs",
+    "bump:dry": "npx @zumerbox/bump -d",
+    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
+    "build": "npm run compile && npm pack",
+    "release:push": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
   },
   "devDependencies": {
     "@eslint/js": "9.36.0",
@@ -80,5 +98,28 @@
   },
   "overrides": {
     "vite": "6.4.3"
+  },
+  "author": {
+    "name": "Juan Martin Muda / zumerlab",
+    "url": "https://github.com/zumerlab"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zumerlab/SnapSurf.git"
+  },
+  "homepage": "https://github.com/zumerlab/SnapSurf#readme",
+  "bugs": {
+    "url": "https://github.com/zumerlab/SnapSurf/issues"
+  },
+  "keywords": [
+    "mcp",
+    "browser",
+    "agents",
+    "dom",
+    "diff",
+    "playwright"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

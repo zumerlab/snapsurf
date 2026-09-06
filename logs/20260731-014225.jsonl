@@ -1,3 +1,0 @@
-{"ts":"2026-07-31T01:42:32.366Z","session":"20260731-014225","seq":1,"cmd":"open","args":["https://news.ycombinator.com"],"epoch":1,"urlBefore":"about:blank","urlAfter":"https://news.ycombinator.com/","durationMs":965,"ok":true}
-{"ts":"2026-07-31T01:42:32.440Z","session":"20260731-014225","seq":2,"cmd":"open","args":["https://github.com/zumerlab/snapdom/issues"],"epoch":1,"urlBefore":"https://news.ycombinator.com/","urlAfter":"https://news.ycombinator.com/","durationMs":0,"ok":true,"denied":"allowlist"}
-{"ts":"2026-07-31T01:42:32.510Z","session":"20260731-014225","seq":3,"cmd":"stop","args":[],"epoch":1,"urlBefore":"https://news.ycombinator.com/","urlAfter":"https://news.ycombinator.com/","durationMs":0,"ok":true}

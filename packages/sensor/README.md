@@ -109,6 +109,7 @@ checkpoint from reintroducing previously visible names or text into a protected 
 
 
 The package declares `@zumer/snapdom` as a peer dependency and contains no Playwright,
-CDP, MCP, Node runtime or browser controller. It remains private development software;
-publication is not authorized by the current package metadata/license.
+CDP, MCP, Node runtime or browser controller. Its source is MIT licensed. The package
+remains marked private while its standalone API is in development; it is not part of
+the initial `@zumer/snapsurf` npm release.
 

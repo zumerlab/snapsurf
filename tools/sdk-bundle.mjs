@@ -8,7 +8,7 @@
  * install and `find` / `text` / `assert` threw `is not a function` at the first
  * candidate. One definition means that class of bug cannot come back.
  *
- * Private development package; see the repository LICENSE.
+ * MIT License. Copyright (c) 2026 Juan Martin Muda / zumerlab.
  */
 import { join } from 'node:path'
 

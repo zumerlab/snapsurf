@@ -1,8 +1,8 @@
 /**
- * snapDOM Agent (working name) — post-layout change oracle for in-page AI agents.
- * PRIVATE, PROPRIETARY, NEVER PUBLISHED. See package.json / LICENSE.
+ * SnapSurf — post-layout change oracle for in-page AI agents.
+ * MIT License. Copyright (c) 2026 Juan Martin Muda / zumerlab.
  *
- * This package is a **private plugin layer on top of snapdom**, not a parallel library:
+ * This package is a plugin layer on top of snapdom:
  * every capability arrives through the plugin system v2, and the semantic visitor is a
  * lifecycle hook on snapdom's own capture walk (`src/plugin.js`).
  *

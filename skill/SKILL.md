@@ -1,6 +1,6 @@
 ---
 name: agent-browse
-description: Browse websites by reading snapDOM Agent's semantic diffs instead of screenshots. Use when operating a page through the local daemon or when the user asks to "browse con el oráculo".
+description: Browse websites by reading SnapSurf's semantic diffs instead of screenshots. Use when operating a page through the local daemon or when the user asks to "browse con el oráculo".
 ---
 
 # agent-browse — browse with the oracle instead of screenshots
@@ -8,12 +8,11 @@ description: Browse websites by reading snapDOM Agent's semantic diffs instead o
 > MACHINE-GLOBAL install (~/.claude/snapdom-agent). Refresh after source changes:
 > `node tools/install-global.mjs`
 
-Dogfooding harness for snapDOM Agent: a Playwright daemon with the SDK
-injected on every navigation, plus a CLI driven from Bash. The measured economics
-(EXPERIMENT.md): an incremental `look` costs ~19 reading tokens vs ~1,365 for a
-screenshot; ask for pixels only when unsure.
+Dogfooding harness for SnapSurf: a Playwright daemon with the SDK
+injected on every navigation, plus a CLI driven from Bash. Read the semantic diff
+after each action; ask for pixels when the report cannot answer the question.
 
-NOTE: if the `snapdom-agent` MCP tools (browser_open/find/act/verify/…) are available
+NOTE: if the SnapSurf MCP tools (browser_open/find/act/verify/…) are available
 in this session, prefer THEM over this CLI — same daemon, structured output.
 
 Read the fields, not the prose: every reply carries `structuredContent`, and each tool

@@ -18,6 +18,10 @@
   "bytes": 42103,
   "gzipBytes": 15790,
   "brotliBytes": 14214,
+  "compressionEnvironment": {
+    "zlib": "1.2.12",
+    "brotli": "1.2.0"
+  },
   "sha256": "f64c2c9402cd1a759c056dd6d87f60b79f118176cf1b5d6a21389bcd217cc8c4",
   "dependencies": [],
   "staticEvidence": {

@@ -95,10 +95,17 @@ test('global installer creates a self-contained runnable copy', { timeout: 60_00
     assert.equal(paths.agent, installed)
     for (const file of [
       'browse.mjs', 'server.mjs', 'sdk.js',
+      'LICENSE', 'SNAPDOM-LICENSE', 'companion/LICENSE', 'companion/SNAPDOM-LICENSE',
       'node_modules/playwright/index.mjs', 'node_modules/playwright-core/package.json',
       'companion/manifest.json', 'companion/worker.js', 'companion/content.bundle.js',
       'companion/PROMPT-extension.md',
     ]) await readFile(join(installed, file))
+    for (const prefix of ['', 'companion/']) {
+      assert.equal(await readFile(join(installed, prefix + 'LICENSE'), 'utf8'),
+        await readFile(join(ROOT, 'LICENSE'), 'utf8'))
+      assert.equal(await readFile(join(installed, prefix + 'SNAPDOM-LICENSE'), 'utf8'),
+        await readFile(join(ROOT, 'vendor', 'snapdom', 'LICENSE'), 'utf8'))
+    }
     const installedSkill = await readFile(join(home, '.claude', 'skills', 'agent-browse', 'SKILL.md'), 'utf8')
     assert.equal(installedSkill.includes('/ABS/PATH'), false)
     assert.equal(installedSkill.includes('/Users/martin/.claude/snapdom-agent/browse.mjs'), false)
@@ -128,12 +135,12 @@ test('global installer creates a self-contained runnable copy', { timeout: 60_00
       encoding: 'utf8',
     })
     assert.match(statusText, /daemon ok/)
+    // Subscribe before requesting shutdown so a fast exit cannot be missed while
+    // the HTTP response is being consumed. Clear the deadline after a normal exit.
+    const daemonExit = new Promise((done) => daemon.once('exit', done))
     const stopped = await signedPost(port, authToken, { cmd: 'stop' })
     assert.equal(stopped.ok, true)
-    await Promise.race([
-      new Promise((done) => daemon.once('exit', done)),
-      delay(5000).then(() => { throw new Error('installed daemon did not stop') }),
-    ])
+    await withTimeout(daemonExit, 5000, 'installed daemon did not stop')
     daemon = null
 
     // Start the installed MCP with a HOME that cannot contain a fallback global copy.
@@ -156,7 +163,7 @@ test('global installer creates a self-contained runnable copy', { timeout: 60_00
     }) + '\n')
     const initialized = await nextRpc(lines)
     assert.equal(initialized.id, 1)
-    assert.equal(initialized.result?.serverInfo?.name, 'snapdom-agent')
+    assert.equal(initialized.result?.serverInfo?.name, 'snapsurf')
 
     mcp.stdin.write(JSON.stringify({
       jsonrpc: '2.0', id: 2, method: 'tools/call',

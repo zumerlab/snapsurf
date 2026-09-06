@@ -24,5 +24,9 @@
     "@zumer/snapdom": "3.0.0-beta.0"
   },
   "sideEffects": false,
-  "license": "SEE LICENSE IN LICENSE"
+  "license": "MIT",
+  "author": {
+    "name": "Juan Martin Muda / zumerlab",
+    "url": "https://github.com/zumerlab"
+  }
 }

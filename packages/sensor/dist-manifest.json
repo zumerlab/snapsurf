@@ -12,6 +12,10 @@
   "bytes": 49185,
   "gzipBytes": 18139,
   "brotliBytes": 16372,
+  "compressionEnvironment": {
+    "zlib": "1.2.12",
+    "brotli": "1.2.0"
+  },
   "sha256": "7849d96c187e307ac4127795a0911b0955ccc6ad4fc534c2cca533777346aaba",
   "peerDependencies": {
     "@zumer/snapdom": ">=3.0.0-beta.0 <4"

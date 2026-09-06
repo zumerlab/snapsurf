@@ -55,6 +55,8 @@ for (const f of [join(HERE, 'browse.mjs'), join(HERE, '..', 'mcp', 'server.mjs')
 
 await mkdir(DEST, { recursive: true })
 await mkdir(join(DEST, 'logs'), { recursive: true })
+await copyFile(join(AGENT, 'LICENSE'), join(DEST, 'LICENSE'))
+await copyFile(join(AGENT, 'vendor', 'snapdom', 'LICENSE'), join(DEST, 'SNAPDOM-LICENSE'))
 await writeFile(join(DEST, 'sdk.js'), SDK)
 await copyFile(join(HERE, 'browse.mjs'), join(DEST, 'browse.mjs'))
 // The installed daemon must survive the checkout moving or disappearing. It only needs
@@ -84,6 +86,8 @@ await copyFile(join(HERE, '..', 'mcp', 'server.mjs'), join(DEST, 'server.mjs'))
 // disables it if that path goes away.
 const COMPANION = join(DEST, 'companion')
 await mkdir(COMPANION, { recursive: true })
+await copyFile(join(AGENT, 'LICENSE'), join(COMPANION, 'LICENSE'))
+await copyFile(join(AGENT, 'vendor', 'snapdom', 'LICENSE'), join(COMPANION, 'SNAPDOM-LICENSE'))
 for (const f of await readdir(join(HERE, '..', 'companion'))) {
   if (f === 'content.bundle.js' || f === 'manifest.json' || f === 'worker.js' || f === 'PROMPT-extension.md') {
     await copyFile(join(HERE, '..', 'companion', f), join(COMPANION, f))

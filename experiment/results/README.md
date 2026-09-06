@@ -92,12 +92,13 @@ egress result above measures that older portable path; resident V1/V2 measured a
 abandoned standalone `mark/read` prototype and must remain historical rather than being
 relabeled as measurements of the standard plugin.
 
-## Somebody else's — kept in the original language, unedited
+## Local session reviews
 
 `codex-self.md`, `codex-self-v2.md` … `codex-self-v5.md`, `codex-mcp.md`,
 `codex-assert.md`, `codex-f3-privacy.md`.
 
-These are the reports an outside reviewer wrote in the first person about our tool,
+These working reports are kept locally and excluded from Git. They are the reports
+an outside reviewer wrote in the first person about our tool,
 including the parts where it came off badly. **They are not translated and not edited.**
 Rewriting somebody else's assessment — even only into another language — turns primary
 evidence into our paraphrase of it, and the whole value of those rounds is that we did not

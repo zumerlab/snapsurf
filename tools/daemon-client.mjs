@@ -26,7 +26,7 @@ export const daemonToken = async (port = DEFAULT_PORT) => {
   let token = ''
   try { token = (await readFile(daemonTokenFile(port), 'utf8')).trim() } catch { /* fall back */ }
   if (!token) token = (await readFile(legacyDaemonTokenFile(port), 'utf8')).trim()
-  if (!token) throw new Error('snapdom-agent daemon token is empty')
+  if (!token) throw new Error('SnapSurf daemon token is empty')
   return token
 }
 
@@ -49,7 +49,7 @@ export const daemonFetch = async (init = {}, port = DEFAULT_PORT) => {
   })
   const authExpected = hmac(token, `auth-v1\n${authNonce}`, '')
   if (!authResponse.ok || !sameMac(authResponse.headers.get('x-snapdom-auth'), authExpected)) {
-    throw new Error('snapdom-agent daemon authentication preflight failed')
+    throw new Error('SnapSurf daemon authentication preflight failed')
   }
 
   const requestNonce = randomBytes(16).toString('hex')
@@ -65,7 +65,7 @@ export const daemonFetch = async (init = {}, port = DEFAULT_PORT) => {
   const responseText = await response.clone().text()
   const expected = hmac(token, `response-v1\n${requestNonce}\n`, responseText)
   if (!sameMac(response.headers.get('x-snapdom-auth'), expected)) {
-    throw new Error('snapdom-agent daemon response authentication failed')
+    throw new Error('SnapSurf daemon response authentication failed')
   }
   return response
 }

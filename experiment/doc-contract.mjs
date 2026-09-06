@@ -100,6 +100,7 @@ for (let i = 0; i < 40; i++) { const r = await cmd('status'); if (r.ok) break; a
 
 // ── Exercise every documented path, collecting every key any response emitted ────────
 const seen = new Set()
+const contractFailures = []
 const collect = (v, depth = 0) => {
   if (!v || typeof v !== 'object' || depth > 6) return
   for (const [k, val] of Object.entries(v)) { seen.add(k); collect(val, depth + 1) }
@@ -131,7 +132,30 @@ const suggestFind = await run('find-suggest', 'find', ['Open suggestions'])
 const suggestId = suggestFind.meta?.matches?.[0]?.id
 if (suggestId) {
   await run('suggest-click', 'click', [suggestId])
-  await run('suggest-look', 'look', [])
+  const verified = await run('suggest-look', 'look', [])
+  const evidence = verified.meta
+  if (typeof evidence?.diffId !== 'string' || !evidence.beforeObservationId ||
+      !evidence.afterObservationId || evidence.observationId !== evidence.afterObservationId ||
+      evidence.baselineAdvanced !== true) {
+    contractFailures.push('verify must identify the full transition and its baseline advance: ' + JSON.stringify(verified))
+  }
+  if (evidence?.diffId) {
+    const asserted = await run('assert-stored', 'assert', [JSON.stringify({
+      diffId: evidence.diffId,
+      changed: true,
+      mustInclude: [{ kind: 'added', role: 'button', name: 'Suggestion one' }],
+    })])
+    const result = asserted.meta?.assert
+    if (result?.pass !== true || result?.evidenceSource !== 'stored' ||
+        result?.baselineAdvanced !== false ||
+        ['diffId', 'beforeObservationId', 'afterObservationId', 'observationId'].some((key) => result?.[key] !== evidence[key])) {
+      contractFailures.push('stored assertion must pass using the verify transition without advancing its baseline: ' + JSON.stringify(asserted))
+    }
+  }
+}
+const unavailable = await run('assert-unavailable', 'assert', [JSON.stringify({ diffId: 'diff_doc_contract_missing', changed: true })])
+if (unavailable.meta?.assert?.pass !== false || unavailable.meta?.assert?.error?.code !== 'DIFF_UNAVAILABLE') {
+  contractFailures.push('unavailable diffId must return pass:false and DIFF_UNAVAILABLE: ' + JSON.stringify(unavailable))
 }
 await run('look-changed', 'open', [U('/other')])           // a second page → a real diff
 await run('look', 'look', [])
@@ -161,5 +185,6 @@ srv.close(); srv.closeAllConnections?.()
 
 console.log(`\n${checked.length - missing.length}/${checked.length} documented fields actually delivered`)
 if (missing.length) console.log('PROMISED BUT ABSENT: ' + missing.join(', '))
+for (const failure of contractFailures) console.log('CONTRACT FAILURE: ' + failure)
 console.log(`(${NOT_RESPONSE_FIELDS.size} identifiers exempt as values/params: ${[...NOT_RESPONSE_FIELDS].join(', ')})`)
-process.exit(missing.length ? 1 : 0)
+process.exit(missing.length || contractFailures.length ? 1 : 0)

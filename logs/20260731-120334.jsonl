@@ -1,2 +1,0 @@
-{"ts":"2026-07-31T12:03:34.581Z","session":"20260731-120334","seq":1,"cmd":"status","args":[],"epoch":0,"urlBefore":"nullblank","urlAfter":"nullblank","durationMs":1,"ok":true}
-{"ts":"2026-07-31T12:03:35.210Z","session":"20260731-120334","seq":2,"cmd":"open","args":["example.com"],"epoch":1,"urlBefore":"nullblank","urlAfter":"https://example.com/","durationMs":623,"ok":true,"mapTotal":1,"nav":108,"settle":{"dom":1,"idle":500,"floor":0},"walk":13}

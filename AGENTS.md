@@ -5,7 +5,7 @@ This repo IS a perception instrument for browser agents — so use it on itself.
 ## Browsing and verification
 
 When your task involves browsing, operating or verifying any web page, use the
-`snapdom-agent` MCP tools if your client has them (`browser_open`, `browser_find`,
+SnapSurf MCP tools if your client has them (`browser_open`, `browser_find`,
 `browser_parent`, `browser_act`, `browser_verify`, `browser_assert`, `browser_checkpoint`,
 `browser_diff`, `browser_text`, `browser_page`, `browser_screenshot`,
 `browser_session_*`), or the CLI: `node tools/browse.mjs <verb>` against a daemon
