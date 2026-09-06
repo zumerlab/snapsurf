@@ -9,7 +9,17 @@
   "homepage": "https://github.com/zumerlab/snapsurf#readme",
   "repository": "https://github.com/zumerlab/snapsurf",
   "license": "MIT",
-  "keywords": ["mcp", "browser", "web", "browser-automation", "verification", "testing", "agents", "playwright", "snapdom"],
+  "keywords": [
+    "mcp",
+    "browser",
+    "web",
+    "browser-automation",
+    "verification",
+    "testing",
+    "agents",
+    "playwright",
+    "snapdom"
+  ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
@@ -18,13 +28,18 @@
     "longDescription": "SnapSurf gives Codex a browser it can verify, not just look at: a compact semantic digest of the page, whole-page search by text with stable ids, a typed diff after every action (including a faithful changed:false), and assertions over that exact diff. Local Playwright Chromium, no account. Requires Node.js 22+.",
     "developerName": "zumerlab",
     "category": "Productivity",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://github.com/zumerlab/snapsurf",
     "privacyPolicyURL": "https://github.com/zumerlab/snapsurf/blob/main/docs/PRIVACY.md",
     "defaultPrompt": [
       "Use SnapSurf to open my local app, click the Save button and verify what actually changed.",
       "Use SnapSurf to check whether the cookie banner covers the Buy button on this page.",
       "Use SnapSurf to extract the titles and prices of the first ten results on this listing page."
-    ]
+    ],
+    "logo": "./assets/logo.png",
+    "composerIcon": "./assets/logo.png"
   }
 }

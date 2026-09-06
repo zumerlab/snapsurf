@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/zumerlab/snapsurf/main/logo.png" width="128" alt="SnapSurf logo"></p>
+
 # SnapSurf
 
 Web navigation and verification for AI agents.
