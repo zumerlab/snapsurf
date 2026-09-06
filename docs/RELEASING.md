@@ -92,11 +92,17 @@ create the `v<version>` Git tag in the public source repository and release note
 
 Then publish the same version to the official MCP Registry. It only stores metadata and
 verifies that the npm package carries the matching `mcpName`, so the npm publication
-must come first:
+must come first. Run the `publish-mcp-registry` workflow (Actions → Run workflow): it
+authenticates with GitHub Actions OIDC, which grants `io.github.zumerlab/*` to this
+repository, checks that the npm version named in `server.json` exists, and publishes.
+
+The interactive `mcp-publisher login github` grants the organization namespace only when
+GitHub reports the zumerlab membership (role owner) to the registry's GitHub App. When it
+answers "You have permission to publish: io.github.<user>/*" instead, authenticate with
+a personal access token that has the `read:org` scope and no repository scopes:
 
 ```sh
-brew install mcp-publisher        # or the release binary from modelcontextprotocol/registry
-mcp-publisher login github        # device flow; the account must belong to the zumerlab organization
+mcp-publisher login github --token "$GITHUB_TOKEN_WITH_READ_ORG"
 mcp-publisher publish             # reads ./server.json
 curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.zumerlab/snapsurf"
 ```
