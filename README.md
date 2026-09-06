@@ -40,7 +40,14 @@ or register the server alone:
 claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
 ```
 
-Codex CLI, Cursor, VS Code, Gemini CLI, Windsurf and the OpenAI Agents SDK take the same
+Codex has the same plugin (tools plus the `browse` skill):
+
+```bash
+codex plugin marketplace add zumerlab/snapsurf
+codex plugin add snapsurf@zumerlab
+```
+
+Cursor, VS Code, Gemini CLI, Windsurf and the OpenAI Agents SDK take the same server
 command; per-client snippets are in [Integrations](docs/INTEGRATIONS.md). Its name in the
 official MCP Registry is `io.github.zumerlab/snapsurf`.
 

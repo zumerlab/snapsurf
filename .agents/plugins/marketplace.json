@@ -1,0 +1,20 @@
+{
+  "name": "zumerlab",
+  "interface": {
+    "displayName": "zumerlab plugins"
+  },
+  "plugins": [
+    {
+      "name": "snapsurf",
+      "source": {
+        "source": "local",
+        "path": "./plugins/snapsurf"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

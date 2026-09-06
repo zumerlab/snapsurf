@@ -10,8 +10,6 @@ read what changed instead of re-reading the page or taking screenshots. The tool
 from the `snapsurf` MCP server this plugin installs; their descriptions carry the full
 contract, and every reply puts the facts in `structuredContent`.
 
-Task from the user, if any: $ARGUMENTS
-
 ## The loop
 
 1. `browser_open` the URL. You get a ~2 KB digest: landmark regions with ids, headings,
