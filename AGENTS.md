@@ -61,5 +61,9 @@ The same method, as a Claude Code skill, is in `skill/SKILL.md`.
   under `~/.snapsurf/` (and the `snapsurf` skill under `~/.claude/skills/`) after source
   changes.
 - Releases: bump `package.json` and `server.json` together (see `docs/RELEASING.md`).
+- `plugins/snapsurf/` is the Claude Code plugin (MCP server config plus the `browse`
+  skill) and `.claude-plugin/marketplace.json` makes this repository its own marketplace;
+  validate both with `claude plugin validate <path> --strict`, and keep the plugin version
+  identical in `plugin.json` and `marketplace.json`.
 - See `README.md` for the full map and `docs/INTEGRATIONS.md` for hooking the
   instrument into MCP clients.

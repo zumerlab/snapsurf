@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "snapsurf": {
+      "command": "npx",
+      "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"]
+    }
+  }
+}

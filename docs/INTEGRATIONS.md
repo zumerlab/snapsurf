@@ -77,11 +77,21 @@ checks and evidence for diagnosis.
 
 Exact config file names drift between clients — check yours if a snippet below has moved.
 
-**Claude Code**
+**Claude Code** — as a plugin (MCP server plus the `browse` skill; the repository is its
+own marketplace, and the same plugin is submitted to `claude-community`):
+
+```text
+/plugin marketplace add zumerlab/snapsurf
+/plugin install snapsurf@zumerlab
+```
+
+or the server alone:
 
 ```bash
 claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
 ```
+
+The plugin lives in `plugins/snapsurf/` of the repository.
 
 **Claude Desktop** — `claude_desktop_config.json`:
 
