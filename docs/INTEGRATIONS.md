@@ -91,7 +91,9 @@ or the server alone:
 claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
 ```
 
-The plugin lives in `plugins/snapsurf/` of the repository.
+The plugin lives in `plugins/snapsurf/` of the repository, with one manifest per client
+(`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) sharing the `.mcp.json` and
+the `skills/` directory.
 
 **Claude Desktop** — `claude_desktop_config.json`:
 
@@ -100,7 +102,16 @@ The plugin lives in `plugins/snapsurf/` of the repository.
   "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
 ```
 
-**Codex CLI** (registers globally in `~/.codex/config.toml` under
+**Codex** — as a plugin (the same `plugins/snapsurf/` directory carries a
+`.codex-plugin/plugin.json`, and `.agents/plugins/marketplace.json` makes the repository a
+Codex marketplace too):
+
+```bash
+codex plugin marketplace add zumerlab/snapsurf
+codex plugin add snapsurf@zumerlab
+```
+
+or the server alone (registers globally in `~/.codex/config.toml` under
 `[mcp_servers.snapsurf]`; verify with `codex mcp list`):
 
 ```bash
