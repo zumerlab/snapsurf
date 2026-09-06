@@ -1,0 +1,26 @@
+{
+  "name": "zumerlab",
+  "owner": {
+    "name": "Juan Martin Muda / zumerlab",
+    "url": "https://github.com/zumerlab"
+  },
+  "description": "Plugins from zumerlab. SnapSurf: web navigation and verification for agents.",
+  "plugins": [
+    {
+      "name": "snapsurf",
+      "displayName": "SnapSurf",
+      "source": "./plugins/snapsurf",
+      "description": "Web navigation and verification for agents: semantic page digest, typed diff after each action, assertions over that diff. MCP tools plus the browsing playbook skill.",
+      "version": "0.1.1",
+      "author": {
+        "name": "Juan Martin Muda / zumerlab",
+        "url": "https://github.com/zumerlab"
+      },
+      "homepage": "https://github.com/zumerlab/snapsurf#readme",
+      "repository": "https://github.com/zumerlab/snapsurf",
+      "license": "MIT",
+      "category": "development",
+      "tags": ["browser", "web", "verification", "testing", "mcp"]
+    }
+  ]
+}

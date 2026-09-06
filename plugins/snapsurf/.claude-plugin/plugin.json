@@ -1,0 +1,14 @@
+{
+  "name": "snapsurf",
+  "displayName": "SnapSurf",
+  "version": "0.1.1",
+  "description": "Web navigation and verification for agents: a compact semantic page digest, a typed diff after each action, and assertions over that diff. Adds the SnapSurf MCP tools and the browsing playbook skill.",
+  "author": {
+    "name": "Juan Martin Muda / zumerlab",
+    "url": "https://github.com/zumerlab"
+  },
+  "homepage": "https://github.com/zumerlab/snapsurf#readme",
+  "repository": "https://github.com/zumerlab/snapsurf",
+  "license": "MIT",
+  "keywords": ["mcp", "browser", "web", "browser-automation", "verification", "testing", "agents", "playwright", "snapdom"]
+}

@@ -26,7 +26,15 @@ Playwright is installed automatically the first time it starts:
 }
 ```
 
-With Claude Code:
+With Claude Code, install the plugin, which adds the tools and a `browse` skill with the
+method:
+
+```text
+/plugin marketplace add zumerlab/snapsurf
+/plugin install snapsurf@zumerlab
+```
+
+or register the server alone:
 
 ```bash
 claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp

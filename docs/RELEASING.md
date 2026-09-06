@@ -19,7 +19,11 @@ SnapSurf uses the same script names and versioning tools as SnapDOM:
 | `npm run release:push` | Stage the changelog, commit it as `Bumped version`, then push with tags. |
 
 Use `bump` when preparing a new version; skip it when the intended version is already
-set. Update `server.json` to the same version. `build` only creates a local archive.
+set. Update `server.json` to the same version. When the Claude Code plugin changed, bump
+its version in both `plugins/snapsurf/.claude-plugin/plugin.json` and
+`.claude-plugin/marketplace.json` (the validator requires them to agree) and run
+`claude plugin validate plugins/snapsurf --strict` and `claude plugin validate . --strict`.
+`build` only creates a local archive.
 `release:push` sends Git changes; npm publication is a separate maintainer action.
 
 ## Validate the release candidate
