@@ -1,33 +1,33 @@
 /**
- * install-global.mjs — installs the oracle harness as a MACHINE-GLOBAL tool
- * (~/.claude/snapdom-agent), independent of which branch the repo sits on:
+ * install-global.mjs — installs SnapSurf as a MACHINE-GLOBAL tool (~/.snapsurf),
+ * independent of which checkout or npm install it came from:
  *
  *   node tools/install-global.mjs
  *
  * Writes:
- *   ~/.claude/snapdom-agent/browse.mjs   copy of the CLI/daemon
- *   ~/.claude/snapdom-agent/server.mjs   copy of the MCP server (for Claude Code/Desktop)
- *   ~/.claude/snapdom-agent/sdk.js       prebuilt bundle (oracle + snapdom + plugins)
- *   ~/.claude/snapdom-agent/companion/   the Chrome extension, loadable from here
- *   ~/.claude/snapdom-agent/paths.json   self-contained installed runtime path
- *   ~/.claude/skills/agent-browse/       USER-level skill (every session)
+ *   ~/.snapsurf/browse.mjs        copy of the CLI/daemon
+ *   ~/.snapsurf/server.mjs        copy of the MCP server (for Claude Code/Desktop)
+ *   ~/.snapsurf/sdk.js            prebuilt in-page bundle (SnapSurf + snapDOM + plugins)
+ *   ~/.snapsurf/companion/        the Chrome extension, loadable from here
+ *   ~/.snapsurf/paths.json        self-contained installed runtime path and version
+ *   ~/.claude/skills/snapsurf/    USER-level Claude Code skill (every session)
  *
- * Everything a consumer points at lives under ~/.claude, so checking out another branch
- * cannot break a registered MCP server or an extension Chrome loaded unpacked. Runtime
- * dependencies are resolved during installation and copied into that fixed tree.
+ * Everything a consumer points at lives under a fixed path, so checking out another
+ * branch cannot break a registered MCP server or an extension Chrome loaded unpacked.
+ * Runtime dependencies are resolved during installation and copied into that tree.
  *
  * Re-run after changing src or browse.mjs to refresh.
- * NOTHING is published: everything stays in this machine's ~/.claude.
+ * NOTHING is published: everything stays on this machine.
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { mkdir, writeFile, readFile, copyFile, readdir, access, cp } from 'node:fs/promises'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const HOME = process.env.SNAPDOM_AGENT_INSTALL_HOME || process.env.HOME
-if (!HOME) throw new Error('HOME (or SNAPDOM_AGENT_INSTALL_HOME for an isolated install) is required')
-const DEST = join(HOME, '.claude', 'snapdom-agent')
-const SKILLDIR = join(HOME, '.claude', 'skills', 'agent-browse')
+const HOME = process.env.SNAPSURF_INSTALL_HOME || process.env.SNAPDOM_AGENT_INSTALL_HOME || process.env.HOME
+if (!HOME) throw new Error('HOME (or SNAPSURF_INSTALL_HOME for an isolated install) is required')
+const DEST = join(HOME, '.snapsurf')
+const SKILLDIR = join(HOME, '.claude', 'skills', 'snapsurf')
 
 const exists = async (p) => { try { await access(p); return true } catch { return false } }
 
@@ -75,7 +75,8 @@ for (const [dep, required] of [['playwright', true], ['playwright-core', true], 
   }
   await cp(source, join(DEST, 'node_modules', dep), { recursive: true, force: true })
 }
-await writeFile(join(DEST, 'paths.json'), JSON.stringify({ agent: DEST }))
+const { version } = JSON.parse(await readFile(join(AGENT, 'package.json'), 'utf8'))
+await writeFile(join(DEST, 'paths.json'), JSON.stringify({ agent: DEST, version }))
 
 // The MCP server, so Claude Code and Claude Desktop can be registered against a path
 // that does not disappear when the repo changes branch. It finds the daemon by looking
@@ -102,11 +103,10 @@ if (!skillPath) {
   console.error(`⛔ no SKILL.md source found. Tried:\n  ${SKILLSRC.join('\n  ')}`)
   process.exit(2)
 }
-const HEADING = '# agent-browse — browse with the oracle instead of screenshots'
-const NOTE = `> MACHINE-GLOBAL install (~/.claude/snapdom-agent). Refresh after agent changes:\n> \`node ${join(AGENT, 'tools', 'install-global.mjs')}\``
+const HEADING = '# snapsurf — browse by reading semantic diffs instead of screenshots'
+const NOTE = `> MACHINE-GLOBAL install (~/.snapsurf). Refresh after source changes:\n> \`node ${join(AGENT, 'tools', 'install-global.mjs')}\``
 const skill = (await readFile(skillPath, 'utf8'))
-  .replaceAll('packages/agent/tools/browse.mjs', join(DEST, 'browse.mjs'))
-  .replaceAll('$HOME/.claude/snapdom-agent/browse.mjs', join(DEST, 'browse.mjs'))
+  .replaceAll('$HOME/.snapsurf/browse.mjs', join(DEST, 'browse.mjs'))
   .replaceAll('companion/PROMPT-extension.md', join(COMPANION, 'PROMPT-extension.md'))
   .replace(new RegExp(`${HEADING}\\n\\n> MACHINE-GLOBAL install[\\s\\S]*?\\n\\n`), `${HEADING}\n\n`)
 await mkdir(SKILLDIR, { recursive: true })

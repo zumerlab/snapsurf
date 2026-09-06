@@ -1,6 +1,7 @@
 {
   "name": "@zumer/snapsurf",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "mcpName": "io.github.zumerlab/snapsurf",
   "license": "MIT",
   "description": "Web navigation, page observations and change verification for AI agents.",
   "type": "module",
@@ -42,6 +43,7 @@
     "companion/content.bundle.js",
     "companion/PROMPT-extension.md",
     "skill/SKILL.md",
+    "AGENTS.md",
     "README.md",
     "LICENSE",
     "docs/INTEGRATIONS.md",
@@ -60,7 +62,7 @@
     "test:bundles": "node companion/build.mjs --check",
     "test:regression": "node tools/run-isolated.mjs npm run test:regression:isolated",
     "test:regression:isolated": "npm run test && npm run test:lint && npm run test:bundles && node experiment/bench-qa.mjs && node experiment/parity.mjs && node experiment/abis-verbs.mjs && npm run test:contract && npm run test:doc-contract && node demo-qa/run-demo.mjs",
-    "test:global": "node experiment/abis-verbs.mjs --daemon $HOME/.claude/snapdom-agent/browse.mjs",
+    "test:global": "node experiment/abis-verbs.mjs --daemon $HOME/.snapsurf/browse.mjs",
     "test:gates": "npm run test:regression && npm run test:adversarial && node companion/gate.mjs && npm run test:pack",
     "test:contract": "node experiment/contract-gates.mjs",
     "test:doc-contract": "node experiment/doc-contract.mjs",
@@ -105,19 +107,30 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zumerlab/SnapSurf.git"
+    "url": "git+https://github.com/zumerlab/snapsurf.git"
   },
-  "homepage": "https://github.com/zumerlab/SnapSurf#readme",
+  "homepage": "https://github.com/zumerlab/snapsurf#readme",
   "bugs": {
-    "url": "https://github.com/zumerlab/SnapSurf/issues"
+    "url": "https://github.com/zumerlab/snapsurf/issues"
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "browser",
+    "browser-automation",
+    "web-agents",
+    "ai-agents",
     "agents",
+    "verification",
+    "assertions",
     "dom",
     "diff",
-    "playwright"
+    "playwright",
+    "snapdom",
+    "claude-code",
+    "cursor",
+    "codex"
   ],
   "publishConfig": {
     "access": "public"

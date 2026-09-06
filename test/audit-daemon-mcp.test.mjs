@@ -128,11 +128,11 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
   const escapedPath = join(dirname(logDir), `${escapedName}.json`)
   const env = {
     ...process.env,
-    SNAPDOM_AGENT_PORT: String(port),
-    SNAPDOM_AGENT_LOGDIR: logDir,
-    SNAPDOM_AGENT_TOKEN: authToken,
-    SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'daemon.token'),
-    SNAPDOM_AGENT_MAX_BODY_BYTES: '4096',
+    SNAPSURF_PORT: String(port),
+    SNAPSURF_LOGDIR: logDir,
+    SNAPSURF_TOKEN: authToken,
+    SNAPSURF_TOKEN_FILE: join(logDir, 'daemon.token'),
+    SNAPSURF_MAX_BODY_BYTES: '4096',
     // keep the P1 load-wait bound short so the hung-resource case costs ~1.5s, not 5
     SNAPDOM_LOAD_WAIT_MS: '1500',
   }
@@ -178,7 +178,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
     assert.equal(ready, true, `daemon did not start on :${port}\n${daemonOutput.join('')}`)
 
     await t.test('hardens the loopback HTTP boundary and caps request bodies', async () => {
-      assert.equal((await stat(env.SNAPDOM_AGENT_TOKEN_FILE)).mode & 0o777, 0o600)
+      assert.equal((await stat(env.SNAPSURF_TOKEN_FILE)).mode & 0o777, 0o600)
       const badHost = await rawRequest(port, {
         headers: { host: 'attacker.invalid', 'content-type': 'application/json' },
         body: '{"cmd":"status"}',
@@ -1332,7 +1332,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
       // from the fixed same-uid file and adopts the running daemon.
       const foreign = spawn(process.execPath, [MCP], {
         cwd: ROOT,
-        env: { ...env, SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex') }, // wrong token, shared token file
+        env: { ...env, SNAPSURF_TOKEN: randomBytes(32).toString('hex') }, // wrong token, shared token file
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       const client = mcpClient(foreign)
@@ -1371,9 +1371,9 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         cwd: ROOT,
         env: {
           ...env,
-          SNAPDOM_AGENT_PORT: String(squatPort),
-          SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex'), // victim's real token != attackerToken
-          SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'victim-absent.token'), // victim's own file is absent
+          SNAPSURF_PORT: String(squatPort),
+          SNAPSURF_TOKEN: randomBytes(32).toString('hex'), // victim's real token != attackerToken
+          SNAPSURF_TOKEN_FILE: join(logDir, 'victim-absent.token'), // victim's own file is absent
         },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
@@ -1382,7 +1382,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         await client.call('initialize', { protocolVersion: '2024-11-05' })
         const result = await client.call('tools/call', { name: 'browser_verify', arguments: {} })
         assert.equal(result.isError, true, 'the victim must NOT adopt an attacker-named token file')
-        assert.match(result.content[0].text, /owned by another snapdom daemon/)
+        assert.match(result.content[0].text, /owned by another SnapSurf daemon/)
         assert.equal(attacker.cmdServed, 0, 'the victim must never send a command to the squatter')
       } finally {
         client.close()
@@ -1394,7 +1394,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
     })
 
     await t.test('HONESTY: an /owner with a numeric pid but no snapdom identity is called alien, not "another snapdom daemon"', async () => {
-      // ownerProbe must validate the identity fields (daemon:'snapdom-agent', v:1), not
+      // ownerProbe must validate the identity fields (daemon:'snapsurf' (or the legacy 'snapdom-agent'), v:1), not
       // just typeof pid === 'number' — else any health endpoint returning {pid:N} gets
       // mislabelled "another snapdom daemon (pid N, since undefined)" and the user is
       // told to `browse.mjs stop` a process it cannot stop.
@@ -1405,9 +1405,9 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         cwd: ROOT,
         env: {
           ...env,
-          SNAPDOM_AGENT_PORT: String(squatPort),
-          SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex'),
-          SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'absent-alien.token'),
+          SNAPSURF_PORT: String(squatPort),
+          SNAPSURF_TOKEN: randomBytes(32).toString('hex'),
+          SNAPSURF_TOKEN_FILE: join(logDir, 'absent-alien.token'),
         },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
@@ -1416,7 +1416,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         await client.call('initialize', { protocolVersion: '2024-11-05' })
         const result = await client.call('tools/call', { name: 'browser_verify', arguments: {} })
         assert.equal(result.isError, true, JSON.stringify(result))
-        assert.match(result.content[0].text, /does not speak the snapdom daemon protocol/)
+        assert.match(result.content[0].text, /does not speak the SnapSurf daemon protocol/)
         assert.doesNotMatch(result.content[0].text, /4242|undefined/, 'must not leak the alien pid or print undefined fields')
       } finally {
         client.close()
@@ -1433,11 +1433,11 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
       // a live daemon holds the port (custom token file / wiped ~/.claude / TMPDIR
       // island). It must fall into /owner discovery and name the owner instead.
       const envNoToken = { ...env }
-      delete envNoToken.SNAPDOM_AGENT_TOKEN
+      delete envNoToken.SNAPSURF_TOKEN
       const result = await new Promise((done) => {
         const child = spawn(process.execPath, [BROWSE, 'status'], {
           cwd: ROOT,
-          env: { ...envNoToken, SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'cli-absent.token') },
+          env: { ...envNoToken, SNAPSURF_TOKEN_FILE: join(logDir, 'cli-absent.token') },
           stdio: ['ignore', 'pipe', 'pipe'],
         })
         let out = '', errOut = ''
@@ -1446,7 +1446,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         child.once('exit', (code) => done({ code, out, errOut }))
       })
       assert.equal(result.code, 1, result.out)
-      assert.match(result.errOut, /owned by another snapdom daemon/)
+      assert.match(result.errOut, /owned by another SnapSurf daemon/)
       assert.doesNotMatch(result.errOut, /daemon not running/)
     })
 
@@ -1458,9 +1458,9 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         cwd: ROOT,
         env: {
           ...env,
-          SNAPDOM_AGENT_PORT: String(squatPort),
-          SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex'),
-          SNAPDOM_AGENT_TOKEN_FILE: join(logDir, 'missing.token'),
+          SNAPSURF_PORT: String(squatPort),
+          SNAPSURF_TOKEN: randomBytes(32).toString('hex'),
+          SNAPSURF_TOKEN_FILE: join(logDir, 'missing.token'),
         },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
@@ -1470,7 +1470,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
         const t0 = Date.now()
         const result = await client.call('tools/call', { name: 'browser_verify', arguments: {} })
         assert.equal(result.isError, true, JSON.stringify(result))
-        assert.match(result.content[0].text, /does not speak the snapdom daemon protocol/)
+        assert.match(result.content[0].text, /does not speak the SnapSurf daemon protocol/)
         assert.ok(Date.now() - t0 < 10_000, 'the diagnosis must arrive fast, not after a 20s burn')
       } finally {
         client.close()
@@ -1489,7 +1489,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
       // and verifies candidates with an explicit token before publishing the global.
       const foreign = spawn(process.execPath, [MCP], {
         cwd: ROOT,
-        env: { ...env, SNAPDOM_AGENT_TOKEN: randomBytes(32).toString('hex') }, // wrong token, shared token file
+        env: { ...env, SNAPSURF_TOKEN: randomBytes(32).toString('hex') }, // wrong token, shared token file
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       const client = mcpClient(foreign)
@@ -1597,7 +1597,7 @@ test('daemon/MCP focused security and session regressions', { timeout: 120_000 }
       try { await waitForExit(daemon, 5000); gracefulExit = true } catch {
         try { daemon.kill('SIGKILL') } catch { /* already gone */ }
       }
-      if (gracefulExit) await assert.rejects(readFile(env.SNAPDOM_AGENT_TOKEN_FILE), { code: 'ENOENT' })
+      if (gracefulExit) await assert.rejects(readFile(env.SNAPSURF_TOKEN_FILE), { code: 'ENOENT' })
     }
     await rm(logDir, { recursive: true, force: true })
     await rm(escapedPath, { force: true })

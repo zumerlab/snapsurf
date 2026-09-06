@@ -6,7 +6,7 @@ import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const TEMP = mkdtempSync(join(tmpdir(), 'snapdom-agent-pack-'))
+const TEMP = mkdtempSync(join(tmpdir(), 'snapsurf-pack-'))
 
 try {
   const info = JSON.parse(execFileSync('npm', ['pack', '--json', '--ignore-scripts'], {
@@ -20,6 +20,15 @@ try {
     const unpacked = JSON.parse(readFileSync(join(unpackedRoot, 'package.json'), 'utf8'))
     if (unpacked.name !== '@zumer/snapsurf' || unpacked.private || unpacked.license !== 'MIT' || unpacked.publishConfig?.access !== 'public') {
       throw new Error('release metadata must describe the public MIT SnapSurf package')
+    }
+    // The official MCP Registry verifies the npm package against server.json: the
+    // package must carry mcpName and both manifests must name the same version.
+    if (unpacked.mcpName !== 'io.github.zumerlab/snapsurf') {
+      throw new Error('package.json must declare mcpName io.github.zumerlab/snapsurf for the MCP Registry')
+    }
+    const registry = JSON.parse(readFileSync(join(ROOT, 'server.json'), 'utf8'))
+    if (registry.name !== unpacked.mcpName || registry.version !== unpacked.version || registry.packages?.[0]?.identifier !== unpacked.name || registry.packages?.[0]?.version !== unpacked.version) {
+      throw new Error(`server.json must name ${unpacked.mcpName} ${unpacked.version} (npm ${unpacked.name}@${unpacked.version})`)
     }
     const documents = ['README.md', 'CHANGELOG.md', 'docs/USAGE.md', 'docs/INTEGRATIONS.md', 'docs/PRIVACY.md', 'docs/RELEASING.md']
     const required = [
@@ -89,7 +98,7 @@ try {
       cwd: ROOT,
       env: {
         ...process.env,
-        SNAPDOM_AGENT_INSTALLER: join(pkgRoot, 'tools', 'install-global.mjs'),
+        SNAPSURF_INSTALLER: join(pkgRoot, 'tools', 'install-global.mjs'),
       },
       stdio: 'inherit',
     })

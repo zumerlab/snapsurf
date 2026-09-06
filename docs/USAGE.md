@@ -4,20 +4,19 @@ Start with the [README](../README.md) for installation and the MCP verification 
 
 ## Install from npm
 
-Once version 0.1.0 is published, install it in a separate directory with Node.js 22 or newer:
+SnapSurf needs Node.js 22 or newer. The MCP server and the CLI run straight from npm:
 
 ```bash
-mkdir SnapSurf
-cd SnapSurf
-npm install @zumer/snapsurf@0.1.0
-npx playwright install chromium
+npx -y -p @zumer/snapsurf snapsurf-mcp    # the MCP server (stdio)
+npx -y @zumer/snapsurf serve              # the CLI daemon
 ```
 
-Configure your MCP client with `node` and the absolute path to
-`node_modules/@zumer/snapsurf/mcp/server.mjs` in that directory. For the CLI,
-use `npx snapsurf` in place of `node tools/browse.mjs` in the commands below.
-On Linux, Playwright may also require system libraries; install them with
-`npx playwright install --with-deps chromium`.
+Chromium for Playwright is installed automatically the first time the daemon starts.
+On Linux, if system libraries are missing, run `npx playwright install --with-deps chromium`
+once. To pin a version, run `npm install @zumer/snapsurf` in a directory and use
+`npx snapsurf <verb>` there, or point the MCP client at
+`node_modules/@zumer/snapsurf/mcp/server.mjs`. In the commands below, `npx snapsurf`
+replaces `node tools/browse.mjs`.
 This reference covers the CLI, report fields, assertions and embedded interfaces.
 Commands below assume a source checkout; the sensor and companion have their own
 build steps.
@@ -161,7 +160,7 @@ it can survive document replacement.
 The sensor observes a scope inside a page that uses
 [snapDOM](https://github.com/zumerlab/snapdom). It runs as a snapDOM plugin, with
 snapDOM v3 as its peer dependency. See the
-[sensor package reference](https://github.com/zumerlab/SnapSurf/tree/main/packages/sensor)
+[sensor package reference](https://github.com/zumerlab/snapsurf/tree/main/packages/sensor)
 for its build and package details.
 
 `@zumer/snapdom-sensor` remains a private development package. This example requires
@@ -311,27 +310,37 @@ at a personal profile without the browser owner's explicit authorization.
 ## Examples and evaluation
 
 Experimental runners and recorded results are in the
-[repository](https://github.com/zumerlab/SnapSurf/tree/main/experiment).
+[repository](https://github.com/zumerlab/snapsurf/tree/main/experiment).
 
 From a source checkout, serve the repository with `python3 -m http.server 8763` and
 open `http://localhost:8763/demo-sensor/` to compare captures while interacting with a
-card. The [consumer report](https://github.com/zumerlab/SnapSurf/blob/main/demo-sensor/informe.html)
+card. The [consumer report](https://github.com/zumerlab/snapsurf/blob/main/demo-sensor/informe.html)
 contains the earlier agent trials and their review notes.
 
-## Global machine copy
+## Configuration and global machine copy
 
-SnapSurf retains the development-era `SNAPDOM_AGENT_*` environment variables,
-`~/.claude/snapdom-agent/` installation path and daemon protocol identifiers for
-compatibility with existing local clients. Its npm package is `@zumer/snapsurf`,
-and its CLI commands and MCP server identity use `snapsurf`.
+The daemon and its clients read these environment variables (the development-era
+`SNAPDOM_AGENT_*` names are still accepted as fallbacks):
+
+| Variable | Purpose |
+| --- | --- |
+| `SNAPSURF_PORT` | Loopback port of the daemon (default `8377`). |
+| `SNAPSURF_TOKEN_FILE` | Where the daemon publishes its private token (default `~/.snapsurf/daemon-<port>.token`). |
+| `SNAPSURF_TOKEN` | Fixed token for daemon and clients, instead of the file. |
+| `SNAPSURF_LOGDIR` | Directory for session JSONL logs, checkpoints and recordings. |
+| `SNAPSURF_MAX_BODY_BYTES` | Maximum command body the daemon accepts (default 1 MiB). |
+
+A daemon started before 0.1.1 published its token under `~/.claude/snapdom-agent/` or
+the temporary directory; those paths are still read, so it stays discoverable. Stop it
+with `snapsurf stop` before starting a new one.
 
 ```bash
 node tools/install-global.mjs
 ```
 
-This writes the daemon, MCP server, SDK bundle, companion runtime and the
-agent-browse skill under `~/.claude/snapdom-agent/`, for a fixed path independent of the checkout. Re-run
-after source changes.
+This writes the daemon, MCP server, SDK bundle and companion runtime under
+`~/.snapsurf/`, and the `snapsurf` skill under `~/.claude/skills/snapsurf/`, for fixed
+paths independent of the checkout. Re-run after source changes.
 
 ## Tests
 

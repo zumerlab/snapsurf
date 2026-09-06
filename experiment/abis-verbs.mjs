@@ -19,7 +19,7 @@ import { daemonFetch } from '../tools/daemon-client.mjs'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const AGENT = join(HERE, '..')
 // `--daemon <path>`: run the same smoke against ANOTHER install of the daemon. The
-// global install (~/.claude/snapdom-agent) was never exercised by any gate, and that
+// global install (~/.snapsurf) was never exercised by any gate, and that
 // is exactly where the sdk.js bundle went stale and broke find/text/assert.
 const dArg = process.argv.indexOf('--daemon')
 const BROWSE = dArg > -1 && process.argv[dArg + 1] ? process.argv[dArg + 1] : join(AGENT, 'tools/browse.mjs')

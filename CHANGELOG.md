@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.1
+
+- Declare `mcpName` (`io.github.zumerlab/snapsurf`) and ship `server.json` for the
+  official MCP Registry; `npm run test:pack` checks that both stay in sync with the
+  package version.
+- Run from npm without a separate install: `npx -y -p @zumer/snapsurf snapsurf-mcp`
+  for the MCP server and `npx -y @zumer/snapsurf serve` for the CLI. Chromium for
+  Playwright is installed automatically on first start when it is missing.
+- Add a `title` and MCP annotations (`readOnlyHint`, `destructiveHint`,
+  `idempotentHint`, `openWorldHint`) to every tool, and server `instructions` with
+  the browsing loop for clients that truncate tool descriptions. The server reports its
+  package version.
+- Rename the remaining development-era identifiers: configuration uses `SNAPSURF_*`
+  variables, the global install lives in `~/.snapsurf/`, the Claude Code skill is
+  `snapsurf`, and the daemon identifies itself as `snapsurf`. The `SNAPDOM_AGENT_*`
+  variables and the old token paths are still read as fallbacks. Re-run
+  `node tools/install-global.mjs` and stop daemons started by 0.1.0.
+- Documentation: npx-first installation, per-client snippets, environment variables,
+  `AGENTS.md` shipped in the package, repository links to `zumerlab/snapsurf`.
+
 ## 0.1.0
 
 First experimental release of SnapSurf, with a local CLI, MCP server and

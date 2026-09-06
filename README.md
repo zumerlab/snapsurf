@@ -2,50 +2,68 @@
 
 Web navigation and verification for AI agents.
 
-SnapSurf gives browser agents a compact page summary, a typed diff after each
-action, and assertions over that diff. It reports changes to content, state, layout
-and clickability, including when an action produces no observable change.
+Most browser tools tell an agent what a page looks like now. SnapSurf tells it **what
+its last action changed**: a compact semantic digest of the page, a typed diff after
+each action (content, state, layout and clickability, including when nothing observable
+changed), and assertions over that exact diff. Missing evidence and uncertainty are
+reported, not hidden.
 
-It runs locally through an MCP server or CLI, using its own Chromium session. The
-observation code also works as an in-page library built on
+It runs locally as an MCP server or CLI with its own Chromium session. The observation
+code also works as an in-page library built on
 [SnapDOM](https://github.com/zumerlab/snapdom).
 
-Version 0.1.0 is experimental.
+Version 0.1.1 is experimental.
 
-## Install from npm
+## Add it to your MCP client
 
-Requires Node.js 22 or newer. Create a separate installation directory:
+Requires Node.js 22 or newer. Add a stdio server that runs this command; Chromium for
+Playwright is installed automatically the first time it starts:
 
-```bash
-mkdir SnapSurf
-cd SnapSurf
-npm install @zumer/snapsurf
-npx playwright install chromium
+```json
+{
+  "command": "npx",
+  "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"]
+}
 ```
 
-`npm install` installs SnapSurf; the Playwright command downloads its Chromium browser.
-This installation becomes available when the first npm release is published.
-On Linux, use `npx playwright install --with-deps chromium` if system libraries
-are also needed.
+With Claude Code:
 
-## Connect your MCP client
+```bash
+claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
+```
 
-Add a stdio MCP server to your client with these settings, replacing the path with
-the absolute path to the directory where you ran `npm install`:
+Codex CLI, Cursor, VS Code, Gemini CLI, Windsurf and the OpenAI Agents SDK take the same
+command; per-client snippets are in [Integrations](docs/INTEGRATIONS.md). Its name in the
+official MCP Registry is `io.github.zumerlab/snapsurf`.
+
+To pin a version or avoid `npx` at startup, install once and point the client at the
+server file:
+
+```bash
+mkdir snapsurf && cd snapsurf
+npm install @zumer/snapsurf
+```
 
 ```json
 {
   "command": "node",
-  "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"]
+  "args": ["/ABS/PATH/snapsurf/node_modules/@zumer/snapsurf/mcp/server.mjs"]
 }
 ```
 
-The MCP server starts the browser daemon when needed. Client configuration examples
-are in [Integrations](docs/INTEGRATIONS.md).
+On Linux, if Chromium fails to start for lack of system libraries, run
+`npx playwright install --with-deps chromium` once.
 
 Ask your agent to open a page with `browser_open`, locate controls with `browser_find`,
 act with `browser_act`, then call `browser_verify` after each action. Read
 `structuredContent` for the result.
+
+## If you are an agent
+
+Read [AGENTS.md](AGENTS.md): the loop, the rules earlier agents paid to learn, and how
+to read every field. [skill/SKILL.md](skill/SKILL.md) is the same method packaged as a
+Claude Code skill. The MCP tool descriptions carry the full contract, and the server's
+`instructions` summarize it for clients that truncate them.
 
 ## Assert what you just verified
 
@@ -99,27 +117,31 @@ limits, retries and unavailable evidence.
 
 ## Use the CLI
 
-From the directory where you installed SnapSurf, start the daemon in one terminal:
+Start the daemon in one terminal:
 
 ```bash
-npx snapsurf serve
+npx -y @zumer/snapsurf serve
 ```
 
 Then run a local smoke check in another:
 
 ```bash
-npx snapsurf open 'data:text/html,<h1>Local%20check</h1>'
-npx snapsurf assert '{"exists":"Local check"}'
-npx snapsurf stop
+npx -y @zumer/snapsurf open 'data:text/html,<h1>Local%20check</h1>'
+npx -y @zumer/snapsurf assert '{"exists":"Local check"}'
+npx -y @zumer/snapsurf stop
 ```
+
+From a directory where you ran `npm install @zumer/snapsurf`, `npx snapsurf <verb>`
+does the same without downloading anything. The `SNAPSURF_*` environment variables
+(port, token file, log directory) are listed in the [usage reference](docs/USAGE.md).
 
 ## Development
 
 To modify SnapSurf itself, clone the source and install the development dependencies:
 
 ```bash
-git clone https://github.com/zumerlab/SnapSurf.git
-cd SnapSurf
+git clone https://github.com/zumerlab/snapsurf.git
+cd snapsurf
 npm ci
 npx playwright install chromium
 ```
@@ -137,7 +159,7 @@ npm run test:pack
 
 [Usage and API reference](docs/USAGE.md) covers CLI commands, report fields,
 checkpoints, the library, sensor plugin and Chrome companion.
-[Release guide](docs/RELEASING.md) covers validation and manual publication.
+[Release guide](docs/RELEASING.md) covers validation, publication and the MCP Registry.
 
 MIT licensed. Copyright © Juan Martin Muda / [zumerlab](https://github.com/zumerlab).
 See [LICENSE](LICENSE).

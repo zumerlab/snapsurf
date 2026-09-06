@@ -2,7 +2,7 @@
  * The in-page SDK bundle (oracle + snapdom + export plugins), defined ONCE.
  *
  * Two consumers build it: the daemon in dev mode (from the repo tree) and
- * install-global (the prebuilt copy in ~/.claude/snapdom-agent). Each used to carry
+ * install-global (the prebuilt copy in ~/.snapsurf). Each used to carry
  * its own copy of the entry source, and they drifted: the installer's copy never
  * exported `redactString`, so `window.__agentRedact` was undefined on every global
  * install and `find` / `text` / `assert` threw `is not a function` at the first

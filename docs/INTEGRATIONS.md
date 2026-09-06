@@ -5,16 +5,27 @@ in order of preference:
 
 ## 1. MCP — works with any MCP-capable client (the normal path)
 
-Install with `npm install @zumer/snapsurf` and `npx playwright install chromium`
-as shown in the [README](../README.md). In the examples below, `/ABS/PATH` is the
-absolute directory where you ran `npm install`.
+SnapSurf needs Node.js 22 or newer. `snapsurf-mcp` is a standard MCP **stdio** server:
+any client that can run a local command speaks to it. The command that every client
+below uses is:
 
-`mcp/server.mjs` is a standard MCP **stdio** server: any client that can run a local
-command speaks to it. The tool descriptions ARE the instructions — they teach the loop
-(digest → find → act → verify → assert), the fail-loud contract, and how to read every
-field, so the consuming model needs no extra prompt to use the tools correctly.
-Structured clients read `structuredContent`; clients that only read text get the same
-facts as prose.
+```text
+npx -y -p @zumer/snapsurf snapsurf-mcp
+```
+
+The server starts and owns the browser daemon on demand, and installs Chromium for
+Playwright the first time it is missing (on Linux, run
+`npx playwright install --with-deps chromium` once if system libraries are absent).
+To pin a version or skip `npx` at startup, run `npm install @zumer/snapsurf` in a
+directory and use `node /ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs` instead.
+
+The tool descriptions ARE the instructions — they teach the loop (digest → find → act →
+verify → assert), the fail-loud contract, and how to read every field, so the consuming
+model needs no extra prompt to use the tools correctly. The server also returns a short
+`instructions` text in `initialize` for clients that truncate tool descriptions, and
+every tool carries a `title` and MCP annotations (`readOnlyHint`, `destructiveHint`,
+`idempotentHint`, `openWorldHint`). Structured clients read `structuredContent`; clients
+that only read text get the same facts as prose.
 
 After every action, verify once and pass its `diffId` to assert. For example, with an
 MCP client exposing `callTool`:
@@ -64,21 +75,26 @@ the daemon can return `ok: true` with `meta.assert.pass: false`. MCP exposes tha
 verdict as `structuredContent.pass: false` and sets `isError: true`, retaining the
 checks and evidence for diagnosis.
 
-The invariant for every client: **command `node`, args `["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"]`**.
-The server starts and owns the daemon on demand. Exact config file names drift between
-clients — check yours if a snippet below has moved.
+Exact config file names drift between clients — check yours if a snippet below has moved.
 
 **Claude Code**
 
 ```bash
-claude mcp add --scope user snapsurf -- node /ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs
+claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
+```
+
+**Claude Desktop** — `claude_desktop_config.json`:
+
+```json
+{ "mcpServers": { "snapsurf": {
+  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
 ```
 
 **Codex CLI** (registers globally in `~/.codex/config.toml` under
 `[mcp_servers.snapsurf]`; verify with `codex mcp list`):
 
 ```bash
-codex mcp add snapsurf -- node /ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs
+codex mcp add snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
 ```
 
 Codex also reads `AGENTS.md` — this repo ships one with the browsing playbook, and a
@@ -89,21 +105,21 @@ truncate long tool descriptions.
 
 ```json
 { "mcpServers": { "snapsurf": {
-  "command": "node", "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"] } } }
+  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
 ```
 
 **VS Code (Copilot agent mode)** — `.vscode/mcp.json`:
 
 ```json
 { "servers": { "snapsurf": {
-  "type": "stdio", "command": "node", "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"] } } }
+  "type": "stdio", "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
 ```
 
 **Gemini CLI** — `~/.gemini/settings.json`:
 
 ```json
 { "mcpServers": { "snapsurf": {
-  "command": "node", "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"] } } }
+  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
 ```
 
 **OpenAI Agents SDK** (Python):
@@ -111,9 +127,9 @@ truncate long tool descriptions.
 ```python
 from agents.mcp import MCPServerStdio
 
-snapdom = MCPServerStdio(params={
-    "command": "node",
-    "args": ["/ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs"],
+snapsurf = MCPServerStdio(params={
+    "command": "npx",
+    "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"],
 })
 ```
 
@@ -124,7 +140,7 @@ Notes for non-Claude models:
 
 - Some clients truncate long tool descriptions. The descriptions here are deliberately
   complete (they carry the usage contract); if your client truncates, pair the tools
-  with the playbook below.
+  with the server `instructions` and the playbook below.
 - **Schemas are deliberately flat** — no `oneOf`/`anyOf` unions in any `inputSchema`.
   A real client (Codex CLI, first field test) projected union branches as complete
   signatures and lost the conditional fields, so calls died client-side. Per-action
@@ -137,32 +153,34 @@ Notes for non-Claude models:
 
 ## 2. The playbook prompt — for agents that need the method, not just the tools
 
-`skill/SKILL.md` (installed as the `agent-browse` skill for Claude Code) is a
-model-agnostic method: when to `find` instead of scroll, `look` after every action
-instead of screenshots, checkpoint before risky actions, ids expire per epoch, covered
-is literal, how to escalate to pixels. For any other framework, paste or adapt it into
-the agent's system prompt next to the MCP tools. It is the distilled version of every
-mistake previous agents paid for.
+`skill/SKILL.md` (installed as the `snapsurf` skill for Claude Code by
+`tools/install-global.mjs`) is a model-agnostic method: when to `find` instead of
+scroll, `look` after every action instead of screenshots, checkpoint before risky
+actions, ids expire per epoch, covered is literal, how to escalate to pixels. For any
+other framework, paste or adapt it into the agent's system prompt next to the MCP tools.
+`AGENTS.md` at the repository root is the same method in the form coding agents read.
 
 ## 3. No MCP at all — subprocess or HTTP
 
 Any framework that can spawn a process can drive the CLI (auth against the local daemon
-is automatic; both sides must run as the same OS user):
+is automatic; both sides must run as the same OS user). Start the daemon once with
+`npx -y @zumer/snapsurf serve`, then:
 
 ```python
 import subprocess
 out = subprocess.run(
-    ["node", "/ABS/PATH/node_modules/@zumer/snapsurf/tools/browse.mjs", "open", "example.com"],
+    ["npx", "-y", "@zumer/snapsurf", "open", "example.com"],
     capture_output=True, text=True).stdout
 ```
 
 Verbs, output shapes and policies are in the [usage reference](USAGE.md). For batch flows use
-`browse.mjs run "open …" "find …"` (one process, N verbs). Structured metadata for
-every command also lands in the session JSONL under `logs/`.
+`snapsurf run "open …" "find …"` (one process, N verbs). Structured metadata for
+every command also lands in the session JSONL under `logs/` (or `SNAPSURF_LOGDIR`).
 
 The daemon's loopback HTTP control plane (`/cmd`, HMAC-authenticated envelopes) is what
 the CLI and MCP server themselves use; `tools/daemon-client.mjs` is the reference
-client if you want to integrate at that layer directly.
+client if you want to integrate at that layer directly. Port, token file and log
+directory come from `SNAPSURF_PORT`, `SNAPSURF_TOKEN_FILE` and `SNAPSURF_LOGDIR`.
 
 ## What travels to the model (cost notes)
 
