@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.2
 
 - Fix MCP plugin startup from a SnapSurf checkout by explicitly selecting the
   `@latest` npm tag; the bare package name could select the checkout without a

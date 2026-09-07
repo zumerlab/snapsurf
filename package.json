@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapsurf",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "mcpName": "io.github.zumerlab/snapsurf",
   "license": "MIT",
   "description": "Web navigation, page observations and change verification for AI agents.",
