@@ -1,6 +1,6 @@
 {
   "snapsurf": {
     "command": "npx",
-    "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"]
+    "args": ["-y", "-p", "@zumer/snapsurf@latest", "snapsurf-mcp"]
   }
 }

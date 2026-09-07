@@ -10,7 +10,7 @@ any client that can run a local command speaks to it. The command that every cli
 below uses is:
 
 ```text
-npx -y -p @zumer/snapsurf snapsurf-mcp
+npx -y -p @zumer/snapsurf@latest snapsurf-mcp
 ```
 
 The server starts and owns the browser daemon on demand, and installs Chromium for
@@ -18,6 +18,14 @@ Playwright the first time it is missing (on Linux, run
 `npx playwright install --with-deps chromium` once if system libraries are absent).
 To pin a version or skip `npx` at startup, run `npm install @zumer/snapsurf` in a
 directory and use `node /ABS/PATH/node_modules/@zumer/snapsurf/mcp/server.mjs` instead.
+
+Keep the explicit `@latest` tag in the `npx` command. Without it, npm can mistake a
+SnapSurf checkout for an installed package, skip installing the executable, and exit
+with `snapsurf-mcp: command not found`. MCP clients then report a closed connection
+while waiting for `initialize`. From a checkout, `node mcp/server.mjs` also works.
+For a machine-local copy independent of the checkout, run
+`node tools/install-global.mjs` and configure the client to launch Node with the
+absolute path to `~/.snapsurf/server.mjs`. Refresh that copy after source changes.
 
 The tool descriptions ARE the instructions — they teach the loop (digest → find → act →
 verify → assert), the fail-loud contract, and how to read every field, so the consuming
@@ -88,7 +96,7 @@ own marketplace, and the same plugin is submitted to `claude-community`):
 or the server alone:
 
 ```bash
-claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
+claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf@latest snapsurf-mcp
 ```
 
 The plugin lives in `plugins/snapsurf/` of the repository, with one manifest per client
@@ -99,7 +107,7 @@ the `skills/` directory.
 
 ```json
 { "mcpServers": { "snapsurf": {
-  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
+  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf@latest", "snapsurf-mcp"] } } }
 ```
 
 **Codex** — as a plugin (the same `plugins/snapsurf/` directory carries a
@@ -115,7 +123,7 @@ or the server alone (registers globally in `~/.codex/config.toml` under
 `[mcp_servers.snapsurf]`; verify with `codex mcp list`):
 
 ```bash
-codex mcp add snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
+codex mcp add snapsurf -- npx -y -p @zumer/snapsurf@latest snapsurf-mcp
 ```
 
 Codex also reads `AGENTS.md` — this repo ships one with the browsing playbook, and a
@@ -126,21 +134,21 @@ truncate long tool descriptions.
 
 ```json
 { "mcpServers": { "snapsurf": {
-  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
+  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf@latest", "snapsurf-mcp"] } } }
 ```
 
 **VS Code (Copilot agent mode)** — `.vscode/mcp.json`:
 
 ```json
 { "servers": { "snapsurf": {
-  "type": "stdio", "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
+  "type": "stdio", "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf@latest", "snapsurf-mcp"] } } }
 ```
 
 **Gemini CLI** — `~/.gemini/settings.json`:
 
 ```json
 { "mcpServers": { "snapsurf": {
-  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"] } } }
+  "command": "npx", "args": ["-y", "-p", "@zumer/snapsurf@latest", "snapsurf-mcp"] } } }
 ```
 
 **OpenAI Agents SDK** (Python):
@@ -150,7 +158,7 @@ from agents.mcp import MCPServerStdio
 
 snapsurf = MCPServerStdio(params={
     "command": "npx",
-    "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"],
+    "args": ["-y", "-p", "@zumer/snapsurf@latest", "snapsurf-mcp"],
 })
 ```
 

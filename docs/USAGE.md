@@ -7,7 +7,7 @@ Start with the [README](../README.md) for installation and the MCP verification 
 SnapSurf needs Node.js 22 or newer. The MCP server and the CLI run straight from npm:
 
 ```bash
-npx -y -p @zumer/snapsurf snapsurf-mcp    # the MCP server (stdio)
+npx -y -p @zumer/snapsurf@latest snapsurf-mcp    # the MCP server (stdio)
 npx -y @zumer/snapsurf serve              # the CLI daemon
 ```
 
@@ -46,6 +46,60 @@ node tools/browse.mjs serve --readonly                      # observe-only: muta
 node tools/browse.mjs serve --allow example.com,cdn.example.com
 node tools/browse.mjs serve --redact "Jane Doe,account@example.com"
 ```
+
+## Long text and document sources
+
+`browser_text` accepts `maxChars` (default 600, maximum 12000). It reads the visible
+text of the chosen node, including the paragraphs of a containing section. For
+example:
+
+```json
+{ "id": "<section id>", "maxChars": 3000, "sessionId": "<session id>" }
+```
+
+Read `text`, `totalChars`, `returnedChars`, `offset` and `truncated` in
+`structuredContent`. When `continuation` is non-null, pass that object directly as
+the next `browser_text` arguments. It includes the same id, observation, session and
+next offset. CLI equivalent:
+
+```text
+text <id> --max-chars 3000
+text <id> --max-chars 3000 --offset 3000 --observation-id <returned observationId>
+```
+
+Text is captured on the first read (`capturedAt`), then retained for consistent
+pagination. It is not a reconstruction of the text at observation time. A new
+observation, navigation or privacy change can invalidate the reference; start again
+with a fresh id when that happens. Nonzero offsets require an initial read and its
+`observationId`. Retention is limited to 128 nodes and 1,000,000 UTF-16 code units per
+observation; exceeding either limit fails explicitly. Character budgets and offsets
+also use UTF-16 code units.
+
+`browser_find` accepts `contextChars` (1–12000) to include longer text immediately.
+The budget is shared across its ranked matches; `contextCharsReturned` and
+`contextMatchesOmitted` declare how much was included. Each included `context`
+contains the same text metadata and continuation as `browser_text`. CLI:
+`find --context-chars 3000 -- license conditions`.
+
+Digest and search `href` fields retain complete URLs, including origin, query and
+fragment, subject to active privacy rules. Only the displayed digest abbreviates
+long URLs. Use the structured `href` for navigation.
+
+`browser_open` returns `requestedUrl` and `finalUrl`, with
+`navigationUrlsSanitized: true`: navigation metadata hides query values under the
+existing privacy policy. When a response is available, `redirectChain` records the
+observed HTTP request URLs and status codes, with `redirectChainScope: "http"`,
+`redirectChainTotal` and `redirectChainTruncated`. It does not claim to trace
+JavaScript redirects. `redirectChainAvailable: false` means no response chain was
+available.
+
+Links that look like PDFs carry a `document` hint. A successful PDF response to
+`browser_open` returns a `document` handoff for an external PDF reader, preserving
+the URL and, when an exact source link was observed, its title, id, observation and
+href. `textExtracted: false` explicitly means SnapSurf has not read the PDF. A
+download can leave the previous page open; `navigationCompleted` states whether
+the browser navigation completed without error. The handoff creates no new page observation or verification
+baseline.
 
 ## Reading the reports
 

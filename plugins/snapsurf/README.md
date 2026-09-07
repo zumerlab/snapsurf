@@ -29,7 +29,7 @@ codex plugin add snapsurf@zumerlab
 ```
 
 Requires Node.js 22 or newer. The server starts with
-`npx -y -p @zumer/snapsurf snapsurf-mcp` and installs Playwright's Chromium on first use.
+`npx -y -p @zumer/snapsurf@latest snapsurf-mcp` and installs Playwright's Chromium on first use.
 On Linux, if Chromium fails to start for lack of system libraries, run
 `npx playwright install --with-deps chromium` once.
 

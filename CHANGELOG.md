@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Fix MCP plugin startup from a SnapSurf checkout by explicitly selecting the
+  `@latest` npm tag; the bare package name could select the checkout without a
+  runnable `snapsurf-mcp` bin and close the connection before initialization.
+- Add bounded long-text reads with `maxChars`, observation-bound continuation and
+  `capturedAt`; search can return longer context under a shared character budget.
+- Preserve full structured link destinations. Report requested/final navigation
+  URLs and observed HTTP redirects, and provide source-preserving PDF handoffs to
+  external readers without claiming to extract PDF text.
+
 ## 0.1.1
 
 - Declare `mcpName` (`io.github.zumerlab/snapsurf`) and ship `server.json` for the

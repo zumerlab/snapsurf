@@ -22,6 +22,9 @@ import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
+import process from 'node:process'
+import console from 'node:console'
+import { setTimeout } from 'node:timers'
 import { daemonFetch } from '../tools/daemon-client.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -49,13 +52,16 @@ const NOT_RESPONSE_FIELDS = new Set([
 ])
 
 // ── Fixture ──────────────────────────────────────────────────────────────────────────
+const LONG_TEXT = `${'padding '.repeat(700)}tail-token-here`
+const DOCUMENT_PATH = '/download?edition=' + 'public-research-'.repeat(12) + '#page=3'
 const PAGES = {
   '/page': { status: 200, headers: {}, body: '<!doctype html><html><head><title>Doc contract</title></head><body>' +
     '<h1>Contact</h1><a href="/security">disclosure</a><a href="mailto:jdoe@corp.com">write</a>' +
     '<form><input type="email" placeholder="john@company.com"></form>' +
     // long enough that `text` on this node truncates at 600 and must deliver
     // `totalChars`; the token still sits past the old 80-char find window
-    `<p>${'padding '.repeat(90)}tail-token-here</p>` +
+    `<p>${LONG_TEXT}</p>` +
+    `<a href="${DOCUMENT_PATH}" type="application/pdf">Research report PDF</a>` +
     '<button id="replace-card">Replace Gamma card</button>' +
     '<div id="slot"><h3>Gamma</h3><p>Old offering</p><button>Open Gamma</button></div>' +
     `<script>document.getElementById('replace-card').onclick=()=>{const fresh=document.createElement('div');fresh.id='slot';fresh.innerHTML='<h3>Omega</h3><p>New unrelated offering</p><button>Open Omega</button>';document.getElementById('slot').replaceWith(fresh)}</script>` +
@@ -68,6 +74,9 @@ const PAGES = {
   '/cf': { status: 403, headers: { 'cf-mitigated': 'challenge' },
     body: '<!doctype html><html><head><title>Just a moment...</title></head><body><script src="/cdn-cgi/challenge-platform/x"></script><h1>DataDome CAPTCHA</h1><p>datadome verification</p></body></html>' },
   '/other': { status: 200, headers: {}, body: '<!doctype html><html><body><h1>Second page</h1><p>changed content</p></body></html>' },
+  '/redirect-start': { status: 302, headers: { location: '/redirect-middle' }, body: '' },
+  '/redirect-middle': { status: 307, headers: { location: '/page' }, body: '' },
+  '/download': { status: 200, headers: { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="research.pdf"' }, body: '%PDF-1.4\n1 0 obj <</Type /Catalog>> endobj\n%%EOF' },
   // HN-style split card: the title row carries only actionables; the metadata lives in
   // the SIBLING row — `parent` must deliver `siblingRowText`.
   '/split': { status: 200, headers: {}, body: '<!doctype html><html><body><table><tbody>' +
@@ -106,13 +115,59 @@ const collect = (v, depth = 0) => {
   for (const [k, val] of Object.entries(v)) { seen.add(k); collect(val, depth + 1) }
 }
 const run = async (label, c, args, sid) => { const r = await cmd(c, args, sid); collect(r); return r }
+const requireContract = (condition, message, evidence) => {
+  if (!condition) contractFailures.push(message + (evidence === undefined ? '' : ': ' + JSON.stringify(evidence)))
+}
 
-await run('open', 'open', [U('/page')])
+const initial = await run('open', 'open', [U('/page')])
+const documentLink = initial.meta?.digest?.top?.find((entry) => entry.n === 'Research report PDF')
+requireContract(documentLink?.href === U(DOCUMENT_PATH) && documentLink?.document?.url === U(DOCUMENT_PATH),
+  'digest must retain the complete absolute document URL including a long query and fragment', documentLink)
+requireContract(documentLink?.document?.type === 'pdf' && documentLink.document.evidence === 'link-type' && documentLink.document.reader === 'external-pdf-reader' &&
+  documentLink.document.title === 'Research report PDF' && documentLink.document.source?.observationId === initial.meta?.observationId &&
+  documentLink.document.source?.id === documentLink.id,
+'PDF link hint must preserve its title, reader and observed source identity', documentLink)
+const documentFind = await run('find-document', 'find', ['Research report PDF'])
+requireContract(documentFind.meta?.matches?.some((entry) => entry.role === 'link' && entry.href === U(DOCUMENT_PATH)),
+  'find must retain the same complete document destination as the digest', documentFind.meta)
 await run('find', 'find', ['disclosure'])
 const deep = await run('find-deep', 'find', ['tail-token-here']) // past the old 80-char window
 // a >600-char node: `text` must deliver truncated + `totalChars`, not a silent cut
 const longId = deep.meta?.matches?.[0]?.id
-if (longId) await run('text-long', 'text', [longId])
+if (longId) {
+  const first = await run('text-long', 'text', [longId])
+  const start = first.meta
+  requireContract(first.ok === true && start?.text === LONG_TEXT.slice(0, 600) && start.totalChars === LONG_TEXT.length &&
+    start.returnedChars === 600 && start.offset === 0 && start.maxChars === 600 && start.truncated === true && start.nextOffset === 600 &&
+    start.textSource === 'inner-text' && start.observationId === initial.meta?.observationId && Number.isFinite(Date.parse(start.capturedAt)),
+  'default text read must declare its exact slice, observation, first-read timestamp and remaining text', start)
+  const budgeted = await run('text-budgeted', 'text', [longId, '--max-chars', '3000'])
+  const chunk = budgeted.meta
+  const next = chunk?.continuation
+  requireContract(budgeted.ok === true && chunk?.text === LONG_TEXT.slice(0, 3000) && chunk.returnedChars === 3000 &&
+    next?.id === longId && next.maxChars === 3000 && next.offset === 3000 && next.observationId === start?.observationId &&
+    next.sessionId === first.sessionId && chunk.capturedAt === start?.capturedAt,
+  'maxChars must expand the read budget and supply a complete continuation for the same captured text', chunk)
+  if (next) {
+    const continued = await run('text-continuation', 'text', [next.id, '--max-chars', String(next.maxChars), '--offset', String(next.offset), '--observation-id', next.observationId], next.sessionId)
+    const tail = continued.meta
+    requireContract(continued.ok === true && chunk.text + tail?.text === LONG_TEXT && tail.offset === 3000 &&
+      tail.returnedChars === LONG_TEXT.length - 3000 && tail.totalChars === LONG_TEXT.length && tail.truncated === false &&
+      tail.nextOffset === null && tail.continuation === null && tail.capturedAt === start?.capturedAt && tail.observationId === start?.observationId,
+    'continuation must finish the exact text without gaps, duplication or a new capture', tail)
+  }
+  const contextResult = await run('find-context', 'find', ['--context-chars', '1000', '--', 'tail-token-here'])
+  const contextMatches = contextResult.meta?.matches || []
+  const contexts = contextMatches.filter((entry) => entry.context)
+  const context = contexts[0]?.context
+  requireContract(contextResult.ok === true && contextResult.meta.contextChars === 1000 && contextResult.meta.contextCharsReturned === 1000 &&
+    contexts.reduce((sum, entry) => sum + entry.context.returnedChars, 0) === 1000 &&
+    contextResult.meta.contextMatchesOmitted === contextMatches.length - contexts.length &&
+    context?.text === LONG_TEXT.slice(0, 1000) && context.totalChars === LONG_TEXT.length && context.truncated === true &&
+    context.maxChars === 1000 && context.capturedAt === start?.capturedAt &&
+    context.continuation?.offset === 1000 && context.continuation?.observationId === start?.observationId,
+  'find context must respect one total character budget and expose continuation for its truncated text', contextResult.meta)
+} else requireContract(false, 'long-text fixture must be findable before exercising its documented read contract', deep)
 const idr = await run('find-id', 'find', ['Contact'])
 const nid = idr.meta?.matches?.[0]?.id
 if (nid) await run('text', 'text', [nid])
@@ -173,6 +228,30 @@ if (sid) { await run('session-open', 'open', [U('/page')], sid); await run('sess
 await run('redact', 'open', [U('/page'), '--redact-json', JSON.stringify(['security'])])
 await run('redact-find', 'find', ['disclosure'])
 await run('redact-off', 'redact', ['off'])
+
+// Navigation provenance is evidence from the actual HTTP responses, not inferred from
+// comparing two URLs. Query values remain private even when the chain is published.
+const redirected = await run('redirect-chain', 'open', [U('/redirect-start?token=doc-contract-secret')])
+const nav = redirected.meta
+requireContract(redirected.ok === true && nav?.requestedUrl?.startsWith(U('/redirect-start') + '?«') &&
+  nav.finalUrl === U('/page') && nav.navigationUrlsSanitized === true && nav.redirectChainAvailable === true &&
+  nav.redirectChainScope === 'http' && nav.redirectChainTotal === 3 && nav.redirectChainTruncated === false &&
+  JSON.stringify(nav.redirectChain?.map((entry) => entry.status)) === JSON.stringify([302, 307, 200]) &&
+  nav.redirectChain?.[1]?.url === U('/redirect-middle') && nav.redirectChain?.[2]?.url === U('/page') &&
+  !JSON.stringify(redirected).includes('doc-contract-secret'),
+'navigation must expose the observed ordered HTTP chain and final destination while sanitizing query values', nav)
+
+const sourceLink = nav?.digest?.top?.find((entry) => entry.n === 'Research report PDF')
+if (sourceLink?.href) {
+  const handoff = await run('pdf-handoff', 'open', [sourceLink.href])
+  const document = handoff.meta?.document
+  requireContract(handoff.ok === true && document?.type === 'pdf' && document.mediaType === 'application/pdf' &&
+    document.reader === 'external-pdf-reader' && document.title === sourceLink.n && document.textExtracted === false && document.url === handoff.meta.finalUrl &&
+    document.source?.id === sourceLink.id && document.source?.observationId === nav.observationId &&
+    document.source?.href === sourceLink.href && document.source?.url === U('/page') &&
+    handoff.meta.baselineAdvanced === false && handoff.meta.observationId === undefined && handoff.meta.digest === undefined,
+  'PDF response must hand off to an external reader with its exact source reference without claiming a text observation', handoff.meta)
+} else requireContract(false, 'PDF handoff source must be discoverable after the redirect', nav)
 
 // ── Verdict ──────────────────────────────────────────────────────────────────────────
 const checked = [...promised].filter((f) => !NOT_RESPONSE_FIELDS.has(f)).sort()
