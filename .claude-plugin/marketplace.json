@@ -11,7 +11,7 @@
       "displayName": "SnapSurf",
       "source": "./plugins/snapsurf",
       "description": "Web navigation and verification for agents: semantic page digest, typed diff after each action, assertions over that diff. MCP tools plus the browsing playbook skill.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Juan Martin Muda / zumerlab",
         "url": "https://github.com/zumerlab"

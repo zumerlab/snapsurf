@@ -14,7 +14,7 @@ It runs locally as an MCP server or CLI with its own Chromium session. The obser
 code also works as an in-page library built on
 [SnapDOM](https://github.com/zumerlab/snapdom).
 
-Version 0.1.1 is experimental.
+Version 0.1.2 is experimental.
 
 ## Add it to your MCP client
 
