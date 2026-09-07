@@ -1,0 +1,30 @@
+# Only the runtime of the npm package goes into the image; research, tests, logs and
+# local state stay out.
+.git
+node_modules
+logs
+scratchpad
+release
+experiment
+test
+corpus
+demo-qa
+demo-sensor
+browser-sdk
+packages
+plugins
+docs/landscape-data
+.vite-cache
+*.tgz
+*.token
+*.log
+.env
+.env.*
+.claude
+.claude-plugin
+.agents
+.codex
+.cursor
+.vscode
+.idea
+.DS_Store
