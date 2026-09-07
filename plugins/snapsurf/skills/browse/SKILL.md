@@ -47,8 +47,15 @@ contract, and every reply puts the facts in `structuredContent`.
 - **Pixels are an escalation.** `browser_screenshot` (optionally scoped by id) only for
   genuinely visual doubts: layout, color, canvas or iframe regions the report declares
   `unobservable`.
-- **`browser_text` for exact values** (numbers, titles). `truncated: true` means the
-  value was cut: escalate, never record a cut value.
+- **`browser_text` for exact values and long sections.** Set `maxChars` (up to 12000)
+  and, when `truncated: true`, pass the returned `continuation` object as the next
+  call's arguments. It retains the observation and session; re-find after expiry.
+  `capturedAt` is the first text read, not the observation time. `browser_find` can
+  include context immediately with a shared `contextChars` budget.
+- **Use structured `href` values for navigation:** the digest's prose can abbreviate
+  them. Open reports `requestedUrl`, `finalUrl` and observed HTTP redirects; navigation
+  URLs hide query values. A `document` PDF handoff means use an external PDF reader;
+  `textExtracted: false` means SnapSurf has not read the document.
 - **Several sites or parallel sweeps:** `browser_session_open` per sweep and pass its
   `sessionId` on every call. Each session has its own cookies, storage and ids; without
   it, one open voids the ids another sweep is holding. Close sessions when done.

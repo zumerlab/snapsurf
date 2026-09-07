@@ -55,7 +55,7 @@
   "scripts": {
     "compile": "node companion/build.mjs && npm run build:sensor && npm run build:browser-sdk",
     "test": "npm run test:vendor && node tools/run-bin.mjs vitest run && npm run test:daemon-mcp && npm run test:multisite-manifest && npm run test:sensor-package && npm run test:browser-sdk",
-    "test:daemon-mcp": "node --test test/audit-daemon-mcp.test.mjs test/diff-evidence.test.mjs",
+    "test:daemon-mcp": "node --test test/audit-daemon-mcp.test.mjs test/diff-evidence.test.mjs test/long-reading.test.mjs test/navigation-metadata.test.mjs test/mcp-plugin-launch.test.mjs",
     "test:pack": "node companion/build.mjs --check && node tools/package-smoke.mjs",
     "test:install": "node --test test/global-install-smoke.test.mjs",
     "test:lint": "node tools/run-bin.mjs eslint src test tools mcp companion packages/sensor browser-sdk/build.mjs browser-sdk/receipt.js browser-sdk/sensor.js experiment/multisite-pilot.mjs experiment/multisite-review-score.mjs experiment/multisite experiment/client-side-attention.mjs experiment/client-side-egress-v2.mjs experiment/client-side-egress-v2-audit.mjs experiment/client-side-egress-v3.mjs experiment/client-side-egress-v3-audit.mjs experiment/client-side-footprint.mjs experiment/oem-embed-gate.mjs experiment/directed-host-receipt-value.mjs experiment/schema-drift-receipt-value.mjs --ext .js,.mjs",

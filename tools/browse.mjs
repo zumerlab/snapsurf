@@ -954,6 +954,7 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
   }
   const ui = exposeFreshIds(window.__agentBuildUi(obs, window.__SD_PRIVACY ? { privacy: window.__SD_PRIVACY } : {}))
   ui.__observationId = observationId
+  ui.__url = location.href
   if (scoped) {
     if (!window.__scopedUis) window.__scopedUis = []
     window.__scopedUis.push(ui)
@@ -980,7 +981,6 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
       // runs): after an SPA soft nav the old view's identities must not bind here.
       window.__expiredIds = { url: prev.__url || null, map: expired }
     }
-    ui.__url = location.href
     window.__lastUi = ui
     window.__scopedUis = []
   }
@@ -1053,19 +1053,23 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
       if (e.n && seen.has(e.n)) continue
       if (e.n) seen.add(e.n)
       let href = null
+      let documentHint
       try {
         const el = ui.__snapshot.elements.get(e.id)
         const raw = el && el.getAttribute && el.getAttribute('href')
-        if (raw && !raw.startsWith('#')) {
+        if (raw) {
           const u = new URL(raw, location.href)
           // see the find path: mailto:/tel: have origin "null" and everything in the href
-          href = u.origin === 'null' ? String(raw) : u.pathname + u.search
+          href = u.origin === 'null' ? String(raw) : u.href
           // A redact policy covers the href too. It used to cover only names/labels/text,
           // so `redact:["security"]` returned `/about/[redacted]` as the URL while
           // `href:"/security"` rode along in the same payload — self-contradictory, and
           // worse than no policy because the attestation invites trust. Secrets live in
           // path segments and query values routinely (/users/jdoe, ?email=…).
-          href = window.__agentRedactUrl(href).slice(0, 48)
+          href = window.__agentRedactUrl(href)
+          if ((el.getAttribute('type') || '').toLowerCase() === 'application/pdf' || /\.pdf$/i.test(u.pathname)) {
+            documentHint = { type: 'pdf', url: href, title: e.n || null, evidence: (el.getAttribute('type') || '').toLowerCase() === 'application/pdf' ? 'link-type' : 'url-extension', reader: 'external-pdf-reader', source: { observationId, id: e.id } }
+          }
         }
       } catch { /* noop */ }
       // An EMPTY form field's accessible name is its placeholder — a PROMPT, not data.
@@ -1080,7 +1084,7 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
         if (e.n && el0 && /^(input|textarea)$/i.test(el0.tagName) && !el0.value && el0.placeholder &&
             String(el0.placeholder).trim() === String(e.n).trim()) ph = true
       } catch { /* not a form control */ }
-      top.push({ id: e.id, r: e.r, ...(e.n ? { n: e.n.slice(0, 90) } : {}), ...(ph ? { placeholder: true } : {}), ...(compact ? {} : { b: e.b }), href, ...(compact ? {} : { s: sectionOf(ui.__snapshot.elements.get(e.id)) }), c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })
+      top.push({ id: e.id, r: e.r, ...(e.n ? { n: e.n.slice(0, 90) } : {}), ...(ph ? { placeholder: true } : {}), ...(compact ? {} : { b: e.b }), href, ...(documentHint ? { document: documentHint } : {}), ...(compact ? {} : { s: sectionOf(ui.__snapshot.elements.get(e.id)) }), c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })
       if (top.length >= 15) break
     }
     const marks = []
@@ -1225,10 +1229,10 @@ const inFind = (query) => {
     if (area > 8000 && area <= 600000) s += 1
     if (area > 600000) s -= 3
     if (r === 'generic' || r === 'table' || r === 'row' || r === 'cell' || r === 'rowgroup') s -= 2
-    // pathname-first, never the tail: eBay tails are pure tracking noise while the
-    // useful part (/itm/406631272018) lives at the START of the path (codex v3)
+    // Preserve a complete destination in the machine contract, including the origin,
+    // query and fragment. Presentation may abbreviate, navigation must not.
     let shortHref = null
-    if (href && !href.startsWith('#')) {
+    if (href) {
       try {
         const u = new URL(href, location.href)
         // mailto:/tel:/sms: are NOT hierarchical: their `origin` is the STRING "null",
@@ -1237,13 +1241,11 @@ const inFind = (query) => {
         // Non-hierarchical schemes carry everything in the href already — pass it through.
         shortHref = u.origin === 'null'
           ? String(href)
-          // cross-origin destinations keep their origin — "/" told codex nothing
-          // about the external Homepage link (npm → preactjs.com)
-          : ((u.origin === location.origin ? '' : u.origin) + u.pathname + u.search)
+          : u.href
       } catch { shortHref = String(href) }
       // same policy as the digest: an href is not exempt. mailto:/tel: pass through
       // intact ONLY when no rule matches them — documented passthrough is not a bypass.
-      shortHref = window.__agentRedactUrl(shortHref).slice(0, 140)
+      shortHref = window.__agentRedactUrl(shortHref)
     }
     // `n` stays for compatibility; `text` is the same string under a name that says what
     // it is. A field called `name` reads as an accessible-name label, so callers went
@@ -1298,6 +1300,61 @@ const inFind = (query) => {
     .slice(0, 12)
     .map(({ exact: _exact, actionable: _actionable, ...candidate }) => candidate)
 }
+// Freeze the first redacted text read on the UI that owns the id. Reading subsequent
+// slices from live innerText would silently splice two versions of an updating article.
+// The cache dies with that observation/document; the shared resolver still rejects
+// detached/hidden ids and invalidates every old-policy view before this helper runs.
+const inReadText = ({ id, maxChars, offset, observationId }) => {
+  const resolved = window.__agentResolveUi(id, { requireBox: true })
+  if (!resolved) return { error: 'unknown or detached id — re-observe and retry' }
+  // History API navigation retains connected DOM nodes and the same JS realm, so
+  // resolver success alone cannot establish that a cached section belongs to this URL.
+  if (resolved.ui.__url !== location.href) return { error: 'text observation URL changed — re-observe, re-find and start at offset 0' }
+  const currentObservationId = resolved.ui.__observationId
+  if (observationId && observationId !== currentObservationId) {
+    return { error: 'text observation expired or does not own this id — re-find and start at offset 0' }
+  }
+  // One million UTF-16 units = at most 2 MB of cached string payload per observation.
+  // Refuse additional snapshots instead of evicting one and later silently rebuilding
+  // its continuation from changed live text under the same observation identity.
+  const cache = resolved.ui.__textReads || (resolved.ui.__textReads = { entries: new Map(), chars: 0 })
+  let saved = cache.entries.get(id)
+  if (!saved && offset > 0) return { error: 'no initial text read for this id and observation — start at offset 0' }
+  if (!saved) {
+    const el = resolved.el
+    const full = window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim())
+    const name = resolved.node && (resolved.node.name || '')
+    saved = full ? { text: full, source: 'inner-text' }
+      : name ? { text: window.__agentRedact(String(name)), source: 'accessible-name' }
+        : { text: '', source: 'none' }
+    if (cache.chars + saved.text.length > 1_000_000 || cache.entries.size >= 128) {
+      return { error: 'text snapshot budget exhausted (1000000 UTF-16 units or 128 nodes per observation) — re-observe and select a smaller section' }
+    }
+    saved.capturedAt = new Date().toISOString()
+    cache.chars += saved.text.length
+    cache.entries.set(id, saved)
+  }
+  if (offset > saved.text.length) return { error: `offset exceeds totalChars (${saved.text.length})` }
+  const text = saved.text.slice(offset, offset + maxChars)
+  const nextOffset = offset + text.length
+  const truncated = nextOffset < saved.text.length
+  return {
+    text, textSource: saved.source, capturedAt: saved.capturedAt, observationId: currentObservationId,
+    offset, maxChars, returnedChars: text.length, totalChars: saved.text.length,
+    truncated, nextOffset: truncated ? nextOffset : null,
+    continuation: truncated ? { id, maxChars, offset: nextOffset, observationId: currentObservationId } : null,
+  }
+}
+
+function readInteger(value, name, fallback, min, max) {
+  if (value === undefined) return fallback
+  const n = Number(value)
+  if (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(n) || n < min || n > max) {
+    throw new Error(`${name} must be an integer from ${min} to ${max}`)
+  }
+  return n
+}
+
 const inLocate = (id) => {
   let resolved = window.__agentResolveUi(id, { requireBox: true })
   let revived = null
@@ -1590,10 +1647,12 @@ function trimOutline(context, budget = 12000) {
   return s + `\n…[trimmed: ${note} — use find]`
 }
 const fmtMap = (o) => o.map.map((e) => `  ${e.id} ${e.r}${e.n ? ` "${e.n.slice(0, 60)}"` : ''} [${e.b.join(',')}]${e.c ? ` ⊘covered by ${e.c}` : ''}`).join('\n')
+// Compact prose is a display choice, never a mutation of the navigable URL field.
+const fmtHref = (href) => href.length > 72 ? href.slice(0, 71) + '…' : href
 const fmtDigest = (d) => [
   d.marks.length ? `LANDMARKS (zoom with look <id>):\n${d.marks.map((m) => `  ${m.id} ${m.r}${m.n ? ` "${m.n}"` : ''} [${m.b.join(',')}]`).join('\n')}` : '',
   d.heads.length ? `HEADINGS:\n${d.heads.map((h) => `  ${h.id} "${h.t}"${h.s ? ` §${h.s}` : ''}`).join('\n')}` : '',
-  d.top.length ? `TOP ACTIONABLES (ranked, not exhaustive — the rest via find/map):\n${d.top.map((e) => `  ${e.id} ${e.r}${e.n ? ` "${e.n}"` : ''} [${e.b.join(',')}]${e.href ? ` → ${e.href}` : ''}${e.s ? ` §${e.s}` : ''}${e.c ? ` ⊘covered by ${e.c}` : ''}`).join('\n')}` : '',
+  d.top.length ? `TOP ACTIONABLES (ranked, not exhaustive — the rest via find/map; full hrefs in structuredContent):\n${d.top.map((e) => `  ${e.id} ${e.r}${e.n ? ` "${e.n}"` : ''} [${e.b.join(',')}]${e.href ? ` → ${fmtHref(e.href)}` : ''}${e.document ? ' [PDF → external reader]' : ''}${e.s ? ` §${e.s}` : ''}${e.c ? ` ⊘covered by ${e.c}` : ''}`).join('\n')}` : '',
 ].filter(Boolean).join('\n')
 // Content boundaries (agent-browser's --content-boundaries): everything the page wrote
 // travels fenced — it is DATA and must never be read as instructions by the model driving
@@ -1836,6 +1895,45 @@ async function detectChallenge(S, resp) {
 }
 
 // ── Command handlers ─────────────────────────────────────────────────────────────────
+// The browser's observed HTTP chain is evidence, not an inference from two URLs.
+// Client-side navigations can happen after goto; finalUrl records the final page,
+// while redirectChain explicitly describes only the HTTP response chain.
+async function navigationMeta(S, requestedUrl, response, finalUrl = S.page.url()) {
+  const result = { requestedUrl: safeUrl(requestedUrl, S.redact), finalUrl: safeUrl(finalUrl, S.redact), navigationUrlsSanitized: true, redirectChainAvailable: !!response }
+  if (!response) return result
+  const requests = []
+  for (let request = response.request(); request; request = request.redirectedFrom()) requests.push(request)
+  requests.reverse()
+  result.redirectChain = await Promise.all(requests.slice(0, 32).map(async (request) => {
+    const reply = await request.response().catch(() => null)
+    return { url: safeUrl(request.url(), S.redact), status: reply ? reply.status() : null }
+  }))
+  result.redirectChainScope = 'http'
+  result.redirectChainTotal = requests.length
+  result.redirectChainTruncated = requests.length > result.redirectChain.length
+  return result
+}
+
+// Retain the source reference before navigating out of a document. Only an exact
+// link destination in the current observation can supply an element id and title.
+async function documentSource(S, targetUrl) {
+  const source = await inPage(S, (target) => {
+    const ui = window.__lastUi
+    if (!ui || ui.__url !== location.href) return null
+    const view = ui.__view || ui.__snapshot
+    for (const [id, element] of ui.__snapshot.elements) {
+      if (!element || element.localName !== 'a') continue
+      try {
+        if (new URL(element.getAttribute('href'), location.href).href !== target) continue
+        const node = view.nodes.get(id)
+        return { observationId: ui.__observationId, id, title: window.__agentRedact(String((node && (node.name || node.text)) || '')), href: window.__agentRedactUrl(target) }
+      } catch { /* a malformed destination is not a source reference */ }
+    }
+    return { observationId: ui.__observationId }
+  }, targetUrl).catch(() => null)
+  return source ? { url: safeUrl(S.page.url(), S.redact), ...source } : null
+}
+
 const HANDLERS = {
   async open(args, S) {
     // Forma atómica `open <url> --redact-json '["a","b"]'`: la política y la navegación
@@ -1872,14 +1970,46 @@ const HANDLERS = {
       S.meta = { denied: 'allowlist' }
       return `⛔ denied by --allow policy: ${new URL(full).hostname} not in [${ALLOW.join(', ')}]`
     }
+    const source = await documentSource(S, full)
     const tNav = Date.now()
     let resp
+    let navigationError
+    let lastResponse
+    const navigatingPage = S.page
+    const captureResponse = (response) => {
+      const request = response.request()
+      if (request.isNavigationRequest() && request.frame() === navigatingPage.mainFrame()) lastResponse = response
+    }
+    navigatingPage.on('response', captureResponse)
     try {
-      resp = await S.page.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
+      resp = await navigatingPage.goto(full, { waitUntil: 'domcontentloaded', timeout: 45000 })
     } catch (e) {
+      navigationError = e
+      resp = lastResponse
+    } finally {
+      navigatingPage.off('response', captureResponse)
+    }
+    const mediaType = resp ? (resp.headers()['content-type'] || '').split(';')[0].trim().toLowerCase() : ''
+    // A PDF response may start a browser download and reject goto with ERR_ABORTED.
+    // Route it by the observed MIME type, never by an assumed filename extension.
+    if (mediaType === 'application/pdf' && resp.status() >= 200 && resp.status() < 300 && !resp.headers()['cf-mitigated']) {
+      const finalUrl = resp.url()
+      const navigation = await navigationMeta(S, full, resp, finalUrl)
+      S.meta = {
+        ...navigation,
+        ...(policyChangeMeta || {}),
+        baselineAdvanced: false,
+        navigationCompleted: !navigationError,
+        document: { type: 'pdf', mediaType, url: safeUrl(finalUrl, S.redact), title: source?.title || null, ...(source ? { source } : {}), reader: 'external-pdf-reader', textExtracted: false },
+        nav: Date.now() - tNav,
+      }
+      return `PDF document — use an external PDF reader; SnapSurf has not extracted its text.\n${fence(JSON.stringify(S.meta.document))}`
+    }
+    if (navigationError) {
+      const e = navigationError
       const failure = classifyNetError(e)
       if (!failure) throw e
-      S.meta = { failure }
+      S.meta = { ...await navigationMeta(S, full, resp), failure }
       return `⛔ ${failure.layer.toUpperCase()} failure: ${failure.code} — the request never reached an HTTP response. structuredContent.failure carries {layer, code, hostUp}; this is NOT a bot block and NOT an empty page.`
     }
     const navMs = Date.now() - tNav
@@ -1969,10 +2099,12 @@ const HANDLERS = {
     S.epoch++
     S.pageNeedsObservation = false
     const carried = await noteCarried(S, o)
+    const navigation = await navigationMeta(S, full, resp)
     // The digest travels as a FIELD as well as prose (field report §2): an integrator
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
     S.meta = { observationId: o.observationId, baselineAdvanced: o.baselineAdvanced, mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(stillLoading ? { loading: { readyState, waitedMs: loadMs } } : {}), ...(latePaint ? { latePaint: true } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(carried ? { carried } : {}), nav: navMs, ...(loadMs > 50 ? { loadWait: loadMs } : {}), settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    Object.assign(S.meta, navigation)
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
@@ -2019,6 +2151,14 @@ const HANDLERS = {
     return (navigated ? `⚠ navigated since baseline (${safeUrl(baseUrl, S.redact)}): this diff spans two pages of one document — re-baseline on settled content (non-zero, stable actionables across 2 looks) before trusting change-based checks\n` : '') + fmtLook(o, S.page.url(), S.epoch, S) + fmtCarried(carried) + diffNote
   },
   async find(args, S) {
+    let contextChars
+    // Options precede the query; `--` makes even option-looking page text literal.
+    if (args[0] === '--context-chars') {
+      if (args[1] === undefined) throw new Error('--context-chars requires a character budget')
+      contextChars = readInteger(args[1], 'contextChars', undefined, 1, 12000)
+      args = args.slice(2)
+    }
+    if (args[0] === '--') args = args.slice(1)
     const query = args.join(' ')
     if (touchesPrivacy(query, S.redact)) {
       S.meta = { matches: [], denied: 'privacy-query' }
@@ -2032,9 +2172,34 @@ const HANDLERS = {
     // `text` alongside `name` (same string, honest label) and an explicit `truncated`
     // flag, so a caller knows a value was cut instead of recording a corrupt one.
     S.meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n ? m.n.slice(0, 120) : undefined, text: m.text ? m.text.slice(0, 120) : undefined, truncated: (m.truncated || (m.text || '').length > 120) || undefined, href: m.href || undefined })) }
-    return matches.length
-      ? fence(matches.map((m) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 120)}"` : ''} [${m.b.join(',')}]${m.href ? ` → ${m.href}` : ''}`).join('\n'))
-      : 'no matches'
+    if (contextChars !== undefined) {
+      let remaining = contextChars
+      let included = 0
+      for (const match of S.meta.matches) {
+        if (!remaining) break
+        const context = await inPage(S, inReadText, { id: match.id, maxChars: remaining, offset: 0 })
+        if (context.error) {
+          match.contextError = context.error
+          continue
+        }
+        if (context.continuation) context.continuation.sessionId = S.id
+        match.context = context
+        remaining -= context.returnedChars
+        included++
+      }
+      S.meta.contextChars = contextChars
+      S.meta.contextCharsReturned = contextChars - remaining
+      S.meta.contextMatchesOmitted = matches.length - included
+    }
+    if (!matches.length) return 'no matches'
+    const body = fence(matches.map((m, i) => `${m.id} ${m.r}${m.n ? ` "${String(m.n).slice(0, 120)}"` : ''} [${m.b.join(',')}]${m.href ? ` → ${m.href}` : ''}${S.meta.matches[i].context ? `\n${S.meta.matches[i].context.text}` : ''}`).join('\n'))
+    if (contextChars === undefined) return body
+    const notes = S.meta.matches.flatMap((m) => {
+      if (m.contextError) return [`⚠ context ${m.id}: ${m.contextError}`]
+      const c = m.context
+      return c?.truncated ? [`⚠ context ${m.id} truncated (${c.returnedChars} of ${c.totalChars} chars) — continue: text ${m.id} --max-chars ${c.maxChars} --offset ${c.nextOffset} --observation-id ${c.observationId} --session ${S.id}`] : []
+    })
+    return `${body}\nContext: ${S.meta.contextCharsReturned}/${contextChars} chars; ${S.meta.contextMatchesOmitted} matches without context.${notes.length ? '\n' + notes.join('\n') : ''}`
   },
   async parent([id], S) {
     // Climb from an inner node to its CARD (nearest container with ≥2 actionables) and
@@ -2150,34 +2315,30 @@ const HANDLERS = {
     S.meta = { scrolled: target, y: outcome.y, mode: outcome.mode, settle: await settle(S, 1500, 750) }
     return `scrolled (${outcome.mode}) to y=${outcome.y} — lazy content may have loaded; run look to see what appeared (ids from the current observation remain valid)`
   },
-  async text([id], S) {
-    const result = await inPage(S, (nid) => {
-      const resolved = window.__agentResolveUi(nid, { requireBox: true })
-      if (!resolved) return null
-      const el = resolved.el
-      const full = window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim())
-      if (full) return { text: full.slice(0, 600), truncated: full.length > 600, totalChars: full.length, source: 'inner-text' }
-      // No visible text — common on aria-labelled composite rows (Google Flights packs
-      // the entire fare into the label; parity round 3: both models got "(no text)"
-      // from a node whose name carried everything). Fall back to the accessible name,
-      // DECLARED as such: a label is authored metadata, not rendered prose.
-      const name = resolved.node && (resolved.node.name || '')
-      if (name) return { text: String(name).slice(0, 600), truncated: String(name).length > 600, totalChars: String(name).length, source: 'accessible-name' }
-      return { text: '', truncated: false, source: 'none' }
-    }, id)
-    const t = result && result.text
-    // same reason as outline: the text is a field, not only prose
-    S.meta = { resolved: { id }, text: t ?? undefined, truncated: result?.truncated || undefined, ...(result?.truncated ? { totalChars: result.totalChars } : {}), textSource: result?.source }
-    if (result === null) throw new Error(`unknown or detached id: ${id} — re-observe and retry`)
-    if (!t) return '(no text)'
-    // r5–7 P4: structuredContent always carried `truncated`, but the CLI prints only the
-    // prose — a cut value read as a complete value (HN's listing died mid-item #35 and
-    // nothing said so). The marker lives OUTSIDE the fence: it is the harness speaking,
-    // not the page.
+  async text([id, ...args], S) {
+    if (!id) throw new Error('usage: text <id> [--max-chars 600] [--offset 0 --observation-id <id>]')
+    const options = {}
+    const names = { '--max-chars': 'maxChars', '--offset': 'offset', '--observation-id': 'observationId' }
+    for (let i = 0; i < args.length; i += 2) {
+      const name = names[args[i]]
+      if (!name || args[i + 1] === undefined || options[name] !== undefined) throw new Error(`invalid text option: ${args[i]}`)
+      options[name] = args[i + 1]
+    }
+    const maxChars = readInteger(options.maxChars, 'maxChars', 600, 1, 12000)
+    const offset = readInteger(options.offset, 'offset', 0, 0, Number.MAX_SAFE_INTEGER)
+    const observationId = options.observationId
+    if (offset > 0 && !observationId) throw new Error('offset > 0 requires observationId from the initial text read')
+    const result = await inPage(S, inReadText, { id, maxChars, offset, observationId })
+    S.meta = { resolved: { id } }
+    if (result.error) throw new Error(`${id}: ${result.error}`)
+    if (result.continuation) result.continuation.sessionId = S.id
+    Object.assign(S.meta, result)
+    const t = result.text
+    if (!t) return result.totalChars ? `(end of text at offset ${offset})` : '(no text)'
     const cut = result.truncated
-      ? `\n⚠ truncated (600 of ${result.totalChars} chars) — the value continues; narrow the target to a child id, or read the rest via find/outline`
+      ? `\n⚠ truncated (${result.returnedChars} of ${result.totalChars} chars) at offset ${offset} — continue: text ${id} --max-chars ${maxChars} --offset ${result.nextOffset} --observation-id ${result.observationId} --session ${S.id}`
       : ''
-    return (result.source === 'accessible-name' ? `${fence(t)}\n(accessible name — the node has no visible text)` : fence(t)) + cut
+    return (result.textSource === 'accessible-name' ? `${fence(t)}\n(accessible name — the node has no visible text)` : fence(t)) + cut
   },
   // Runtime privacy rules (session-scoped, same semantics as serve --redact). The
   // terms never reach the JSONL log — it records only the rule COUNT.
@@ -2771,13 +2932,13 @@ const HANDLERS = {
       'verbs (client: browse.mjs <verb> … · batch: run "v1 …" "v2 …"):',
       '  open <url>       navigate + observe → prints the DIGEST (landmarks/heads/top); there is no separate digest verb',
       '  look [id]        re-observe + DIFF vs the baseline · with id: zoom ONE subtree (global baseline untouched)',
-      '  find <text>      ranked in-page search over the whole snapshot → id/role/name/href',
+      '  find [--context-chars N] [--] <text>   ranked search, optional shared context budget',
       '  parent <id>      climb to the card (≥2 actionables) around a node',
       '  map <offset>     page through actionables beyond the top',
       '  outline          full trimmed outline of the current observation',
       '  click <id|x,y>   real mouse click (auto-scrolls; refuses clipped/offscreen targets, ok:false)',
       '  type <text> · enter',
-      '  text <id>        innerText of one node (falls back to the accessible name, declared)',
+      '  text <id> [--max-chars N] [--offset N --observation-id ID]   bounded text + continuation',
       '  scroll <id|top|bottom|y>   scroll WITHOUT acting — hydrates lazy listings; ids stay valid; look after',
       '  redact <t1,t2|off>  set/replace session privacy rules at runtime (no args: show count)',
       '  snap [id] [file] pixels of ONE region (snapdom capture) · shot [file] native screenshot',

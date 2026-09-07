@@ -24,7 +24,7 @@ Playwright is installed automatically the first time it starts:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "-p", "@zumer/snapsurf", "snapsurf-mcp"]
+  "args": ["-y", "-p", "@zumer/snapsurf@latest", "snapsurf-mcp"]
 }
 ```
 
@@ -39,7 +39,7 @@ method:
 or register the server alone:
 
 ```bash
-claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf snapsurf-mcp
+claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf@latest snapsurf-mcp
 ```
 
 Codex has the same plugin (tools plus the `browse` skill):

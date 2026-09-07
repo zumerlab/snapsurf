@@ -25,6 +25,15 @@ do NOT know: `blocked`+`challenge` (content withheld, not a thin page), `failure
 workflow proves identity; `cookiesForOrigin` is evidence, not authentication), and
 `truncated` (escalate with browser_text, never record a cut value).
 
+For long text, call `browser_text` with `maxChars: 3000` (maximum 12000), then pass
+its returned `continuation` object directly to the next call. Text is retained from
+the first read (`capturedAt`); continuations keep the same observation and session,
+and fail after expiry. CLI: `text <id> --max-chars 3000`, then the returned
+`--offset` and `--observation-id`. `browser_find` accepts a shared `contextChars`
+budget to return longer context immediately. Use full structured `href` values for
+navigation; digest prose can abbreviate them. PDF `document` handoffs retain source
+references for an external reader and explicitly declare `textExtracted: false`.
+
 **Sweeping several sites?** One session per site (`browser_session_open`), passing its
 `sessionId`. Ids and observation counters are then independent — without it, one `open`
 voids the ids another sweep is holding. Each session has its own BrowserContext, cookies,
