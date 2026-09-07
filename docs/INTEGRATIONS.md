@@ -203,6 +203,21 @@ the CLI and MCP server themselves use; `tools/daemon-client.mjs` is the referenc
 client if you want to integrate at that layer directly. Port, token file and log
 directory come from `SNAPSURF_PORT`, `SNAPSURF_TOKEN_FILE` and `SNAPSURF_LOGDIR`.
 
+## In a container
+
+The repository's `Dockerfile` builds on Playwright's official image, which already ships
+Chromium and its system libraries for the pinned Playwright version, so nothing is
+downloaded at first start:
+
+```bash
+docker build -t snapsurf .
+```
+
+The MCP transport is stdio, so the client command becomes `docker run -i --rm snapsurf`.
+The browser daemon binds 127.0.0.1 inside the container only. This is also the image
+Glama and similar directories build to verify that the server starts and answers
+`initialize` and `tools/list`.
+
 ## What travels to the model (cost notes)
 
 - `browser_open` digest: ~2–3 KB of landmarks/headings/top actionables.
