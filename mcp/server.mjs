@@ -54,6 +54,38 @@ const VERSION = await (async () => {
   return '0.0.0'
 })()
 
+// Initialize/tools-list stay dependency-free and do not contact or spawn a browser.
+// Freeze the expected runtime on the first actual tool call, then authenticate its
+// identity on every liveness check. A package upgrade must not adopt an older daemon
+// merely because it still speaks envelope v1 and knows the same user's token.
+let expectedRuntimePromise
+async function expectedRuntime() {
+  if (!expectedRuntimePromise) expectedRuntimePromise = (async () => {
+    const browseFile = await browsePath()
+    // Requirements come from this MCP installation, never from an older fallback
+    // daemon installation that could lower its own advertised capabilities.
+    const identityFile = [join(HERE, 'runtime-identity.mjs'), join(HERE, '..', 'tools', 'runtime-identity.mjs')].find(existsSync)
+    if (!identityFile) throw new Error('MCP runtime identity module is missing — reinstall SnapSurf')
+    const identity = await import(pathToFileURL(identityFile).href)
+    const runtime = await identity.runtimeIdentity(browseFile)
+    if (runtime.version !== VERSION) throw new Error(`MCP version ${VERSION} and its installed daemon version ${runtime.version} differ — reinstall or restart the MCP server; existing browser sessions were left running`)
+    return { runtime, mismatch: identity.runtimeMismatch }
+  })()
+  return expectedRuntimePromise
+}
+async function verifyDaemonRuntime(env) {
+  const expected = await expectedRuntime()
+  const actual = env.meta?.runtime
+  const reason = expected.mismatch(expected.runtime, actual)
+  if (!reason) return
+  const pid = env.meta?.daemonPid
+  const sessionCount = env.meta?.sessionCount
+  const error = new Error(`SNAPSURF_DAEMON_INCOMPATIBLE: ${reason}${pid ? ` (pid ${pid})` : ''}. Existing sessions were left running${Number.isInteger(sessionCount) ? ` (${sessionCount})` : ''}; no page action was sent. Use a separate SNAPSURF_PORT to run this version alongside it, or restart the older daemon after its sessions are finished.`)
+  error.code = 'SNAPSURF_DAEMON_INCOMPATIBLE'
+  error.compatibility = { expected: expected.runtime, actual: actual || null, ...(pid ? { daemonPid: pid } : {}), ...(Number.isInteger(sessionCount) ? { sessionCount } : {}), sessionsPreserved: true }
+  throw error
+}
+
 // Server-level instructions (MCP initialize): the loop on one screen, for clients that
 // truncate long tool descriptions. The tool descriptions remain the full contract.
 const INSTRUCTIONS = [
@@ -146,7 +178,10 @@ async function adoptRunningDaemonOnce() {
       daemonAuthToken = token                                   // publish only after it verifies
       log(`adopted running daemon${probe.card ? ` pid ${probe.card.pid} (since ${probe.card.startedAt})` : ''} via ${file}`)
       return true
-    } catch { /* next candidate */ }
+    } catch (error) {
+      if (error.code === 'SNAPSURF_DAEMON_INCOMPATIBLE') throw error
+      /* next candidate */
+    }
   }
   throw foreignDaemonError(probe)
 }
@@ -257,6 +292,7 @@ async function cmdOnce(name, args = [], { internal = false, sessionId, token } =
   if (typeof env.sessionId !== 'string' || typeof env.epoch !== 'number' || typeof env.meta !== 'object' || env.meta === null) {
     throw new Error('invalid daemon success envelope')
   }
+  if (name === 'status') await verifyDaemonRuntime(env)
   return env
 }
 
@@ -315,6 +351,7 @@ process.stdin.on('close', () => shutdown(0))
 setInterval(() => { if (process.ppid === 1) { log('parent gone (ppid 1) — exiting'); shutdown(0) } }, 30_000).unref()
 
 async function ensureDaemonOnce() {
+  await expectedRuntime()
   // internal: the liveness probe before every tool call must not pollute the JSONL
   // (codex v5: 13 zero-ms status entries made per-verb suite reconstruction noisy)
   // The probe (with cmd's built-in adoption) distinguishes the three states that were
@@ -322,6 +359,7 @@ async function ensureDaemonOnce() {
   // unadoptable → named-owner error (spawning would only die in EADDRINUSE); port
   // closed → spawn.
   try { await cmd('status', [], { internal: true }); return } catch (e) {
+    if (e.code === 'SNAPSURF_DAEMON_INCOMPATIBLE') throw e
     if (String(e && e.message || e).startsWith('port ' + PORT)) throw e   // named-owner diagnosis
     /* connection refused → spawn it */
   }
@@ -347,6 +385,7 @@ async function ensureDaemonOnce() {
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500))
     try { await cmdOnce('status', [], { internal: true }); return } catch (err) {
+      if (err.code === 'SNAPSURF_DAEMON_INCOMPATIBLE') throw err
       // Our child cannot 401 us (it holds ownedToken): a mismatch here means another
       // server won the port race. Try to adopt the winner — but a mismatch can also be
       // the winner's OWN bind-to-publish gap (it answers /auth with its token before its
@@ -354,7 +393,10 @@ async function ensureDaemonOnce() {
       // error and keep polling; the winner publishes within a few ms. Only if the whole
       // budget expires do we surface it — never burn the loop, never abort early on a gap.
       if (AUTH_MISMATCH.test(String(err && err.message || err))) {
-        try { await adoptRunningDaemon(); return } catch (adoptErr) { lastForeign = adoptErr }
+        try { await adoptRunningDaemon(); return } catch (adoptErr) {
+          if (adoptErr.code === 'SNAPSURF_DAEMON_INCOMPATIBLE') throw adoptErr
+          lastForeign = adoptErr
+        }
         continue
       }
       // Child died before serving (port still closed): report its exit instead of a
@@ -386,6 +428,11 @@ async function ensureDaemon() {
 }
 
 // ── Tools ────────────────────────────────────────────────────────────────────────────
+const ENVIRONMENT_PROPERTIES = {
+  viewport: { type: 'object', properties: { width: { type: 'number', minimum: 1, maximum: 8192 }, height: { type: 'number', minimum: 1, maximum: 8192 } }, required: ['width', 'height'], description: 'CSS-pixel viewport. Width and height must be integers from 1 to 8192.' },
+  colorScheme: { type: 'string', enum: ['light', 'dark', 'no-preference'], description: 'Preferred color scheme exposed to CSS and matchMedia.' },
+  reducedMotion: { type: 'string', enum: ['reduce', 'no-preference'], description: 'Preferred reduced-motion setting exposed to CSS and matchMedia.' },
+}
 const TOOLS = [
   {
     name: 'browser_open',
@@ -418,9 +465,9 @@ const TOOLS = [
   },
   {
     name: 'browser_act',
-    title: 'Click, type or press Enter',
-    annotations: { title: 'Click, type or press Enter', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
-    description: 'Act on the page: click (by id from the digest/find, or "x,y"), type (into the focused element — click it first), or enter. Click auto-scrolls and CONFIRMS role/name of the resolved element: read that echo before continuing. After acting, call browser_verify.',
+    title: 'Click, type, select or press Enter',
+    annotations: { title: 'Click, type, select or press Enter', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    description: 'Act on the page: click (by id from the digest/find, or "x,y"), type (into the focused element — click it first), select a native single-select option by target id and exactly one of value or label (exact, unique match), or enter. Click and select auto-scroll and CONFIRM role/name of the resolved element: read that echo before continuing. Select refuses non-native, multiple, disabled, hidden or covered controls and disabled/ambiguous options. It dispatches input/change when the option changes, does not echo the supplied choice, omits choice arguments from audit logs, and preserves the observation baseline. Privacy rules and readonly policy apply. After EVERY action, call browser_verify, even when select reports selectionChanged:false.',
     // FLAT schema on purpose: a top-level oneOf union broke real clients (Codex CLI
     // projected the branches as complete signatures and lost `target`/`text`, so click
     // calls failed validation before ever reaching this server). Per-action
@@ -428,14 +475,16 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['click', 'type', 'enter'], description: 'click REQUIRES target; type REQUIRES text; enter needs neither' },
-        target: { type: 'string', description: 'REQUIRED for click: id n_xxx from the digest/find, or "x,y"' },
+        action: { type: 'string', enum: ['click', 'type', 'select', 'enter'], description: 'click REQUIRES target; type REQUIRES text; select REQUIRES target and exactly one of value/label; enter needs neither' },
+        target: { type: 'string', description: 'REQUIRED for click/select: id n_xxx from digest/find. Click also accepts "x,y".' },
         text: { type: 'string', description: 'REQUIRED for type: the text to type into the focused element' },
+        value: { type: 'string', description: 'Select only: exact option value, including an empty string. Cannot be combined with label.' },
+        label: { type: 'string', description: 'Select only: exact visible option label. Cannot be combined with value.' },
         sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' },
       },
       required: ['action'],
     },
-    run: async ({ action, target, text, sessionId }) => {
+    run: async ({ action, target, text, value, label, sessionId }) => {
       if (action === 'click') {
         if (!target) throw new Error('click requires target (id or "x,y")')
         return cmd('click', [target], { sessionId })
@@ -444,15 +493,19 @@ const TOOLS = [
         if (!text) throw new Error('type requires text')
         return cmd('type', text.split(/\s+/), { sessionId })
       }
+      if (action === 'select') {
+        if (!target || (value === undefined) === (label === undefined)) throw new Error('select requires target id and exactly one of value or label')
+        return cmd('select', [target, value === undefined ? '--label' : '--value', value === undefined ? label : value], { sessionId })
+      }
       if (action === 'enter') return cmd('enter', [], { sessionId })
-      throw new Error('action must be click, type or enter')
+      throw new Error('action must be click, type, select or enter')
     },
   },
   {
     name: 'browser_verify',
     title: 'Verify what changed',
     annotations: { title: 'Verify what changed', readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Possible replacements also carry `beforeName`, so the prior and current identities are both explicit. Call it after EVERY action instead of comparing screenshots, then pass its `diffId` to browser_assert to check THIS exact transition. When a baseline exists, a full observation returns `diffId`, `beforeObservationId`, `afterObservationId`, `observationId` (the after observation), and `baselineAdvanced`: true. A stored diff covers the FULL evidence, including changes beyond the presentation cap and folded wrappers. No baseline means no diffId. Retention is bounded per session (32 records, 8 MiB total, 10 minutes); an individually oversized record returns diffAvailable: false and diffError: {code: DIFF_TOO_LARGE, message}, without a diffId. structuredContent carries `changed`, `changes` (list of {kind, role, name, beforeName?, id}) and `changesTotal` — read those rather than parsing the prose. Reading aids: `changes` lists signal first and omits folded wrapper nodes of an ADDED subtree (identity-free generic wrappers only — authored names never fold; `foldedWrappers` counts them and `changesTotal` is the full diff count), and `geometryOnly: true` flags a diff that is ONLY moved/resized AND changed no actionability — a scope reflow (scrollbar, container resize) you can skim past. After a same-origin navigation, `carried` reports the strong-identity elements that persisted across pages and their state/content transitions (see browser_open).',
+    description: 'WHAT CHANGED since the last observation — the verification of your action. Returns changed (a faithful negative: if your click did nothing it says so instead of letting you believe you acted), the list of changes with kind (added/removed/state/style/moved) role and name, and what became covered or visible. Possible replacements also carry `beforeName`, so the prior and current identities are both explicit. Call it after EVERY action instead of comparing screenshots, then pass its `diffId` to browser_assert to check THIS exact transition. When a baseline exists, a full observation returns `diffId`, `beforeObservationId`, `afterObservationId`, `observationId` (the after observation), and `baselineAdvanced`: true. A stored diff covers the FULL evidence, including changes beyond the presentation cap and folded wrappers. No baseline means no diffId. Retention is bounded per session (32 records, 8 MiB total, 10 minutes); an individually oversized record returns diffAvailable: false and diffError: {code: DIFF_TOO_LARGE, message}, without a diffId. structuredContent carries `changed`, `changes` (list of {kind, role, name, beforeName?, id, from?, to?}), `changesTotal`, `changesShown`, `changesOmitted`, and `changesOmittedByKind` — read those rather than parsing the prose. State changes include their before/after state in from/to. Reading aids: the capped `changes` summary prioritizes state, content, and actionability-related changes before other semantic changes and geometry; omissions, including folded wrappers, are explicitly counted by kind. It omits folded wrapper nodes of an ADDED subtree (identity-free generic wrappers only — authored names never fold; `foldedWrappers` counts them and `changesTotal` is the full diff count), and `geometryOnly: true` flags a diff that is ONLY moved/resized AND changed no actionability — a scope reflow (scrollbar, container resize) you can skim past. After a same-origin navigation, `carried` reports the strong-identity elements that persisted across pages and their state/content transitions (see browser_open).',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'optional: the session this call belongs to (from browser_session_open). Omitted uses the shared default session.' } } },
     run: async ({ sessionId } = {}) => cmd('look', [], { sessionId }),
   },
@@ -562,9 +615,17 @@ const TOOLS = [
     name: 'browser_session_open',
     title: 'Open an isolated session',
     annotations: { title: 'Open an isolated session', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    description: 'Open an independent browsing session and get its `sessionId`. Each session owns a private BrowserContext, cookie/storage jar, popup tree, observation counter and ids, so several sweeps run AT THE SAME TIME without invalidating or authenticating each other. Pass the returned sessionId on every call belonging to that sweep. Close it with browser_session_close when done.',
-    inputSchema: { type: 'object', properties: {} },
-    run: async () => cmd('session', ['open']),
+    description: 'Open an independent browsing session and get its `sessionId` and `environment`. Optional viewport, colorScheme and reducedMotion configure responsive/media QA before navigation; defaults are 1280×800, light, no-preference. Each session owns a private BrowserContext, cookie/storage jar, popup tree, observation counter and ids, so several sweeps run AT THE SAME TIME without invalidating or authenticating each other. Pass the returned sessionId on every call belonging to that sweep. Close it with browser_session_close when done.',
+    inputSchema: { type: 'object', properties: ENVIRONMENT_PROPERTIES },
+    run: async (options = {}) => cmd('session', ['open', '--json', JSON.stringify(options)]),
+  },
+  {
+    name: 'browser_environment',
+    title: 'Configure this session for visual QA',
+    annotations: { title: 'Configure this session for visual QA', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    description: 'Get or update this session’s viewport, colorScheme and reducedMotion for responsive, light/dark and motion QA. Omitted settings are preserved; with no settings this only reads the current environment. Returns environment. Updates apply to every page in this session and future popups, preserving cookies, storage, privacy rules and other sessions. The observation baseline remains unchanged (baselineAdvanced:false); call browser_verify after every update to inspect resulting page changes. Changing settings is refused under readonly policy because resize/media handlers may trigger page actions.',
+    inputSchema: { type: 'object', properties: { ...ENVIRONMENT_PROPERTIES, sessionId: { type: 'string', description: 'Optional session from browser_session_open. Omitted uses the shared default session.' } } },
+    run: async ({ sessionId, ...options } = {}) => cmd('environment', ['--json', JSON.stringify(options)], { sessionId }),
   },
   {
     name: 'browser_session_close',
@@ -715,7 +776,7 @@ rl.on('line', async (line) => {
         isError: !env.ok || env.meta?.assert?.pass === false,
       })
     } catch (e) {
-      return reply(id, { content: [{ type: 'text', text: String(e.message || e) }], isError: true })
+      return reply(id, { content: [{ type: 'text', text: String(e.message || e) }], ...(e.compatibility ? { structuredContent: { ok: false, error: { code: e.code, ...e.compatibility } } } : {}), isError: true })
     }
   }
   if (id !== undefined) replyErr(id, -32601, `unsupported method: ${method}`)

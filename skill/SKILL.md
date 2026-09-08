@@ -57,6 +57,11 @@ user wants to watch. Policy flags (use them when the task warrants):
 aborted; subdomains implied). For read-only tasks on a known site, starting with both
 is the honest configuration.
 
+MCP validates the running daemon's version, code fingerprint and required capabilities
+before tools execute. `SNAPSURF_DAEMON_INCOMPATIBLE` requires an explicit restart
+after preserving any sessions still needed; updating files alone does not update a
+running process. `status` reports the immutable runtime identity.
+
 ## Workflow
 
 ```bash
@@ -73,6 +78,7 @@ node $B parent n_1r2x                # climb to the CARD around a node (≥2 act
 node $B map 40                       # page the actionables map beyond the first 40
 node $B click n_1r2x                 # click by id (auto-scrolls) — or click 640,300
 node $B type hola mundo              # type into the focused element (click first)
+node $B select n_1r2x --value yearly  # native select; --label matches an exact option label
 node $B enter                        # submit
 node $B session open                 # PARALLEL work: a new page with its own ids and its
                                      # own obs counter. Pass sessionId on every call of that
@@ -107,6 +113,17 @@ The whole session lands in a durable JSONL log (`logs/<session>.jsonl`, or
 `SNAPSURF_LOGDIR`): ts/seq/epoch, URLs before/after, resolved role/name of every click,
 duration, errors, hash of every image. `type` text is logged redacted (length only).
 `status` prints the log path.
+
+For native selects, use `browser_act({ action: "select", target, value })` or
+`label` (exactly one). For responsive/theme checks, use `browser_environment`
+with `viewport: { width: 390, height: 844 }`, `colorScheme: "dark"`, or
+`reducedMotion: "reduce"`. With no settings it reads the current environment.
+Settings belong to the session and persist through navigation; new sessions can
+set them with `browser_session_open`. After select or environment changes, call
+`browser_verify`: these actions preserve the previous verification baseline.
+Diff summaries prioritize state, content and actionability before geometry.
+`changesShown`, `changesOmitted` and `changesOmittedByKind` describe the summary
+limit; assertions using `diffId` still inspect the complete evidence.
 
 ## Usage rules (they come from measured failures)
 

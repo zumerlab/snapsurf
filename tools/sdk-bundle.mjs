@@ -21,9 +21,11 @@ export async function buildSdk(AGENT) {
   const snapdomRuntime = join(AGENT, 'vendor', 'snapdom', 'dist', 'snapdom.mjs')
   const contents = `import { observe, observeChunked, buildUi, agentOracle, redactString } from '${join(AGENT, 'src/plugin.js')}'
 import { carriedIndex, carriedDiff } from '${join(AGENT, 'src/carried.js')}'
-import { snapdom } from '${snapdomRuntime}'
+import { bindEngineOwnership } from '${join(AGENT, 'src/engine-ownership.js')}'
+import { snapdom, __snapdomIsInternalNode } from '${snapdomRuntime}'
 import { videoExport } from '${join(AGENT, 'vendor/snapdom/plugins/video-export.js')}'
 import { gifExport } from '${join(AGENT, 'vendor/snapdom/plugins/gif-export.js')}'
+bindEngineOwnership(__snapdomIsInternalNode)
 window.__agentObserve = observe
 window.__agentObserveChunked = observeChunked
 window.__agentBuildUi = buildUi
