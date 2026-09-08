@@ -1,3 +1,13 @@
+### Changelog
+
+All notable changes to this project will be documented in this file.
+
+#### [v0.1.3](https://github.com/zumerlab/snapsurf/compare/v0.1.2...v0.1.3)
+
+> 8 September 2026
+
+- Add comprehensive tests for change presentation, daemon compatibility, and select names [`ce204e4`](https://github.com/zumerlab/snapsurf/commit/ce204e45f16b739b7b650cc1073001120f183b03)
+
 # Changelog
 
 ## 0.1.2
