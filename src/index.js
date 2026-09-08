@@ -19,10 +19,13 @@
  * Core is untouched and never depends on this package.
  * @module agent
  */
-import { snapdom } from '../vendor/snapdom/dist/snapdom.mjs'
+import { snapdom, __snapdomIsInternalNode } from '../vendor/snapdom/dist/snapdom.mjs'
+import { bindEngineOwnership } from './engine-ownership.js'
 import { agentOracle, probeCapabilities, getLastSnapshot } from './plugin.js'
 import { MATCH_ELEMENTS } from './query.js'
 import { createCaptureRedactor } from './capture-redaction.js'
+
+bindEngineOwnership(__snapdomIsInternalNode)
 
 export { agentOracle }
 

@@ -15,14 +15,14 @@
     "probeCapabilities",
     "redactString"
   ],
-  "bytes": 42103,
-  "gzipBytes": 15790,
-  "brotliBytes": 14214,
+  "bytes": 42168,
+  "gzipBytes": 15817,
+  "brotliBytes": 14251,
   "compressionEnvironment": {
     "zlib": "1.2.12",
     "brotli": "1.2.0"
   },
-  "sha256": "f64c2c9402cd1a759c056dd6d87f60b79f118176cf1b5d6a21389bcd217cc8c4",
+  "sha256": "f84952dcc4421b95e40d5c4f6eee1106839bc320abb8930a8c0f726e1c308d03",
   "dependencies": [],
   "staticEvidence": {
     "scope": "generated browser bundle only",

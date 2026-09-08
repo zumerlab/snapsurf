@@ -9,6 +9,7 @@ import { hash } from './hash.js'
 import { attribute } from './capture-redaction.js'
 import { computeRole, computeName, visibleText, NAME_FROM_CONTENT_ROLES } from './aria.js'
 import { normalizeText, isIgnored, collectAnimatedProps } from './noise.js'
+import { isEngineInternalNode } from './engine-ownership.js'
 
 // Raw inputs used to build the node signatures. A WeakMap lets buildUi(observe(...),
 // {privacy}) rebuild safe signatures even when privacy was selected after the walk,
@@ -98,7 +99,7 @@ function collectOpenShadowRoots(root) {
   const stack = [root]
   while (stack.length) {
     const el = stack.pop()
-    if (!el || el.nodeType !== 1 || seen.has(el)) continue
+    if (!el || el.nodeType !== 1 || seen.has(el) || isEngineInternalNode(el)) continue
     seen.add(el)
     if (el.shadowRoot) roots.add(el.shadowRoot)
     for (const child of composedChildren(el)) stack.push(child)
@@ -345,7 +346,10 @@ function makeWalker(root, noise, { strictScope = false, engineFrame, capturePoli
   const pnow = P ? () => performance.now() : () => 0
   const pacc = (k, t) => { if (P) P[k] = (P[k] || 0) + (performance.now() - t) }
   function* visit(el, parentId, semanticPath, ordinalKeyCounts, depth, frozenGeo) {
-    if (el.nodeType !== 1 || SKIP_TAGS.has(el.tagName) || policy?.isBlocked(el)) return null
+    // Renderer-owned helpers (notably the retained image-decode iframe) are not
+    // page content. Only the renderer's private provenance can exclude them;
+    // data-snapdom-internal and other author-set markers are never authority.
+    if (el.nodeType !== 1 || isEngineInternalNode(el) || SKIP_TAGS.has(el.tagName) || policy?.isBlocked(el)) return null
     if (includedElements && !includedElements.has(el)) return null
     if (isIgnored(el, noise)) return null
     if (el.localName === 'slot' && el.assignedNodes) {

@@ -27,6 +27,12 @@ For a machine-local copy independent of the checkout, run
 `node tools/install-global.mjs` and configure the client to launch Node with the
 absolute path to `~/.snapsurf/server.mjs`. Refresh that copy after source changes.
 
+Before executing tools, MCP checks the running daemon's version, code fingerprint
+and capabilities. `SNAPSURF_DAEMON_INCOMPATIBLE` means the files and running process
+do not match; preserve any needed sessions, then stop and restart the daemon.
+Installing updated files alone does not replace it, and MCP does not kill existing
+sessions automatically. CLI `status` exposes the startup runtime identity.
+
 The tool descriptions ARE the instructions — they teach the loop (digest → find → act →
 verify → assert), the fail-loud contract, and how to read every field, so the consuming
 model needs no extra prompt to use the tools correctly. The server also returns a short

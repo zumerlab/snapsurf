@@ -18,7 +18,9 @@ contract, and every reply puts the facts in `structuredContent`.
    searches the WHOLE page and returns ranked clickable ids with hrefs. Never scroll
    blindly, never guess coordinates.
 3. `browser_act` — `click` by id, `type` into the focused element (click it first), or
-   `enter`. The reply echoes the role and name of the element actually resolved: read it.
+   `enter`. Native single-select controls also accept `select` with the target id and
+   exactly one of `value` or `label` (an exact option match). The reply echoes the
+   role and name of the element actually resolved: read it.
 4. After EVERY action, `browser_verify`. It returns `changed` (a faithful negative: if the
    click did nothing it says so), the list of changes with kind, role and name, and what
    became covered or visible. Read `structuredContent`, not the prose.
@@ -59,6 +61,13 @@ contract, and every reply puts the facts in `structuredContent`.
 - **Several sites or parallel sweeps:** `browser_session_open` per sweep and pass its
   `sessionId` on every call. Each session has its own cookies, storage and ids; without
   it, one open voids the ids another sweep is holding. Close sessions when done.
+- **Responsive and theme checks:** use `browser_environment` with `viewport`,
+  `colorScheme` or `reducedMotion`; omit settings to read them. These settings persist
+  within the session and through its popups. New sessions accept them too. Call
+  `browser_verify` after changing settings; the previous baseline is preserved.
+- **Large diffs:** state, content and actionability changes appear before geometry.
+  `changesShown`, `changesOmitted` and `changesOmittedByKind` declare the summary
+  limit; assertions using `diffId` still inspect the complete evidence.
 
 ## What the fields tell you honestly
 
@@ -82,3 +91,8 @@ The server runs through `npx` and needs Node.js 22 or newer. On the first call i
 take a minute: it installs Playwright's Chromium once. On Linux, if Chromium fails to
 start for lack of system libraries, tell the user to run
 `npx playwright install --with-deps chromium`.
+
+MCP checks the running daemon's version, code fingerprint and required capabilities
+before executing tools. `SNAPSURF_DAEMON_INCOMPATIBLE` requires an explicit restart
+after preserving any sessions still needed. Updating files does not update an
+already-running process; MCP leaves those sessions running.

@@ -22,6 +22,7 @@
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { mkdir, writeFile, readFile, copyFile, readdir, access, cp } from 'node:fs/promises'
+import { engineSourceHash, sha256 } from './runtime-identity.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const HOME = process.env.SNAPSURF_INSTALL_HOME || process.env.SNAPDOM_AGENT_INSTALL_HOME || process.env.HOME
@@ -46,7 +47,7 @@ const SDK = await buildSdk(AGENT)
 // installer shipped a broken server.mjs once, because it validates the SDK bundle's
 // globals but never checked the sources it copies. Parse them first.
 const { execFileSync } = await import('node:child_process')
-for (const f of [join(HERE, 'browse.mjs'), join(HERE, '..', 'mcp', 'server.mjs')]) {
+for (const f of [join(HERE, 'browse.mjs'), join(HERE, 'runtime-identity.mjs'), join(HERE, '..', 'mcp', 'server.mjs')]) {
   try { execFileSync(process.execPath, ['--check', f], { stdio: 'pipe' }) } catch (e) {
     console.error(`⛔ ${f} does not parse — refusing to install:\n${(e.stderr || '').toString().split('\n').slice(0, 3).join('\n')}`)
     process.exit(2)
@@ -59,6 +60,7 @@ await copyFile(join(AGENT, 'LICENSE'), join(DEST, 'LICENSE'))
 await copyFile(join(AGENT, 'vendor', 'snapdom', 'LICENSE'), join(DEST, 'SNAPDOM-LICENSE'))
 await writeFile(join(DEST, 'sdk.js'), SDK)
 await copyFile(join(HERE, 'browse.mjs'), join(DEST, 'browse.mjs'))
+await copyFile(join(HERE, 'runtime-identity.mjs'), join(DEST, 'runtime-identity.mjs'))
 // The installed daemon must survive the checkout moving or disappearing. It only needs
 // Playwright at runtime because sdk.js is already built; copy the pinned runtime instead
 // of pointing back at the repository's node_modules. Resolve from this module rather
@@ -76,7 +78,7 @@ for (const [dep, required] of [['playwright', true], ['playwright-core', true], 
   await cp(source, join(DEST, 'node_modules', dep), { recursive: true, force: true })
 }
 const { version } = JSON.parse(await readFile(join(AGENT, 'package.json'), 'utf8'))
-await writeFile(join(DEST, 'paths.json'), JSON.stringify({ agent: DEST, version }))
+await writeFile(join(DEST, 'paths.json'), JSON.stringify({ agent: DEST, version, engineSourceHash: await engineSourceHash(AGENT), sdkHash: sha256(SDK) }))
 
 // The MCP server, so Claude Code and Claude Desktop can be registered against a path
 // that does not disappear when the repo changes branch. It finds the daemon by looking

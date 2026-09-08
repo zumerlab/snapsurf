@@ -48,6 +48,7 @@ import { dirname, join } from 'node:path'
 import { writeFile, appendFile, mkdir, readFile, chmod, rename, rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { runtimeIdentity } from './runtime-identity.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // Standalone install (~/.snapsurf via install-global.mjs): paths.json points
@@ -309,6 +310,9 @@ if (CMD !== 'serve') {
 }
 
 // ── Daemon mode ──────────────────────────────────────────────────────────────────────
+// Capture once: installing new files must never make an already-running daemon
+// claim that it is executing the replacement code.
+const RUNTIME_IDENTITY = await runtimeIdentity(fileURLToPath(import.meta.url))
 const { chromium } = STANDALONE
   ? await import(join(AGENT, 'node_modules/playwright/index.mjs'))
   : await import('playwright')
@@ -483,7 +487,7 @@ const ruleWarnings = (rules) => (rules || [])
   .map((r, i) => (REGEXY.test(r) ? `rule #${i} contains regex syntax; rules are matched as LITERAL text, so it will only match if that exact string appears on the page` : null))
   .filter(Boolean)
 
-const MUTATING = new Set(['click', 'type', 'enter'])
+const MUTATING = new Set(['click', 'type', 'enter', 'select'])
 // How long `open` waits for window.onload after domcontentloaded (r5–7 P1). Bounded so
 // a page with a hung resource cannot stall the open; when the bound expires the digest
 // says so instead of silently describing a half-painted page. 0 disables the wait.
@@ -553,6 +557,42 @@ const CONTEXT_OPTIONS = {
   userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROME_MAJOR}.0.0.0 Safari/537.36`,
   bypassCSP: true,
   locale: 'es-AR',
+}
+const DEFAULT_ENVIRONMENT = {
+  viewport: { ...CONTEXT_OPTIONS.viewport }, colorScheme: 'light', reducedMotion: 'no-preference',
+}
+function environmentOptions(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('environment must be an object')
+  const allowed = new Set(['viewport', 'colorScheme', 'reducedMotion'])
+  if (Object.keys(value).some((key) => !allowed.has(key))) throw new Error('unknown environment setting (allowed: viewport, colorScheme, reducedMotion)')
+  if (value.viewport !== undefined) {
+    const v = value.viewport
+    if (!v || typeof v !== 'object' || Array.isArray(v) || Object.keys(v).some((key) => !['width', 'height'].includes(key)) ||
+      !['width', 'height'].every((key) => Number.isInteger(v[key]) && v[key] >= 1 && v[key] <= 8192)) {
+      throw new Error('viewport requires integer width and height from 1 to 8192')
+    }
+  }
+  if (value.colorScheme !== undefined && !['light', 'dark', 'no-preference'].includes(value.colorScheme)) throw new Error('colorScheme must be light, dark or no-preference')
+  if (value.reducedMotion !== undefined && !['reduce', 'no-preference'].includes(value.reducedMotion)) throw new Error('reducedMotion must be reduce or no-preference')
+  return { ...value, ...(value.viewport ? { viewport: { ...value.viewport } } : {}) }
+}
+function environmentArgs(args) {
+  if (!args.length) return {}
+  if (args.length !== 2 || args[0] !== '--json') throw new Error('usage: environment --json {"viewport":{"width":390,"height":844},"colorScheme":"dark","reducedMotion":"reduce"}')
+  let parsed
+  try { parsed = JSON.parse(args[1]) } catch { throw new Error('environment --json requires a JSON object') }
+  return environmentOptions(parsed)
+}
+async function applyPageEnvironment(page, environment) {
+  if (page.isClosed()) return
+  try {
+    await page.setViewportSize(environment.viewport)
+    await page.emulateMedia({ colorScheme: environment.colorScheme, reducedMotion: environment.reducedMotion })
+  } catch (error) {
+    // Short-lived popups may close while preferences are being applied. They no
+    // longer have an environment to configure and must not poison the opener.
+    if (!page.isClosed()) throw error
+  }
 }
 // Every allowlist block is AUDITABLE (codex v5: "the policy seems effective but a
 // client can't demonstrate what was blocked"): first block per origin gets a JSONL
@@ -634,16 +674,24 @@ let sessionSeq = 0
 let sessionsCreating = 0
 let defaultSessionPromise = null
 
-async function newSession(id) {
+// These fields describe this process, never a page or caller input. Reconstruct
+// them at the response boundary so page privacy cannot corrupt the authenticated
+// compatibility handshake, without exempting similarly named page-data keys.
+function processStatusMeta() {
+  return { runtime: RUNTIME_IDENTITY, daemonPid: process.pid, daemonStartedAt: DAEMON_STARTED_AT, sessionCount: sessions.size }
+}
+
+async function newSession(id, options = {}) {
   if (sessions.size + sessionsCreating >= MAX_SESSIONS) {
     throw new Error(`⛔ session limit reached (${MAX_SESSIONS}). Close one with \`session close <id>\`, or raise SNAPDOM_MAX_SESSIONS.`)
   }
+  const environment = { ...DEFAULT_ENVIRONMENT, ...environmentOptions(options) }
   const sid = id || `s_${(++sessionSeq).toString(36)}`
   sessionsCreating++
   let sessionContext
   let pg
   try {
-    sessionContext = await browser.newContext(CONTEXT_OPTIONS)
+    sessionContext = await browser.newContext({ ...CONTEXT_OPTIONS, ...environment })
     await configureContext(sessionContext, sid)
     pg = await sessionContext.newPage()
   } catch (error) {
@@ -663,6 +711,8 @@ async function newSession(id) {
     id: sid,
     context: sessionContext,
     page: pg,
+    environment,
+    environmentPending: Promise.resolve(),
     pages: new Set(),
     inflight: () => inflightRequests.size,
     epoch: 0,
@@ -684,6 +734,12 @@ async function newSession(id) {
   // every document and beacon it created, and a child may itself open another child.
   const ownPage = (owned, opener = null) => {
     S.pages.add(owned)
+    // Existing contexts retain their creation defaults. Apply current session QA
+    // settings to later popups too, and wait before the next command observes them.
+    if (opener) {
+      S.environmentPending = Promise.all([S.environmentPending, applyPageEnvironment(owned, S.environment)]).then(() => {})
+      S.environmentPending.catch(() => {}) // the command boundary reports failures
+    }
     if (opener) S.openers.set(owned, opener)
     owned.on('close', () => {
       S.pages.delete(owned)
@@ -1134,6 +1190,30 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
       return { ...c, label: labelOf(c), selector: selectorOf(el) || undefined }
     })
   }
+  // Presentation only: a late control state/name change must survive a reflow's
+  // hundreds of earlier moved/resized entries. Keep the source diff and the full
+  // assertionChanges above untouched; folding and caps are explicitly accounted for.
+  let presentedChanges, changesOmitted, changesOmittedByKind
+  if (ui.changes) {
+    const actionabilityIds = new Set([
+      ...(ui.actionabilityDelta?.becameVisible || []),
+      ...(ui.actionabilityDelta?.becameCovered || []),
+    ].flatMap((entry) => [entry.id, entry.beforeId, entry.afterId]).filter(Boolean))
+    const priority = (c) => {
+      if (c.kind === 'state') return 0
+      if (c.kind === 'content') return 1
+      if ([c.id, c.beforeId, c.afterId].some((id) => id && actionabilityIds.has(id))) return 2
+      return c.kind === 'moved' || c.kind === 'resized' ? 4 : 3
+    }
+    presentedChanges = ui.changes.filter((c) => !c.folded)
+      .sort((a, b) => priority(a) - priority(b)).slice(0, changesCap || 40)
+    const shown = new Set(presentedChanges)
+    changesOmitted = ui.changes.length - presentedChanges.length
+    changesOmittedByKind = {}
+    for (const c of ui.changes) {
+      if (!shown.has(c)) changesOmittedByKind[c.kind] = (changesOmittedByKind[c.kind] || 0) + 1
+    }
+  }
   return {
     observationId,
     observedUrl: (location.origin === 'null' ? location.href : location.origin + location.pathname),
@@ -1146,13 +1226,11 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
     map: digest ? undefined : ui.agentMap.map.slice(0, 40).map((e) => ({ id: e.id, r: e.r, n: e.n, b: e.b, c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })),
     changed: ui.changed,
     torn: obs.torn || 0,
-    // Signal first: folded wrappers must never crowd real changes out of the cap.
-    // changesTotal is the FULL diff count, independent of the wire cap.
-    changes: ui.changes && [
-      ...ui.changes.filter((c) => !c.folded),
-      ...ui.changes.filter((c) => c.folded),
-    ].slice(0, changesCap || 40),
+    changes: presentedChanges,
     changesTotal: ui.changes ? ui.changes.length : undefined,
+    changesShown: presentedChanges?.length,
+    changesOmitted,
+    changesOmittedByKind,
     geometryOnly: ui.geometryOnly,
     foldedWrappers: ui.foldedWrappers,
     delta: ui.actionabilityDelta,
@@ -1189,6 +1267,11 @@ const inFind = (query) => {
     let name = n ? String(n) : ''
     const el = ui.__snapshot.elements.get(id)
     if (!el || !el.isConnected || el.ownerDocument !== document) return
+    // A native select's DOM text is its entire option list, not its accessible
+    // name. Use the full privacy-view name (the actionable map may abbreviate it)
+    // for both matching and display; never replace a label with option contents.
+    const nativeSelect = el.localName === 'select'
+    if (nativeSelect) name = String((ui.__view || ui.__snapshot).nodes.get(id)?.name || '')
     // The search window and the display window must be the SAME window. Snapshot names
     // are capped at ~80 chars while the returned text runs to 160, so matching on the
     // name alone created a band the tool showed you and would never match — reported as
@@ -1196,7 +1279,7 @@ const inFind = (query) => {
     // The cheap name test still runs first; only when it fails AND the name is at the
     // cap (so there is more text behind it) do we pay for the DOM read.
     if (!roleExact && !norm(name).includes(q)) {
-      if (name.length < 78 || !el) return
+      if (name.length < 78 || nativeSelect) return
       let deep = ''
       try { deep = window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()) } catch { return }
       if (!norm(deep).includes(q)) return
@@ -1204,7 +1287,7 @@ const inFind = (query) => {
     }
     // snapshot name/text arrive pre-truncated (~80c) — take the live DOM text when
     // longer, so long headlines survive whole (companion round 6 lesson)
-    if (el) {
+    if (!nativeSelect) {
       // innerText, not textContent: textContent concatenates sibling elements with no
       // separator, so "Call our office" + "914-683-1119" arrived as
       // "Call our office914-683-1119" and no parser could tell label from value
@@ -1423,6 +1506,42 @@ const inLocate = (id) => {
     ...(revived ? { revived } : {}) }
 }
 
+// Native select uses the same isolated, epoch-scoped resolver as other id actions.
+// Validation and option mutation are atomic: a page cannot replace a selector target
+// between those steps. No raw form value or chosen label is returned to the caller.
+const inSelectNative = ({ id, by, choice }) => {
+  const resolved = window.__agentResolveUi(id, { requireBox: true })
+  if (!resolved) return { denied: 'unresolved', reason: 'unknown or detached id — re-observe and retry' }
+  const { el, rect: r } = resolved
+  if (el.localName !== 'select') return { denied: 'not-native-select', reason: 'target is not a native select element' }
+  if (el.multiple) return { denied: 'multiple-select', reason: 'multiple selects are not supported by this single-choice action' }
+  if (el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true') return { denied: 'disabled', reason: 'select is disabled' }
+  const style = getComputedStyle(el)
+  const x = Math.max(0, Math.min(innerWidth - 1, r.left + r.width / 2))
+  const y = Math.max(0, Math.min(innerHeight - 1, r.top + r.height / 2))
+  if (style.visibility !== 'visible' || style.display === 'none' || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) {
+    return { denied: 'offscreen', reason: 'select is hidden or outside the viewport' }
+  }
+  let hit = document.elementFromPoint(x, y)
+  while (hit?.shadowRoot) {
+    const inner = hit.shadowRoot.elementFromPoint(x, y)
+    if (!inner || inner === hit) break
+    hit = inner
+  }
+  if (!hit || (hit !== el && !el.contains(hit))) return { denied: 'covered', reason: 'select is covered — clear the covering element first' }
+  const matches = [...el.options].filter((option) => (by === 'value' ? option.value : option.label) === choice)
+  if (matches.length !== 1) return { denied: 'option-unresolved', reason: 'option must match exactly one value or label; missing or ambiguous choice' }
+  const option = matches[0]
+  if (option.disabled || option.parentElement?.matches('optgroup:disabled')) return { denied: 'disabled', reason: 'option is disabled' }
+  const changed = el.selectedIndex !== option.index
+  if (changed) {
+    el.selectedIndex = option.index
+    el.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+  return { selectionChanged: changed }
+}
+
 // ── Page access that survives navigation races ───────────────────────────────────────
 // The eBay v2 failure: `look` right after `enter` evaluated while the new document had
 // no body yet (`Cannot read properties of null (reading 'nodeType')`). Wait for DOM
@@ -1563,7 +1682,7 @@ async function invalidatePageBaselines(S) {
 // Semantic reads and id actions cannot cross popup realms. Re-observe the newly active
 // page before such a command; this also creates fresh public ids and expires the previous
 // realm's resolver strings. Status/session/help/stop remain cheap and do not need a view.
-const VIEW_COMMANDS = new Set(['look', 'find', 'parent', 'outline', 'map', 'click', 'text', 'snap', 'cp', 'rec', 'assert', 'scroll'])
+const VIEW_COMMANDS = new Set(['look', 'find', 'parent', 'outline', 'map', 'click', 'select', 'text', 'snap', 'cp', 'rec', 'assert', 'scroll'])
 // ── Carried identity across navigations ──────────────────────────────────────────────
 // The page realm dies with the document, so the strong-identity slice of every FULL
 // observation is retained HERE, in the daemon. On the first full observation after a
@@ -1694,7 +1813,10 @@ const fmtLook = (o, rawUrl, epoch, S) => {
   const cov = (d.becameCovered || []).map((r) => r.name || r.role).slice(0, 10)
   const folded = o.foldedWrappers ? ` (+${o.foldedWrappers} wrapper nodes folded — counted, not shown)` : ''
   const geo = o.geometryOnly ? '\ngeometry-only: every change is moved/resized and nothing gained/lost clickability — likely a reflow from outside the scope' : ''
-  return `URL: ${url} · obs #${epoch}\nCHANGES (${o.changesTotal ?? o.changes.length})${folded}:${privLine(o, S)}${geo}\n${fence(`${ch}${vis.length ? `\nappeared: ${vis.join(' · ')}` : ''}${cov.length ? `\nbecame covered: ${cov.join(' · ')}` : ''}`)}`
+  const omitted = o.changesOmitted
+    ? `\nsummary: ${o.changesShown} shown; ${o.changesOmitted} omitted (${Object.entries(o.changesOmittedByKind).map(([kind, count]) => `${kind}: ${count}`).join(', ')})`
+    : ''
+  return `URL: ${url} · obs #${epoch}\nCHANGES (${o.changesTotal ?? o.changes.length})${folded}:${privLine(o, S)}${geo}${omitted}\n${fence(`${ch}${vis.length ? `\nappeared: ${vis.join(' · ')}` : ''}${cov.length ? `\nbecame covered: ${cov.join(' · ')}` : ''}`)}`
 }
 
 // ── Adaptive settle: small pages shouldn't pay wikipedia's ceiling ───────────────────
@@ -2143,7 +2265,7 @@ const HANDLERS = {
     // enough summary that the JSONL alone says WHAT was seen, not just that a look ran
     // `changes` is now the LIST (kind/role/name/id), with the count in `changesTotal` —
     // same shape `assert` already publishes, so a consumer learns one contract, not two.
-    S.meta = { mapTotal: o.mapTotal, changed: o.changed, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, walkDetail: o.walkDetail, ...(o.delta ? { actionabilityDelta: o.delta } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(o.changes ? { changesTotal: o.changesTotal ?? o.changes.length, ...(o.foldedWrappers ? { foldedWrappers: o.foldedWrappers } : {}), ...(o.geometryOnly ? { geometryOnly: true } : {}), changes: o.changes.filter((c) => !c.folded).slice(0, 60).map((c) => ({ kind: c.kind, role: c.role, name: c.name, beforeName: c.beforeName, id: c.id })) } : {}), ...(navigated ? { navigated: true, baselineUrl: safeUrl(baseUrl, S.redact) } : {}), ...(carried ? { carried } : {}), ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
+    S.meta = { mapTotal: o.mapTotal, changed: o.changed, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, walkDetail: o.walkDetail, ...(o.delta ? { actionabilityDelta: o.delta } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(o.changes ? { changesTotal: o.changesTotal ?? o.changes.length, changesShown: o.changesShown, changesOmitted: o.changesOmitted, changesOmittedByKind: o.changesOmittedByKind, ...(o.foldedWrappers ? { foldedWrappers: o.foldedWrappers } : {}), ...(o.geometryOnly ? { geometryOnly: true } : {}), changes: o.changes.map((c) => ({ kind: c.kind, role: c.role, name: c.name, beforeName: c.beforeName, id: c.id, from: c.before, to: c.after })) } : {}), ...(navigated ? { navigated: true, baselineUrl: safeUrl(baseUrl, S.redact) } : {}), ...(carried ? { carried } : {}), ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
     Object.assign(S.meta, { observationId: o.observationId, baselineAdvanced: o.baselineAdvanced, ...retained })
     const diffNote = retained.diffId
       ? `\nDIFF ${retained.diffId} (${retained.beforeObservationId} → ${retained.afterObservationId}) — assert with diffId to evaluate this evidence without re-observing`
@@ -2280,6 +2402,42 @@ const HANDLERS = {
     S.meta = { typedChars: args.join(' ').length }
     await S.page.waitForTimeout(400)
     return 'typed — run look (or enter to submit)'
+  },
+  async select([target, flag, choice, ...extra], S) {
+    if (!target || !/^n_/.test(target) || !['--value', '--label'].includes(flag) || typeof choice !== 'string' || extra.length) {
+      throw new Error('usage: select <id> --value <exact value> | select <id> --label <exact label>')
+    }
+    if (touchesPrivacy(choice, S.redact)) {
+      S.meta = { denied: 'privacy-query' }
+      throw new Error('⛔ select choice touches an active privacy rule and is blocked to prevent a presence oracle')
+    }
+    const point = await inPage(S, inLocate, target)
+    if (!point) throw new Error('⛔ could not resolve select id — use an id from the current map/find')
+    S.meta = { resolved: { id: target, ...point }, selectedBy: flag.slice(2), baselineAdvanced: false, verificationRequired: true }
+    // Do not retry an action after a navigation race: its change event may have
+    // submitted a form. Verification, rather than repetition, resolves uncertainty.
+    const result = await evaluateIsolated(S, S.page, inSelectNative, { id: point.revived?.resolvedId || target, by: flag.slice(2), choice })
+    Object.assign(S.meta, result)
+    if (result.denied) throw new Error(`⛔ ${result.reason}`)
+    S.meta.settle = await settle(S, 1500, 750)
+    const revivedNote = point.revived ? ` · ⚠ stale id revived → ${point.revived.resolvedId}; verify the echo` : ''
+    return `select on ${fence(`${point.role || 'combobox'} "${point.name || ''}"`)}${revivedNote} — run look to verify what changed`
+  },
+  async environment(args, S) {
+    const options = environmentArgs(args)
+    if (Object.keys(options).length) {
+      if (READONLY) {
+        S.meta = { denied: 'readonly' }
+        throw new Error('⛔ denied by --readonly policy: changing the browser environment can trigger page actions')
+      }
+      S.environment = { ...S.environment, ...options }
+      await Promise.all([...S.pages].filter((page) => !page.isClosed()).map((page) => applyPageEnvironment(page, S.environment)))
+      await S.environmentPending
+      S.meta = { environment: S.environment, baselineAdvanced: false, verificationRequired: true, settle: await settle(S, 1500, 750) }
+      return 'session environment updated — run look to verify the responsive/media changes (baseline preserved)'
+    }
+    S.meta = { environment: S.environment, baselineAdvanced: false }
+    return `session environment: ${JSON.stringify(S.environment)}`
   },
   async enter(_args, S) {
     await S.page.keyboard.press('Enter')
@@ -2900,18 +3058,19 @@ const HANDLERS = {
     if (storedRequested) out = `STORED DIFF${savedDiff ? ` ${savedDiff.diffId}` : ''} — no new observation; live baseline unchanged\n` + out
     return out
   },
-  async session([sub, arg], S) {
+  async session([sub, arg, ...rest], S) {
     // Sessions exist so a sweep of N domains does not have to run sequentially. Each one
     // owns a private BrowserContext, including its full popup tree and storage.
     if (!sub || sub === 'list') {
       const rows = [...sessions.values()].map((x) =>
         `${x.id}${x.id === S.id ? ' (this call)' : ''} · obs #${x.epoch} · ${safeUrl(x.page.url(), x.redact)} · idle ${Math.round((Date.now() - x.lastUsed) / 1000)}s`)
-      S.meta = { sessions: [...sessions.values()].map((x) => ({ id: x.id, epoch: x.epoch, url: safeUrl(x.page.url(), x.redact), idleMs: Date.now() - x.lastUsed })), maxSessions: MAX_SESSIONS }
+      S.meta = { sessions: [...sessions.values()].map((x) => ({ id: x.id, epoch: x.epoch, url: safeUrl(x.page.url(), x.redact), idleMs: Date.now() - x.lastUsed, environment: x.environment })), maxSessions: MAX_SESSIONS }
       return `${sessions.size}/${MAX_SESSIONS} sessions\n${rows.join('\n')}`
     }
     if (sub === 'open') {
-      const N = await newSession()
-      S.meta = { sessionId: N.id }
+      const options = environmentArgs(arg === undefined ? [] : [arg, ...rest])
+      const N = await newSession(undefined, options)
+      S.meta = { sessionId: N.id, environment: N.environment }
       return `session ${N.id} open — pass sessionId:"${N.id}" on every call that belongs to it (ids and obs # are per session)`
     }
     if (sub === 'close') {
@@ -2938,6 +3097,8 @@ const HANDLERS = {
       '  outline          full trimmed outline of the current observation',
       '  click <id|x,y>   real mouse click (auto-scrolls; refuses clipped/offscreen targets, ok:false)',
       '  type <text> · enter',
+      '  select <id> --value <text> | --label <text>   exact native single-select choice; look after',
+      '  environment [--json <object>]   get/set this session viewport, colorScheme, reducedMotion; look after a change',
       '  text <id> [--max-chars N] [--offset N --observation-id ID]   bounded text + continuation',
       '  scroll <id|top|bottom|y>   scroll WITHOUT acting — hydrates lazy listings; ids stay valid; look after',
       '  redact <t1,t2|off>  set/replace session privacy rules at runtime (no args: show count)',
@@ -2946,6 +3107,7 @@ const HANDLERS = {
       '  cp save|list|diff <name>   named observation baselines (not undo)',
       '  rec <secs> [id] [file.gif|.mp4]   record body or one element',
       '  session list|open|close <id>   parallel isolated browser contexts (cookies/storage private)',
+      '  session open --json <object>   create a session with viewport/colorScheme/reducedMotion QA settings',
       '  --session <id>   on ANY verb (or run batch): address that session instead of the shared',
       '                   s_default — REQUIRED when more than one agent uses this daemon',
       '  status · stop    (stop verifies the daemon actually died)',
@@ -2957,9 +3119,10 @@ const HANDLERS = {
     ].join('\n')
   },
   async status(_args, S) {
+    S.meta = processStatusMeta()
     const policy = [READONLY && 'readonly', ALLOW && `allow=[${ALLOW.join(', ')}]`, S.redact && `redact=${S.redact.length} rule(s) (revision ${S.policyRev}, session-scoped)`].filter(Boolean).join(' · ') || '(unrestricted)'
     const blocked = NETBLOCKED.size ? `\nblocked (allowlist): ${[...NETBLOCKED.values()].map((e) => `${e.sessionId}:${e.origin} ×${e.count}`).join(' · ')}` : ''
-    return `daemon ok · pid ${process.pid} · URL: ${safeUrl(S.page.url(), S.redact)} · obs #${S.epoch} · session ${S.id} of ${sessions.size} · log-session ${SESSION}\npolicy: ${policy}${blocked}\nlog: ${LOGFILE}\ncheckpoints: ${S.checkpoints.size ? [...S.checkpoints.keys()].join(', ') : '(none)'}`
+    return `daemon ok · version ${RUNTIME_IDENTITY.version} · build ${RUNTIME_IDENTITY.build.slice(0, 12)} · pid ${process.pid} · URL: ${safeUrl(S.page.url(), S.redact)} · obs #${S.epoch} · session ${S.id} of ${sessions.size} · log-session ${SESSION}\ncapabilities: ${RUNTIME_IDENTITY.capabilities.join(', ')}\npolicy: ${policy}${blocked}\nlog: ${LOGFILE}\ncheckpoints: ${S.checkpoints.size ? [...S.checkpoints.keys()].join(', ') : '(none)'}`
   },
   async stop(_args, _S) {
     // close the browser BEFORE exiting: process.exit alone can orphan the chromium
@@ -3000,6 +3163,7 @@ createServer((req, res) => {
     res.setHeader('content-type', 'application/json')
     res.end(JSON.stringify({
       v: 1, daemon: 'snapsurf', pid: process.pid, startedAt: DAEMON_STARTED_AT,
+      runtime: RUNTIME_IDENTITY,
       logSession: SESSION, port: PORT, tokenFile: TOKEN_FILE,
     }) + '\n')
     return
@@ -3089,7 +3253,7 @@ createServer((req, res) => {
 }).listen(PORT, '127.0.0.1', async () => {
   try {
     await publishServerToken()
-    console.log(`snapsurf daemon at http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · session ${SESSION}\nlog: ${LOGFILE}`)
+    console.log(`snapsurf daemon at http://127.0.0.1:${PORT} (${ARGS.includes('--headed') ? 'headed' : 'headless'}) · version ${RUNTIME_IDENTITY.version} · build ${RUNTIME_IDENTITY.build.slice(0, 12)} · session ${SESSION}\nlog: ${LOGFILE}`)
   } catch (error) {
     console.error(`cannot publish private daemon token at ${TOKEN_FILE}: ${error.message || error}`)
     try { await browser.close() } catch { /* exiting */ }
@@ -3119,6 +3283,7 @@ async function handle(res, body, S) {
         S.meta = { denied: 'readonly' }
         throw new Error(`⛔ denied by --readonly policy: "${cmd}" is a mutating verb (allowed: open/look/find/text/snap/shot/cp/rec)`)
       }
+      await S.environmentPending
       const pageSwitchMeta = await ensureActivePageObservation(S, cmd, args)
       outText = await HANDLERS[cmd](args, S)
       if (pageSwitchMeta) S.meta = { ...pageSwitchMeta, ...(S.meta || {}) }
@@ -3127,6 +3292,7 @@ async function handle(res, body, S) {
       error = redactEncodedLiteral(String(e).split('\n')[0], S.redact).slice(0, 500)
     }
     const urlAfter = (() => { try { return S.page.url() } catch { return null } })()
+    const trustedProcessMeta = ok && cmd === 'status' ? processStatusMeta() : {}
     if (envelope) {
       // Machine consumers (MCP server, CI): structured contract instead of parsing
       // localized prose — codex-mcp asked for changed/url/epoch/matches as FIELDS.
@@ -3136,7 +3302,7 @@ async function handle(res, body, S) {
       // is stripped at the edge. Publishing those counts to the caller turns the report
       // into a presence-and-frequency oracle for the page.
       const { __audit: _drop, ...rawConsumerMeta } = S.meta || {}
-      const consumerMeta = redactOutputValue(rawConsumerMeta, S.redact)
+      const consumerMeta = { ...redactOutputValue(rawConsumerMeta, S.redact), ...trustedProcessMeta }
       // The attestation rides on EVERY response, not only the ones that re-walk. A
       // transcript reviewed later contains many finds and few opens; without this, the
       // finds carried no proof the policy was live, and an empty find() could mean
@@ -3166,6 +3332,7 @@ async function handle(res, body, S) {
     appendFile(LOGFILE, JSON.stringify({
       ts: new Date().toISOString(), session: SESSION, seq: ++seq, cmd,
       args: cmd === 'type' ? [`«${args.join(' ').length} chars»`]
+        : cmd === 'select' ? ['«native select choice omitted»']
         // redact terms are the very strings the operator wants hidden — the audit log
         // records THAT rules changed and how many, never the terms
         : cmd === 'redact' ? [args[0] === 'off' ? 'off' : '«rules»']
@@ -3178,7 +3345,7 @@ async function handle(res, body, S) {
       // a denied command did NOT execute — auditors must never read it as success
       // (codex v3 found allowlist denials logged ok:true)
       ok: ok && !(S.meta && S.meta.denied),
-      ...(error ? { error } : {}), ...redactOutputValue(S.meta || {}, S.redact),
+      ...(error ? { error } : {}), ...redactOutputValue(S.meta || {}, S.redact), ...trustedProcessMeta,
     }) + '\n').catch(() => {})
   }
 }

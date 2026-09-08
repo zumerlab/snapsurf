@@ -14,7 +14,13 @@ execFileSync('git', ['-C', source, 'diff', '--exit-code', 'HEAD', '--', 'src', '
 const commit = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
 const pkg = JSON.parse(await readFile(join(source, 'package.json'), 'utf8'))
 const runtime = await build({
-  entryPoints: [join(source, 'src/index.js')], bundle: true, format: 'esm',
+  // Keep the predicate in the SAME module instance as the renderer's private
+  // WeakSet. Expose no marker/writer: author attributes cannot claim ownership.
+  stdin: {
+    contents: "export * from './src/index.js';\nexport { isInternalNode as __snapdomIsInternalNode } from './src/utils/ownership.js';\n",
+    resolveDir: source, sourcefile: 'snapsurf-vendor-entry.js', loader: 'js',
+  },
+  bundle: true, format: 'esm',
   minify: true, splitting: false, sourcemap: false, write: false,
   define: { __SNAPDOM_CANVAS_ENGINE__: 'false', __SNAPDOM_VERSION__: JSON.stringify(pkg.version) },
   banner: { js: `/*\n* SnapDOM\n* v${pkg.version}\n* License: MIT\n*/` },

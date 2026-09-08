@@ -41,6 +41,7 @@ try {
       'tools/install-global.mjs',
       'tools/sdk-bundle.mjs',
       'tools/daemon-client.mjs',
+      'tools/runtime-identity.mjs',
       'companion/build.mjs',
       'companion/content.src.js',
       'companion/gate.mjs',
@@ -87,6 +88,11 @@ try {
     const { buildSdk } = await import(pathToFileURL(join(pkgRoot, 'tools', 'sdk-bundle.mjs')))
     const sdk = await buildSdk(pkgRoot)
     if (!sdk.includes('__agentObserveChunked')) throw new Error('packed runtime cannot build its in-page SDK')
+    const { runtimeIdentity, runtimeMismatch } = await import(pathToFileURL(join(pkgRoot, 'tools', 'runtime-identity.mjs')))
+    const packedIdentity = await runtimeIdentity(join(pkgRoot, 'tools', 'browse.mjs'))
+    const sourceIdentity = await runtimeIdentity(join(ROOT, 'tools', 'browse.mjs'))
+    const identityError = runtimeMismatch(sourceIdentity, packedIdentity)
+    if (identityError) throw new Error(`packed runtime identity differs from source: ${identityError}`)
     execFileSync(process.execPath, [join(pkgRoot, 'companion', 'build.mjs'), '--check'], {
       cwd: pkgRoot,
       stdio: 'inherit',

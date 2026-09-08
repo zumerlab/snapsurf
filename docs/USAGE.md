@@ -32,6 +32,8 @@ look [id]         typed diff vs the baseline · with id: zoom one subtree
 find <text>       ranked whole-page search → clickable ids
 parent <id>       climb from a match to the CARD around it
 click <id|x,y> · type <text> · enter
+select <id> --value|--label <text>   choose an exact native option
+environment [--json '<settings>']  read or set this session's viewport/media
 text <id>         exact text of one node (numbers, titles)
 assert '<json>'   deterministic postcondition on the diff
 cp save|diff <n>  named baselines around risky actions (not undo)
@@ -46,6 +48,29 @@ node tools/browse.mjs serve --readonly                      # observe-only: muta
 node tools/browse.mjs serve --allow example.com,cdn.example.com
 node tools/browse.mjs serve --redact "Jane Doe,account@example.com"
 ```
+
+## Native selects and browser environment
+
+Use `browser_act({ action: "select", target, value: "yearly" })`, or provide an
+exact option `label` instead of `value`. It requires an enabled native select and
+one unambiguous enabled option; custom dropdowns still use normal clicks. The
+control emits `input` and `change` when its value changes. Selecting its current
+value is a no-op, visible as such in the next verification.
+
+`browser_environment` accepts `viewport: { width: 390, height: 844 }`,
+`colorScheme: "light" | "dark" | "no-preference"`, and
+`reducedMotion: "reduce" | "no-preference"`. Omit settings to read the current
+environment. Viewport dimensions are integers from 1 through 8192. CLI example:
+
+```bash
+node tools/browse.mjs environment --json '{"viewport":{"width":390,"height":844},"colorScheme":"dark","reducedMotion":"reduce"}'
+```
+
+Settings belong to one session, persist through navigation, and are inherited by
+popups. `browser_session_open` accepts the same settings for a new isolated session.
+These changes preserve cookies, storage and privacy rules. Select and environment
+actions do not consume the verification baseline: call `browser_verify` afterwards,
+then assert its `diffId`.
 
 ## Long text and document sources
 
@@ -115,7 +140,10 @@ changes.
 
 **The diff reads signal-first.** Wrapper chains of an added subtree are folded
 (`foldedWrappers` counts them; `changesTotal` is always the full diff; nothing is hidden
-from matchers). `geometryOnly: true` flags a diff that is only moved/resized *and*
+from matchers). State changes appear first, followed by content and actionability,
+then geometry. State entries preserve `from` and `to`. `changesShown`,
+`changesOmitted` and `changesOmittedByKind` explicitly describe the summary limit;
+assertions still evaluate the complete diff. `geometryOnly: true` flags a diff that is only moved/resized *and*
 changed no actionability, such as a container reflow. A framework re-render that
 replaces a node reports `possible-replacement` with both identities; added/removed
 matchers accept it with strict side reading and the check says
@@ -387,6 +415,13 @@ The daemon and its clients read these environment variables (the development-era
 A daemon started before 0.1.1 published its token under `~/.claude/snapdom-agent/` or
 the temporary directory; those paths are still read, so it stays discoverable. Stop it
 with `snapsurf stop` before starting a new one.
+
+MCP validates the daemon's immutable `runtime` identity (version, code fingerprint,
+protocol and capabilities) before executing tools. A stale daemon, even with the
+same package version, returns `SNAPSURF_DAEMON_INCOMPATIBLE`. Updating files does
+not update a running process. Preserve any sessions still needed, then explicitly
+stop the old process and start the updated one; MCP never kills it automatically.
+CLI `status` and `stop` remain available for managing older daemons.
 
 ```bash
 node tools/install-global.mjs

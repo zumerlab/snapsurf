@@ -1,9 +1,9 @@
 {
   "source": "https://github.com/zumerlab/snapdom",
-  "commit": "08043c1d9a9765655628f4bf4c0584453a52d5b2",
+  "commit": "ae3e02845ddae7a7c1aac76149af096223e3a715",
   "version": "3.0.0-beta.0",
   "artifacts": {
-    "dist/snapdom.mjs": "d0943650ba0df52dbbad24468875cf6fb11f3ccd21ed77010827bdaf8f0af88b",
+    "dist/snapdom.mjs": "5954dc9492094678d000b5d330764b9023ec127d8d80502b56a4c82b6c78d856",
     "plugins/gif-export.js": "1365c8f9c73566f69995b66d48d48a72866f1ff3f20980a23c62f036d13c46ac",
     "plugins/video-export.js": "cf880b5fa9975788bed70add8a6e14358eeada6dd5db38c717dad00938b4d925",
     "plugins/capture-frames.js": "3deb244a549703cfb8ed0c37f41a5e99d2a6ef1d0cf6e1d06512a87bb69acbe8",
