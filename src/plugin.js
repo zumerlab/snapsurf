@@ -22,6 +22,7 @@ import { diffSnapshots } from './diff.js'
 import { makeCheckpoint, inflateCheckpoint, inflateCheckpointChunked } from './checkpoint.js'
 import { makeQueryApi } from './query.js'
 import { hash } from './hash.js'
+import { recordCarriedContent } from './carried.js'
 
 // A realm-local counter restarts after reload and in every iframe/worker realm. A
 // persisted checkpoint could therefore donate an id to a genuinely new node and make the
@@ -221,6 +222,25 @@ function applyPrivacy(snapshot, privacy, tally) {
         : hash('t', safeRawText, authoredHash)
       next.stateHash = hash('s', JSON.stringify(next.state), valueSignal)
       next.styleHash = privateStyleHash(inputs.styleParts, rules, tally, id)
+      // Cross-page resource comparison has its own resolved href inputs. Redact
+      // after resolution too: secrets can live in the document's base URL.
+      const safeCarried = (inputs.carriedParts || inputs.authoredParts).map(([kind, value]) => [
+        kind,
+        (() => {
+          const safe = redactText(value, rules, tally, kind, id)
+          if (safe === '[redacted]' || !['href', 'src', 'srcset', 'current-src'].includes(kind)) return safe
+          let decoded = value
+          for (let i = 0; i < 2; i++) {
+            try {
+              const nextDecoded = decodeURIComponent(decoded)
+              if (nextDecoded === decoded) break
+              decoded = nextDecoded
+            } catch { break }
+          }
+          return redactText(decoded, rules, tally, kind, id) === '[redacted]' ? '[redacted]' : safe
+        })(),
+      ])
+      recordCarriedContent(next, safeText, safeCarried)
     } else {
       // Defensive fallback for a caller that invokes buildUi(rawObservation, {privacy})
       // after observing without privacy collection. Never retain opaque raw signatures:

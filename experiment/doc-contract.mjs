@@ -21,6 +21,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import process from 'node:process'
 import console from 'node:console'
@@ -54,7 +56,12 @@ const NOT_RESPONSE_FIELDS = new Set([
 // ── Fixture ──────────────────────────────────────────────────────────────────────────
 const LONG_TEXT = `${'padding '.repeat(700)}tail-token-here`
 const DOCUMENT_PATH = '/download?edition=' + 'public-research-'.repeat(12) + '#page=3'
+const EMBEDDED_HREF = 'data:image/png;base64,' + 'A'.repeat(10000)
 const PAGES = {
+  '/embedded': { status: 200, headers: {}, body: `<!doctype html><a href="${EMBEDDED_HREF}">Download generated image</a>` },
+  '/images': { status: 200, headers: {}, body: '<!doctype html><h1>Holiday information</h1>' +
+    Array.from({ length: 4 }, () => '<img alt="" width="160" height="90" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E">').join('') +
+    '<img style="display:none" alt="Hidden image" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E">' },
   '/page': { status: 200, headers: {}, body: '<!doctype html><html><head><title>Doc contract</title></head><body>' +
     '<h1>Contact</h1><a href="/security">disclosure</a><a href="mailto:jdoe@corp.com">write</a>' +
     '<form><input type="email" placeholder="john@company.com"></form>' +
@@ -120,6 +127,20 @@ const requireContract = (condition, message, evidence) => {
 }
 
 const initial = await run('open', 'open', [U('/page')])
+requireContract(initial.meta?.runtime?.version && /^[a-f0-9]{64}$/.test(initial.meta?.runtime?.build || ''),
+  'open must identify the actual running version/build for reproducible feedback', initial.meta?.runtime)
+const initialMap = await run('map', 'map', ['0'])
+requireContract(initialMap.meta?.map?.length === initialMap.meta?.returned && initialMap.meta.total >= initialMap.meta.returned &&
+  initialMap.meta.observationId === initial.meta.observationId && initialMap.meta.map.some(entry => entry.href === U('/security')),
+'map must deliver structured observed entries and full link destinations', initialMap.meta)
+const screenshotDir = await mkdtemp(join(tmpdir(), 'snapsurf-doc-capture-'))
+try {
+  const captured = await run('snap', 'snap', [join(screenshotDir, 'capture.png')])
+  requireContract(captured.ok === true && captured.meta?.capture?.renderer === 'snapdom' &&
+    captured.meta.capture.engine?.version && captured.meta.capture.engine?.commit &&
+    captured.meta.capture.coverage?.status === 'no-known-omissions',
+  'screenshot must identify its engine and the scope of its iframe coverage check', captured.meta?.capture)
+} finally { await rm(screenshotDir, { recursive: true, force: true }) }
 const documentLink = initial.meta?.digest?.top?.find((entry) => entry.n === 'Research report PDF')
 requireContract(documentLink?.href === U(DOCUMENT_PATH) && documentLink?.document?.url === U(DOCUMENT_PATH),
   'digest must retain the complete absolute document URL including a long query and fragment', documentLink)
@@ -215,7 +236,10 @@ if (unavailable.meta?.assert?.pass !== false || unavailable.meta?.assert?.error?
 await run('look-changed', 'open', [U('/other')])           // a second page → a real diff
 await run('look', 'look', [])
 await run('challenge', 'open', [U('/cf')])                 // blocked / challenge / vendors
-await run('failure', 'open', ['https://nope-' + Date.now() + '.invalid/'])
+const failedNavigation = await run('failure', 'open', ['https://nope-' + Date.now() + '.invalid/'])
+requireContract(failedNavigation.ok === false && failedNavigation.meta?.navigationCompleted === false &&
+  failedNavigation.meta.finalUrl === null && failedNavigation.meta.failure?.layer === 'dns',
+'a failed navigation must not present its previous URL as the observed destination', failedNavigation.meta)
 // split card: `parent` on the title must deliver `siblingRowText`
 await run('split-open', 'open', [U('/split')])
 const splitFind = await run('split-find', 'find', ['Split card story headline'])
@@ -223,8 +247,29 @@ const splitId = splitFind.meta?.matches?.[0]?.id
 if (splitId) await run('split-parent', 'parent', [splitId])
 // a document whose load cannot finish: `open` must deliver `loading`, never silence
 await run('loading', 'open', [U('/hung')])
-const sid = (await run('session', 'session', ['open'])).meta?.sessionId
+const createdSession = await run('session', 'session', ['open'])
+const sid = createdSession.meta?.sessionId
+requireContract(createdSession.sessionId === sid && createdSession.epoch === 0 && createdSession.url === 'about:blank' &&
+  createdSession.meta.runtime?.build === initial.meta.runtime?.build,
+'session creation must identify one coherent fresh session and its runtime', createdSession)
 if (sid) { await run('session-open', 'open', [U('/page')], sid); await run('session-close', 'session', ['close', sid]) }
+const imagePage = await run('image-open', 'open', [U('/images')])
+const visual = imagePage.meta?.digest?.visualContent
+requireContract(visual?.count === 4 && visual.textExtracted === false && visual.examples?.length === 3 && visual.examplesOmitted === 1,
+  'image hints must declare unread pixels with bounded examples, excluding hidden images', visual)
+const noCalendar = await run('image-negative-find', 'find', ['Calendar'])
+requireContract(noCalendar.meta?.matches?.length === 0 && visual?.textExtracted === false,
+  'a negative text search must coexist with explicit unread image evidence', noCalendar.meta)
+const embedded = await run('embedded-open', 'open', [U('/embedded')])
+const download = embedded.meta?.digest?.top?.find(entry => entry.n === 'Download generated image')
+requireContract(download?.resource?.payloadOmitted === true && !download.href && JSON.stringify(embedded).length < 12000,
+  'embedded payloads must have a bounded descriptor instead of an enormous href', download)
+if (download?.id) {
+  const recovered = await run('embedded-read', 'text', [download.id, '--source', 'href', '--max-chars', '64'])
+  requireContract(recovered.meta?.text === EMBEDDED_HREF.slice(0, 64) && recovered.meta.truncated === true &&
+    recovered.meta.continuation?.source === 'href',
+  'explicit href recovery must preserve bounded chunks and their continuation source', recovered.meta)
+}
 await run('redact', 'open', [U('/page'), '--redact-json', JSON.stringify(['security'])])
 await run('redact-find', 'find', ['disclosure'])
 await run('redact-off', 'redact', ['off'])

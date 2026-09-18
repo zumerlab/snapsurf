@@ -968,13 +968,13 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
     }
     const nodes = new Map()
     for (const [id, node] of source.nodes) {
-      nodes.set(rename(id), {
+      nodes.set(rename(id), window.__agentCopyCarriedContent(node, {
         ...node,
         id: rename(node.id),
         parentId: rename(node.parentId),
         childIds: node.childIds.map(rename),
         coveredBy: renameRef(node.coveredBy),
-      })
+      }))
     }
     const elements = new Map()
     for (const [id, element] of source.elements) elements.set(rename(id), element)
@@ -1109,6 +1109,7 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
       if (e.n && seen.has(e.n)) continue
       if (e.n) seen.add(e.n)
       let href = null
+      let resource
       let documentHint
       try {
         const el = ui.__snapshot.elements.get(e.id)
@@ -1122,7 +1123,9 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
           // `href:"/security"` rode along in the same payload — self-contradictory, and
           // worse than no policy because the attestation invites trust. Secrets live in
           // path segments and query values routinely (/users/jdoe, ?email=…).
-          href = window.__agentRedactUrl(href)
+          const destination = window.__agentHrefSummary(href, e.id, observationId)
+          href = destination.href
+          resource = destination.resource
           if ((el.getAttribute('type') || '').toLowerCase() === 'application/pdf' || /\.pdf$/i.test(u.pathname)) {
             documentHint = { type: 'pdf', url: href, title: e.n || null, evidence: (el.getAttribute('type') || '').toLowerCase() === 'application/pdf' ? 'link-type' : 'url-extension', reader: 'external-pdf-reader', source: { observationId, id: e.id } }
           }
@@ -1140,7 +1143,7 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
         if (e.n && el0 && /^(input|textarea)$/i.test(el0.tagName) && !el0.value && el0.placeholder &&
             String(el0.placeholder).trim() === String(e.n).trim()) ph = true
       } catch { /* not a form control */ }
-      top.push({ id: e.id, r: e.r, ...(e.n ? { n: e.n.slice(0, 90) } : {}), ...(ph ? { placeholder: true } : {}), ...(compact ? {} : { b: e.b }), href, ...(documentHint ? { document: documentHint } : {}), ...(compact ? {} : { s: sectionOf(ui.__snapshot.elements.get(e.id)) }), c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })
+      top.push({ id: e.id, r: e.r, ...(e.n ? { n: e.n.slice(0, 90) } : {}), ...(ph ? { placeholder: true } : {}), ...(compact ? {} : { b: e.b }), href, ...(resource ? { resource } : {}), ...(documentHint ? { document: documentHint } : {}), ...(compact ? {} : { s: sectionOf(ui.__snapshot.elements.get(e.id)) }), c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })
       if (top.length >= 15) break
     }
     const marks = []
@@ -1214,6 +1217,18 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
       if (!shown.has(c)) changesOmittedByKind[c.kind] = (changesOmittedByKind[c.kind] || 0) + 1
     }
   }
+  if (digest) {
+    // An image's accessible name is not a reading of the pixels inside it. Keep
+    // this separate from semantic blind spots: a negative text search cannot
+    // establish that a calendar/chart/document depicted in an image is absent.
+    const images = [...(ui.__view || ui.__snapshot).nodes.values()]
+      .filter((node) => node.tag === 'img' && node.visible)
+    if (images.length) digest.visualContent = {
+      kind: 'images', count: images.length, textExtracted: false,
+      examples: images.slice(0, 3).map((node) => ({ id: node.id, name: (node.name || '').slice(0, 80) })),
+      examplesOmitted: Math.max(0, images.length - 3),
+    }
+  }
   return {
     observationId,
     observedUrl: (location.origin === 'null' ? location.href : location.origin + location.pathname),
@@ -1249,6 +1264,50 @@ const observe = async ({ previous, previousObservationId, scopeId, parentOfId, p
     walkDetail: { slices: window.__SD_SLICES.slices || 0, maxSliceMs: Math.round(window.__SD_SLICES.maxSliceMs || 0) },
   }
 }
+// Data URLs are resources, not useful navigation prose. Keep ordinary destinations
+// complete, but make embedded payloads explicit and recoverable in bounded slices.
+const inHrefSummary = (raw, id, observationId) => {
+  if (!raw) return { href: null }
+  let href = String(raw)
+  try {
+    const url = new URL(href, location.href)
+    if (url.origin !== 'null' || url.protocol === 'data:') href = url.href
+  } catch { /* preserve a malformed authored destination for diagnosis */ }
+  href = window.__agentRedactUrl(href)
+  if (!/^data:/i.test(href)) return { href }
+  const comma = href.indexOf(',')
+  const semicolon = href.indexOf(';')
+  const end = comma < 0 ? href.length : comma
+  const typeEnd = semicolon >= 5 && semicolon < end ? semicolon : end
+  const type = href.slice(5, Math.min(typeEnd, 105))
+  const mimeType = comma < 0 || typeEnd - 5 > 100 ? 'unknown' : !type ? 'text/plain'
+    : /^[\w!#$&^.+-]+\/[\w!#$&^.+-]+$/.test(type) ? type.toLowerCase() : 'unknown'
+  return {
+    href: null,
+    resource: {
+      scheme: 'data', mimeType, encodedChars: href.length, payloadOmitted: true,
+      recovery: { id, source: 'href', maxChars: 600, offset: 0, observationId },
+    },
+  }
+}
+
+// A display:contents wrapper has no own box but can own rendered text. This is a
+// reading predicate only: action/capture resolvers continue requiring a real box.
+const inTextEligibility = (el) => {
+  const style = getComputedStyle(el)
+  if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false
+  for (let cur = el; cur; cur = cur.parentElement) {
+    const cs = getComputedStyle(cur)
+    if (cs.display === 'none' || Number(cs.opacity) === 0) return false
+  }
+  const box = el.getBoundingClientRect()
+  if (box.width > 0 && box.height > 0) return true
+  if (style.display !== 'contents') return false
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  return [...range.getClientRects()].some((rect) => rect.width > 0 && rect.height > 0)
+}
+
 const inFind = (query) => {
   // Ranked, not DOM-ordered (T5 lesson: DOM order returned eBay's related-search CHIPS
   // before the actual listing titles). Detail links with real hrefs, long names and
@@ -1256,7 +1315,7 @@ const inFind = (query) => {
   // model can tell /itm/ from /sch/ BEFORE clicking.
   const ui = window.__lastUi
   if (!ui) return null
-  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim()
   const q = norm(query)
   const NAVISH = 'nav,header,footer,aside,[role="navigation"],[role="banner"],[role="contentinfo"],[role="complementary"]'
   const cands = new Map()
@@ -1267,6 +1326,8 @@ const inFind = (query) => {
     let name = n ? String(n) : ''
     const el = ui.__snapshot.elements.get(id)
     if (!el || !el.isConnected || el.ownerDocument !== document) return
+    const snapshotNode = (ui.__view || ui.__snapshot).nodes.get(id)
+    if (!snapshotNode?.visible && !window.__agentTextEligibility(el)) return
     // A native select's DOM text is its entire option list, not its accessible
     // name. Use the full privacy-view name (the actionable map may abbreviate it)
     // for both matching and display; never replace a label with option contents.
@@ -1314,32 +1375,25 @@ const inFind = (query) => {
     if (r === 'generic' || r === 'table' || r === 'row' || r === 'cell' || r === 'rowgroup') s -= 2
     // Preserve a complete destination in the machine contract, including the origin,
     // query and fragment. Presentation may abbreviate, navigation must not.
-    let shortHref = null
-    if (href) {
-      try {
-        const u = new URL(href, location.href)
-        // mailto:/tel:/sms: are NOT hierarchical: their `origin` is the STRING "null",
-        // so the old concatenation emitted "nullinfo@example.com" and a consumer
-        // resolving that against the page origin got a broken URL (field report §3.1).
-        // Non-hierarchical schemes carry everything in the href already — pass it through.
-        shortHref = u.origin === 'null'
-          ? String(href)
-          : u.href
-      } catch { shortHref = String(href) }
-      // same policy as the digest: an href is not exempt. mailto:/tel: pass through
-      // intact ONLY when no rule matches them — documented passthrough is not a bypass.
-      shortHref = window.__agentRedactUrl(shortHref)
-    }
+    const destination = window.__agentHrefSummary(href, id, ui.__observationId)
     // `n` stays for compatibility; `text` is the same string under a name that says what
     // it is. A field called `name` reads as an accessible-name label, so callers went
     // looking for the body elsewhere and burned a round trip on it (field report §3.2).
     // `truncated` marks a cut, which used to happen mid-token with no marker (§3.4).
     const full = String(name)
     const cut = full.length > 160
+    const normalized = norm(full)
+    const wordChar = (value) => /[\p{L}\p{N}_]/u.test(value || '')
+    let wholePhrase = false
+    for (let at = q ? normalized.indexOf(q) : -1; at >= 0; at = normalized.indexOf(q, at + 1)) {
+      if ((!wordChar(q[0]) || !wordChar(normalized[at - 1])) &&
+          (!wordChar(q.at(-1)) || !wordChar(normalized[at + q.length]))) { wholePhrase = true; break }
+    }
     cands.set(id, {
       id, r, n: full.slice(0, 160), text: full.slice(0, 160),
-      truncated: cut || undefined, b, href: shortHref, s,
+      truncated: cut || undefined, b, ...destination, s, fullChars: full.length, fullName: full,
       exact: roleExact || norm(full) === q,
+      quality: roleExact || normalized === q ? 3 : wholePhrase ? 2 : 1,
       actionable: !!actionable,
     })
   }
@@ -1356,6 +1410,7 @@ const inFind = (query) => {
   const area = (c) => c.b ? c.b[2] * c.b[3] : Infinity
   const better = (c, prev) =>
     (c.actionable && !prev.actionable) ||
+    (!c.actionable && !prev.actionable && c.r !== 'main' && prev.r === 'main') ||
     (c.actionable === prev.actionable && c.exact && !prev.exact) ||
     (c.actionable === prev.actionable && c.exact === prev.exact && c.s > prev.s) ||
     (c.actionable === prev.actionable && c.exact === prev.exact && c.s === prev.s && area(c) < area(prev))
@@ -1364,7 +1419,7 @@ const inFind = (query) => {
       byName.set(`\u0000${c.id}`, [c])
       continue
     }
-    const group = byName.get(c.n) || []
+    const group = byName.get(c.fullName) || []
     const el = ui.__snapshot.elements.get(c.id)
     const related = group.findIndex((prev) => {
       const prevEl = ui.__snapshot.elements.get(prev.id)
@@ -1372,24 +1427,47 @@ const inFind = (query) => {
     })
     if (related < 0) group.push(c)
     else if (better(c, group[related])) group[related] = c
-    byName.set(c.n, group)
+    byName.set(c.fullName, group)
   }
   const deduped = []
   for (const group of byName.values()) {
     for (const candidate of group) deduped.push(candidate)
   }
-  return deduped
-    .sort((a, b) => Number(b.exact) - Number(a.exact) || Number(b.actionable) - Number(a.actionable) || b.s - a.s || area(a) - area(b))
+  const ranked = deduped
+    .sort((a, b) => b.quality - a.quality || Number(b.actionable) - Number(a.actionable) ||
+      (!a.actionable && !b.actionable ? a.fullChars - b.fullChars : 0) || b.s - a.s || area(a) - area(b))
     .slice(0, 12)
-    .map(({ exact: _exact, actionable: _actionable, ...candidate }) => candidate)
+  const element = (match) => ui.__snapshot.elements.get(match.id)
+  const promoted = new Map()
+  for (const match of ranked) {
+    if (match.r !== 'heading') continue
+    // Headings locate sections; their context should include the explanatory prose.
+    const section = ranked.filter((other) => other.id !== match.id &&
+      /^(section|article|div)$/.test(element(other)?.localName || '') &&
+      element(other).contains(element(match)) && other.fullChars > match.fullChars + 20)
+      .sort((a, b) => a.fullChars - b.fullChars)[0]
+    if (section) promoted.set(match.id, section.id)
+  }
+  const selected = []
+  for (const match of [...ranked].filter((entry) => !promoted.has(entry.id)).sort((a, b) => b.quality - a.quality || a.fullChars - b.fullChars)) {
+    const overlap = selected.find((other) => element(match).contains(element(other)) || element(other).contains(element(match)))
+    if (overlap) match.contextCoveredBy = overlap.id
+    else { match.contextPriority = selected.length; selected.push(match) }
+  }
+  for (const [id, target] of promoted) {
+    const section = ranked.find((entry) => entry.id === target)
+    ranked.find((entry) => entry.id === id).contextCoveredBy = section.contextCoveredBy || section.id
+  }
+  return ranked.map(({ exact: _exact, actionable: _actionable, quality: _quality, fullChars: _fullChars, fullName: _fullName, ...candidate }) => candidate)
 }
 // Freeze the first redacted text read on the UI that owns the id. Reading subsequent
 // slices from live innerText would silently splice two versions of an updating article.
 // The cache dies with that observation/document; the shared resolver still rejects
 // detached/hidden ids and invalidates every old-policy view before this helper runs.
-const inReadText = ({ id, maxChars, offset, observationId }) => {
-  const resolved = window.__agentResolveUi(id, { requireBox: true })
+const inReadText = ({ id, maxChars, offset, observationId, source = 'text' }) => {
+  const resolved = window.__agentResolveUi(id)
   if (!resolved) return { error: 'unknown or detached id — re-observe and retry' }
+  if (!window.__agentTextEligibility(resolved.el)) return { error: 'node has no readable rendered content — choose a visible descendant or re-observe after visibility changes' }
   // History API navigation retains connected DOM nodes and the same JS realm, so
   // resolver success alone cannot establish that a cached section belongs to this URL.
   if (resolved.ui.__url !== location.href) return { error: 'text observation URL changed — re-observe, re-find and start at offset 0' }
@@ -1401,13 +1479,33 @@ const inReadText = ({ id, maxChars, offset, observationId }) => {
   // Refuse additional snapshots instead of evicting one and later silently rebuilding
   // its continuation from changed live text under the same observation identity.
   const cache = resolved.ui.__textReads || (resolved.ui.__textReads = { entries: new Map(), chars: 0 })
-  let saved = cache.entries.get(id)
+  const cacheKey = source === 'href' ? `href:${id}` : id
+  let saved = cache.entries.get(cacheKey)
   if (!saved && offset > 0) return { error: 'no initial text read for this id and observation — start at offset 0' }
   if (!saved) {
     const el = resolved.el
-    const full = window.__agentRedact((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim())
+    const rawHref = source === 'href' ? el.getAttribute('href') : null
+    if (source === 'href' && rawHref === null) return { error: 'node has no href resource' }
+    let resourceHref = rawHref
+    if (source === 'href') {
+      try {
+        const url = new URL(resourceHref, location.href)
+        if (url.origin !== 'null' || url.protocol === 'data:') resourceHref = url.href
+      } catch { /* preserve an invalid authored destination */ }
+    }
+    // Literal URL redaction cannot establish safety of arbitrary encoded binary
+    // content. Refuse those reads under an active policy rather than bypass it.
+    if (source === 'href' && /^data:/i.test(resourceHref) && window.__SD_PRIVACY?.redact?.length) {
+      return { error: 'embedded resource payload unavailable while privacy rules are active' }
+    }
+    let full
+    if (source === 'href') {
+      full = window.__agentRedactUrl(resourceHref)
+    } else {
+      full = window.__agentRedact((typeof el.innerText === 'string' ? el.innerText : el.textContent || '').replace(/\s+/g, ' ').trim())
+    }
     const name = resolved.node && (resolved.node.name || '')
-    saved = full ? { text: full, source: 'inner-text' }
+    saved = full ? { text: full, source: source === 'href' ? 'href' : 'inner-text' }
       : name ? { text: window.__agentRedact(String(name)), source: 'accessible-name' }
         : { text: '', source: 'none' }
     if (cache.chars + saved.text.length > 1_000_000 || cache.entries.size >= 128) {
@@ -1415,7 +1513,7 @@ const inReadText = ({ id, maxChars, offset, observationId }) => {
     }
     saved.capturedAt = new Date().toISOString()
     cache.chars += saved.text.length
-    cache.entries.set(id, saved)
+    cache.entries.set(cacheKey, saved)
   }
   if (offset > saved.text.length) return { error: `offset exceeds totalChars (${saved.text.length})` }
   const text = saved.text.slice(offset, offset + maxChars)
@@ -1425,7 +1523,7 @@ const inReadText = ({ id, maxChars, offset, observationId }) => {
     text, textSource: saved.source, capturedAt: saved.capturedAt, observationId: currentObservationId,
     offset, maxChars, returnedChars: text.length, totalChars: saved.text.length,
     truncated, nextOffset: truncated ? nextOffset : null,
-    continuation: truncated ? { id, maxChars, offset: nextOffset, observationId: currentObservationId } : null,
+    continuation: truncated ? { id, maxChars, offset: nextOffset, observationId: currentObservationId, ...(source === 'href' ? { source } : {}) } : null,
   }
 }
 
@@ -1479,29 +1577,58 @@ const inLocate = (id) => {
   // (en.wikipedia) animate the default scroll ASYNC — the immediate re-measure read
   // the old position and the mouse clicked outside the viewport (silent no-op; the
   // echo still named the right element, which is how the v5 self-run caught it)
-  if (r.bottom < 0 || r.top > window.innerHeight) {
-    el.scrollIntoView({ block: 'center', behavior: 'instant' })
-    resolved = window.__agentResolveUi(id, { requireBox: true })
-    if (!resolved) return null
-    ;({ el, node: n, rect: r } = resolved)
-  }
-  const offscreen = r.bottom < 0 || r.top > window.innerHeight
-  // scroll didn't move it → almost always clipped inside a scrollable/collapsed
-  // ancestor (wikipedia navbox <tr>): scrollIntoView moves NEITHER the container nor
-  // the window, and a user can't see the element either — name the container
+  // Both axes and scrollable ancestors matter. A tall card can intersect the viewport
+  // while its midpoint is below it; choose a hit-tested point from the visible portion.
+  el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
+  resolved = window.__agentResolveUi(id, { requireBox: true })
+  if (!resolved) return null
+  ;({ el, node: n, rect: r } = resolved)
   let clippedBy = null
-  if (offscreen) {
-    let cur = el.parentElement
-    while (cur && cur !== document.documentElement) {
-      const s = getComputedStyle(cur)
-      if (s.overflowY !== 'visible' && cur.scrollHeight > cur.clientHeight + 1) {
-        clippedBy = (cur.localName + (cur.className ? '.' + String(cur.className).trim().split(/\s+/)[0] : '')).slice(0, 40)
-        break
-      }
-      cur = cur.parentElement
+  // Hit testing follows the rendered (composed) tree: assigned light-DOM content
+  // reaches its slot before the host, exactly like the click event's composed path.
+  const parentOf = (node) => node.assignedSlot || node.parentElement || node.getRootNode()?.host || null
+  const bounds = { left: 0, top: 0, right: innerWidth, bottom: innerHeight }
+  for (let cur = parentOf(el); cur; cur = parentOf(cur)) {
+    const style = getComputedStyle(cur)
+    const box = cur.getBoundingClientRect()
+    // The root/body scrollport is already represented by the viewport. Its border
+    // box can be much larger than that viewport and must not become a fake clip.
+    if (cur === document.documentElement || cur === document.body) continue
+    for (const [axis, start, end] of [['X', 'left', 'right'], ['Y', 'top', 'bottom']]) {
+      if (style['overflow' + axis] === 'visible') continue
+      bounds[start] = Math.max(bounds[start], box[start])
+      bounds[end] = Math.min(bounds[end], box[end])
+      clippedBy ||= cur.localName
     }
   }
-  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), offscreen, clippedBy,
+  const belongsTo = (hit, target) => {
+    for (let node = hit; node; node = parentOf(node)) if (node === target) return true
+    return false
+  }
+  const acceptsHit = (x, y) => {
+    let hit = document.elementFromPoint(x, y)
+    while (hit?.shadowRoot) {
+      const inner = hit.shadowRoot.elementFromPoint(x, y)
+      if (!inner || inner === hit) break
+      hit = inner
+    }
+    return !!hit && (belongsTo(hit, el) || [...(el.labels || [])].some((label) => belongsTo(hit, label)))
+  }
+  let visible = false
+  let point = null
+  for (const box of el.getClientRects()) {
+    const left = Math.max(box.left, bounds.left), right = Math.min(box.right, bounds.right)
+    const top = Math.max(box.top, bounds.top), bottom = Math.min(box.bottom, bounds.bottom)
+    if (right - left <= 0 || bottom - top <= 0) continue
+    visible = true
+    for (const [fx, fy] of [[0.5, 0.5], [0.1, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.9], [0.5, 0.1], [0.5, 0.9], [0.1, 0.5], [0.9, 0.5]]) {
+      const x = left + (right - left) * fx, y = top + (bottom - top) * fy
+      if (acceptsHit(x, y)) { point = { x, y }; break }
+    }
+    if (point) break
+  }
+  return { ...(point || { x: r.left + r.width / 2, y: r.top + r.height / 2 }), offscreen: !visible,
+    ...(visible && !point ? { covered: true } : {}), ...(!visible && clippedBy ? { clippedBy } : {}),
     role: n && n.role, name: n && (n.name || (n.text || '').slice(0, 40)),
     ...(revived ? { revived } : {}) }
 }
@@ -1509,7 +1636,7 @@ const inLocate = (id) => {
 // Native select uses the same isolated, epoch-scoped resolver as other id actions.
 // Validation and option mutation are atomic: a page cannot replace a selector target
 // between those steps. No raw form value or chosen label is returned to the caller.
-const inSelectNative = ({ id, by, choice }) => {
+const inSelectNative = ({ id, by, choice, point }) => {
   const resolved = window.__agentResolveUi(id, { requireBox: true })
   if (!resolved) return { denied: 'unresolved', reason: 'unknown or detached id — re-observe and retry' }
   const { el, rect: r } = resolved
@@ -1517,8 +1644,8 @@ const inSelectNative = ({ id, by, choice }) => {
   if (el.multiple) return { denied: 'multiple-select', reason: 'multiple selects are not supported by this single-choice action' }
   if (el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true') return { denied: 'disabled', reason: 'select is disabled' }
   const style = getComputedStyle(el)
-  const x = Math.max(0, Math.min(innerWidth - 1, r.left + r.width / 2))
-  const y = Math.max(0, Math.min(innerHeight - 1, r.top + r.height / 2))
+  const x = point?.x ?? Math.max(0, Math.min(innerWidth - 1, r.left + r.width / 2))
+  const y = point?.y ?? Math.max(0, Math.min(innerHeight - 1, r.top + r.height / 2))
   if (style.visibility !== 'visible' || style.display === 'none' || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) {
     return { denied: 'offscreen', reason: 'select is hidden or outside the viewport' }
   }
@@ -1592,6 +1719,8 @@ async function evaluateIsolated(S, page, fn, arg) {
     functionDeclaration: `function(payload) {
       globalThis.__SD_PRIVACY = payload.policy;
       globalThis.__SD_PRIVACY_REV = payload.revision;
+      globalThis.__agentHrefSummary = ${String(inHrefSummary)};
+      globalThis.__agentTextEligibility = ${String(inTextEligibility)};
       if (globalThis.__lastCp && globalThis.__lastCpPolicyRev !== payload.revision) {
         globalThis.__lastCp = null;
         globalThis.__lastCpUrl = null;
@@ -1957,6 +2086,10 @@ async function detectChallenge(S, resp) {
       text: text.length,
       // what a HUMAN is being shown, for the walls that hide from markup markers
       sample: text.slice(0, 2000),
+      // A quotation in an article is content, not a wall. Require the actual short
+      // page heading plus the recovery instructions rather than a substring alone.
+      networkWallHeading: [...document.querySelectorAll('h1,h2,[role="heading"]')].some((heading) =>
+        !heading.closest('article,blockquote,pre,code') && /^you(?:'|’)?ve been blocked by network security\.?$/i.test((heading.innerText || '').trim())),
     }
   }).catch(() => null)
   if (!probe) {
@@ -2009,6 +2142,9 @@ async function detectChallenge(S, resp) {
   // Blocked without a recognised vendor still beats silence.
   if (captchaUrl && probe.text < 800) {
     return { blocked: true, vendor: 'unknown', reason: 'captcha_wall', status, signal: 'captcha wall URL with thin body' }
+  }
+  if (probe.networkWallHeading && probe.text < 1600 && /log\s*in.{0,80}reddit|developer token|file a ticket/i.test(probe.sample)) {
+    return { blocked: true, vendor: 'unknown', reason: 'network_security_wall', status, signal: 'network-security wall heading with recovery instructions' }
   }
   if ((status === 403 || status === 429) && probe.text < 400) {
     return { blocked: true, vendor: 'unknown', reason: 'http_' + status, status, signal: 'status with near-empty body' }
@@ -2131,8 +2267,12 @@ const HANDLERS = {
       const e = navigationError
       const failure = classifyNetError(e)
       if (!failure) throw e
-      S.meta = { ...await navigationMeta(S, full, resp), failure }
-      return `⛔ ${failure.layer.toUpperCase()} failure: ${failure.code} — the request never reached an HTTP response. structuredContent.failure carries {layer, code, hostUp}; this is NOT a bot block and NOT an empty page.`
+      S.meta = {
+        ...await navigationMeta(S, full, resp, resp ? resp.url() : null),
+        navigationCompleted: false, baselineAdvanced: false,
+        retainedUrl: safeUrl(S.page.url(), S.redact), failure,
+      }
+      return `⛔ ${failure.layer.toUpperCase()} failure: ${failure.code} — ${resp ? 'navigation did not complete' : 'the request never reached an HTTP response'}. structuredContent.failure carries {layer, code, hostUp}; this is NOT a bot block and NOT an empty page.`
     }
     const navMs = Date.now() - tNav
     // r5–7 P1: goto returns at domcontentloaded, and settle's quiet window expires long
@@ -2226,7 +2366,7 @@ const HANDLERS = {
     // told to read structuredContent was getting matches from `find` and nothing from
     // `open`, which reads as "the page did not serialise".
     S.meta = { observationId: o.observationId, baselineAdvanced: o.baselineAdvanced, mapTotal: o.mapTotal, torn: o.torn, unobservable: o.unobservable, unobservableDetails: o.unobservableDetails, ...(policyChangeMeta || {}), ...(S.redactWarnings.length ? { ruleWarnings: S.redactWarnings } : {}), ...auth, ...(challenge ? { blocked: true, challenge } : {}), ...(challengeCleared !== undefined ? { challengeCleared } : {}), ...(stillLoading ? { loading: { readyState, waitedMs: loadMs } } : {}), ...(latePaint ? { latePaint: true } : {}), ...(o.digest ? { digest: o.digest } : {}), ...(carried ? { carried } : {}), nav: navMs, ...(loadMs > 50 ? { loadWait: loadMs } : {}), settle: s, walk: Date.now() - tWalk, walkDetail: o.walkDetail, ...(o.privacy ? { privacy: { policyRevision: S.policyRev, rulesActive: o.privacy.rulesActive, applied: true }, __audit: o.privacy } : {}) }
-    Object.assign(S.meta, navigation)
+    Object.assign(S.meta, navigation, { navigationCompleted: true })
     // Say it in the prose too: a model reading the text must not mistake a challenge for
     // a page that simply has little on it.
     const banner = challenge
@@ -2293,15 +2433,23 @@ const HANDLERS = {
     // consumer must find exactly that (codex v4 caught the r/n abbreviation drift).
     // `text` alongside `name` (same string, honest label) and an explicit `truncated`
     // flag, so a caller knows a value was cut instead of recording a corrupt one.
-    S.meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n ? m.n.slice(0, 120) : undefined, text: m.text ? m.text.slice(0, 120) : undefined, truncated: (m.truncated || (m.text || '').length > 120) || undefined, href: m.href || undefined })) }
+    S.meta = { matches: matches.map((m) => ({ id: m.id, role: m.r, name: m.n ? m.n.slice(0, 120) : undefined, text: m.text ? m.text.slice(0, 120) : undefined, truncated: (m.truncated || (m.text || '').length > 120) || undefined, href: m.resource ? null : m.href || undefined, ...(m.resource ? { resource: { ...m.resource, recovery: { ...m.resource.recovery, sessionId: S.id } } } : {}) })) }
     if (contextChars !== undefined) {
       let remaining = contextChars
       let included = 0
-      for (const match of S.meta.matches) {
-        if (!remaining) break
+      for (const original of [...matches].sort((a, b) => (a.contextPriority ?? Infinity) - (b.contextPriority ?? Infinity))) {
+        const match = S.meta.matches.find((entry) => entry.id === original.id)
+        if (original.contextCoveredBy) {
+          const covering = S.meta.matches.find((entry) => entry.id === original.contextCoveredBy)
+          match.contextOmittedReason = covering?.context ? 'overlap' : covering?.contextOmittedReason || 'budget'
+          if (covering?.context) match.contextCoveredBy = original.contextCoveredBy
+          continue
+        }
+        if (!remaining) { match.contextOmittedReason = 'budget'; continue }
         const context = await inPage(S, inReadText, { id: match.id, maxChars: remaining, offset: 0 })
         if (context.error) {
           match.contextError = context.error
+          match.contextOmittedReason = 'unreadable'
           continue
         }
         if (context.continuation) context.continuation.sessionId = S.id
@@ -2364,17 +2512,39 @@ const HANDLERS = {
       const ui = window.__lastUi
       if (!ui) return null
       return {
+        observationId: ui.__observationId,
         total: ui.agentMap.map.length,
-        slice: ui.agentMap.map.slice(from, from + 40).map((e) => ({ id: e.id, r: e.r, n: e.n, b: e.b, c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined })),
+        slice: ui.agentMap.map.slice(from, from + 40).map((e) => {
+          const el = ui.__snapshot.elements.get(e.id)
+          const rawHref = el?.getAttribute('href')
+          let link = {}
+          if (rawHref !== null && rawHref !== undefined) {
+            let href = rawHref
+            try { href = new URL(rawHref, location.href).href } catch { /* retain an invalid authored destination */ }
+            link = window.__agentHrefSummary(href, e.id, ui.__observationId)
+          }
+          return { id: e.id, r: e.r, n: e.n, b: e.b, ...link, c: e.covered ? (e.coveredBy && (e.coveredBy.name || e.coveredBy.label || e.coveredBy.role)) || true : undefined }
+        }),
       }
     }, off)
-    if (!o) return 'no observation yet — run open/look first'
+    if (!o) {
+      S.meta = { map: [], offset: off, returned: 0, total: 0, nextOffset: null, observationId: null, observed: false }
+      return 'no observation yet — run open/look first'
+    }
+    S.meta = { map: o.slice, offset: off, returned: o.slice.length, total: o.total,
+      nextOffset: off + o.slice.length < o.total ? off + o.slice.length : null, observationId: o.observationId }
+    for (const entry of S.meta.map) {
+      if (entry.resource?.recovery) entry.resource.recovery.sessionId = S.id
+    }
     if (!o.slice.length) return `map: ${o.total} actionables — offset ${off} is past the end`
     return `MAP ${off}–${off + o.slice.length - 1} of ${o.total} (obs #${S.epoch}):\n${fence(fmtMap(o.slice.length ? { map: o.slice } : o))}`
   },
   async click([target], S) {
     let point = null
-    if (/^\d+,\d+$/.test(target)) { const [x, y] = target.split(',').map(Number); point = { x, y } }
+    if (/^\d+,\d+$/.test(target)) {
+      const [x, y] = target.split(',').map(Number)
+      point = await inPage(S, ({ x, y }) => ({ x, y, offscreen: x >= innerWidth || y >= innerHeight }), { x, y })
+    }
     else point = await inPage(S, inLocate, target)
     if (!point) throw new Error(`⛔ could not resolve "${target}" — use an id from the current map/find, or x,y`)
     // fail loud, never a silent no-op: a click outside the viewport reaches nothing
@@ -2383,7 +2553,11 @@ const HANDLERS = {
       S.meta = { resolved: { id: target, ...point }, denied: 'offscreen' }
       return point.clippedBy
         ? `⛔ not clicking ${target}: clipped inside a scrollable/collapsed ancestor <${point.clippedBy}> — a user can't see it either; find another route to the same target`
-        : `⛔ not clicking ${target}: still outside the viewport after scroll (y=${point.y}) — re-observe and retry`
+        : `⛔ not clicking ${target}: still outside the viewport after scroll (x=${point.x}, y=${point.y}) — re-observe and retry`
+    }
+    if (point.covered) {
+      S.meta = { resolved: { id: target, ...point }, denied: 'covered' }
+      return `⛔ not clicking ${target}: no visible point reaches the target — clear the covering element first`
     }
     S.meta = { resolved: { id: /^\d+,\d+$/.test(target) ? null : target, ...point } }
     const what = point.role ? ` on ${point.role}${point.name ? ` "${point.name}"` : ''}` : ''
@@ -2414,9 +2588,13 @@ const HANDLERS = {
     const point = await inPage(S, inLocate, target)
     if (!point) throw new Error('⛔ could not resolve select id — use an id from the current map/find')
     S.meta = { resolved: { id: target, ...point }, selectedBy: flag.slice(2), baselineAdvanced: false, verificationRequired: true }
+    if (point.offscreen || point.covered) {
+      S.meta.denied = point.offscreen ? 'offscreen' : 'covered'
+      throw new Error(`⛔ select is ${S.meta.denied} — make the target reachable first`)
+    }
     // Do not retry an action after a navigation race: its change event may have
     // submitted a form. Verification, rather than repetition, resolves uncertainty.
-    const result = await evaluateIsolated(S, S.page, inSelectNative, { id: point.revived?.resolvedId || target, by: flag.slice(2), choice })
+    const result = await evaluateIsolated(S, S.page, inSelectNative, { id: point.revived?.resolvedId || target, by: flag.slice(2), choice, point: { x: point.x, y: point.y } })
     Object.assign(S.meta, result)
     if (result.denied) throw new Error(`⛔ ${result.reason}`)
     S.meta.settle = await settle(S, 1500, 750)
@@ -2476,7 +2654,7 @@ const HANDLERS = {
   async text([id, ...args], S) {
     if (!id) throw new Error('usage: text <id> [--max-chars 600] [--offset 0 --observation-id <id>]')
     const options = {}
-    const names = { '--max-chars': 'maxChars', '--offset': 'offset', '--observation-id': 'observationId' }
+    const names = { '--max-chars': 'maxChars', '--offset': 'offset', '--observation-id': 'observationId', '--source': 'source' }
     for (let i = 0; i < args.length; i += 2) {
       const name = names[args[i]]
       if (!name || args[i + 1] === undefined || options[name] !== undefined) throw new Error(`invalid text option: ${args[i]}`)
@@ -2485,8 +2663,10 @@ const HANDLERS = {
     const maxChars = readInteger(options.maxChars, 'maxChars', 600, 1, 12000)
     const offset = readInteger(options.offset, 'offset', 0, 0, Number.MAX_SAFE_INTEGER)
     const observationId = options.observationId
+    const source = options.source || 'text'
+    if (source !== 'text' && source !== 'href') throw new Error('source must be text or href')
     if (offset > 0 && !observationId) throw new Error('offset > 0 requires observationId from the initial text read')
-    const result = await inPage(S, inReadText, { id, maxChars, offset, observationId })
+    const result = await inPage(S, inReadText, { id, maxChars, offset, observationId, source })
     S.meta = { resolved: { id } }
     if (result.error) throw new Error(`${id}: ${result.error}`)
     if (result.continuation) result.continuation.sessionId = S.id
@@ -2494,7 +2674,7 @@ const HANDLERS = {
     const t = result.text
     if (!t) return result.totalChars ? `(end of text at offset ${offset})` : '(no text)'
     const cut = result.truncated
-      ? `\n⚠ truncated (${result.returnedChars} of ${result.totalChars} chars) at offset ${offset} — continue: text ${id} --max-chars ${maxChars} --offset ${result.nextOffset} --observation-id ${result.observationId} --session ${S.id}`
+      ? `\n⚠ truncated (${result.returnedChars} of ${result.totalChars} chars) at offset ${offset} — continue: text ${id}${source === 'href' ? ' --source href' : ''} --max-chars ${maxChars} --offset ${result.nextOffset} --observation-id ${result.observationId} --session ${S.id}`
       : ''
     return (result.textSource === 'accessible-name' ? `${fence(t)}\n(accessible name — the node has no visible text)` : fence(t)) + cut
   },
@@ -2528,7 +2708,7 @@ const HANDLERS = {
     const path = file || '/tmp/snapsurf-shot.jpg'
     const buf = await S.page.screenshot({ type: 'jpeg', quality: 80 })
     await writePrivate(path, buf)
-    S.meta = { image: { path, sha256: sha256(buf) }, ...pixelPrivacyMeta(S) }
+    S.meta = { image: { path, sha256: sha256(buf) }, capture: { renderer: 'native-browser' }, ...pixelPrivacyMeta(S) }
     return `screenshot nativo → ${path}`
   },
   async snap(args, S) {
@@ -2538,7 +2718,7 @@ const HANDLERS = {
     let [target, file] = args
     if (target && /\.(png|jpg)$/.test(target)) { file = target; target = null }
     const path = file || '/tmp/snapsurf-snap.png'
-    const src = await inPage(S, async (nid) => {
+    const captured = await inPage(S, async (nid) => {
       if (nid) {
         const resolved = window.__agentResolveUi(nid, { requireBox: true })
         if (!resolved) return null
@@ -2549,17 +2729,22 @@ const HANDLERS = {
         // bug, documented in FIELD.md; clip:'viewport' is the 10/10-proven path.)
         el.scrollIntoView({ block: 'center', behavior: 'instant' })
         await new Promise((r) => setTimeout(r, 400))
-        const result = await window.__snapdom(document.body, { clip: 'viewport' })
-        return (await result.toPng()).src
       }
+      // Inspect fresh DOM after any centering, without replacing the semantic baseline.
+      // Sandboxed/cross-origin documents remain unreadable: never relax the sandbox,
+      // extract their srcdoc, or substitute native browser pixels into this result.
+      const coverage = window.__agentCaptureCoverage(document.body)
       const result = await window.__snapdom(document.body, { clip: 'viewport' })
-      return (await result.toPng()).src
+      return { src: (await result.toPng()).src, coverage, engine: window.__snapdomBuild }
     }, target || null)
-    if (!src) throw new Error(`unknown or detached id: ${target} — re-observe and retry`)
-    const buf = Buffer.from(src.split(',')[1], 'base64')
+    if (!captured) throw new Error(`unknown or detached id: ${target} — re-observe and retry`)
+    const buf = Buffer.from(captured.src.split(',')[1], 'base64')
     await writePrivate(path, buf)
-    S.meta = { resolved: { id: target || null }, image: { path, sha256: sha256(buf) }, ...pixelPrivacyMeta(S) }
-    return `render snapdom de ${target ? `${target} + ancestro de contexto` : 'viewport'} → ${path}`
+    S.meta = { resolved: { id: target || null }, image: { path, sha256: sha256(buf) }, capture: { renderer: 'snapdom', engine: captured.engine, coverage: captured.coverage }, ...pixelPrivacyMeta(S) }
+    const warning = captured.coverage.regionsTotal
+      ? `\n⚠ Partial capture: ${captured.coverage.regionsTotal} viewport iframe region(s) could not be read. Blank areas/placeholders are not evidence of empty frames. The browser sandbox/access restrictions remain unchanged.`
+      : ''
+    return `render snapdom ${captured.engine.version} (${captured.engine.commit.slice(0, 7)}) de ${target ? `${target} + ancestro de contexto` : 'viewport'} → ${path}${warning}`
   },
   async cp([sub, name], S) {
     if (sub === 'save') {
@@ -3070,7 +3255,7 @@ const HANDLERS = {
     if (sub === 'open') {
       const options = environmentArgs(arg === undefined ? [] : [arg, ...rest])
       const N = await newSession(undefined, options)
-      S.meta = { sessionId: N.id, environment: N.environment }
+      S.meta = { sessionId: N.id, epoch: N.epoch, url: safeUrl(N.page.url(), N.redact), environment: N.environment }
       return `session ${N.id} open — pass sessionId:"${N.id}" on every call that belongs to it (ids and obs # are per session)`
     }
     if (sub === 'close') {
@@ -3287,12 +3472,20 @@ async function handle(res, body, S) {
       const pageSwitchMeta = await ensureActivePageObservation(S, cmd, args)
       outText = await HANDLERS[cmd](args, S)
       if (pageSwitchMeta) S.meta = { ...pageSwitchMeta, ...(S.meta || {}) }
+      if (cmd === 'open' && S.meta?.failure) {
+        ok = false
+        error = `navigation failed: ${S.meta.failure.code}`
+      }
     } catch (e) {
       ok = false
       error = redactEncodedLiteral(String(e).split('\n')[0], S.redact).slice(0, 500)
     }
     const urlAfter = (() => { try { return S.page.url() } catch { return null } })()
-    const trustedProcessMeta = ok && cmd === 'status' ? processStatusMeta() : {}
+    const responseSession = ok && cmd === 'session' && args[0] === 'open' ? sessions.get(S.meta.sessionId) || S : S
+    const trustedProcessMeta = ok && cmd === 'status' ? processStatusMeta()
+      : cmd === 'open' || (cmd === 'session' && args[0] === 'open')
+        ? { runtime: { version: RUNTIME_IDENTITY.version, build: RUNTIME_IDENTITY.build } }
+        : {}
     if (envelope) {
       // Machine consumers (MCP server, CI): structured contract instead of parsing
       // localized prose — codex-mcp asked for changed/url/epoch/matches as FIELDS.
@@ -3303,6 +3496,11 @@ async function handle(res, body, S) {
       // into a presence-and-frequency oracle for the page.
       const { __audit: _drop, ...rawConsumerMeta } = S.meta || {}
       const consumerMeta = { ...redactOutputValue(rawConsumerMeta, S.redact), ...trustedProcessMeta }
+      // Recovery belongs to the session that observed the link, including links
+      // surfaced by digest/map rather than find. Never silently route it to default.
+      for (const entry of [...(consumerMeta.digest?.top || []), ...(consumerMeta.matches || []), ...(consumerMeta.map || [])]) {
+        if (entry.resource?.recovery) entry.resource.recovery.sessionId = S.id
+      }
       // The attestation rides on EVERY response, not only the ones that re-walk. A
       // transcript reviewed later contains many finds and few opens; without this, the
       // finds carried no proof the policy was live, and an empty find() could mean
@@ -3311,7 +3509,7 @@ async function handle(res, body, S) {
       if (S.redact && S.redact.length && !consumerMeta.privacy) {
         consumerMeta.privacy = { policyRevision: S.policyRev, rulesActive: S.redact.length, applied: true }
       }
-      res.end(JSON.stringify({ v: 1, ok: ok && !(S.meta && S.meta.denied), text: redactOutputValue(outText, S.redact), error, sessionId: S.id, epoch: S.epoch, url: safeUrl(urlAfter, S.redact), meta: consumerMeta }))
+      res.end(JSON.stringify({ v: 1, ok: ok && !(S.meta && S.meta.denied), text: redactOutputValue(outText, S.redact), error, sessionId: responseSession.id, epoch: responseSession.epoch, url: safeUrl(responseSession === S ? urlAfter : responseSession.page.url(), responseSession.redact), meta: consumerMeta }))
     } else if (ok) {
       res.end(redactOutputValue(outText, S.redact) + '\n')
     } else {

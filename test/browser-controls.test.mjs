@@ -300,3 +300,51 @@ test('readonly policy refuses select and environment writes but allows reading Q
     assert.equal((await h.post('environment')).meta.environment.colorScheme, 'light')
   } finally { await h.stop(); await close(site) }
 })
+
+test('screenshots identify the engine and warn about unreadable iframe regions without changing the sandbox', { timeout: 60_000 }, async () => {
+  const html = `<!doctype html><style>body{margin:0;font:16px sans-serif}iframe{width:320px;height:180px;border:0}</style>
+    <h1>HTML preview</h1><iframe title="Exported document" sandbox="" srcdoc="<h2>Inner document</h2>"></iframe>
+    <button onclick="document.getElementById('status').textContent=document.querySelector('iframe').getAttribute('sandbox')===''?'Sandbox intact':'Sandbox changed'">Check sandbox</button><p id="status">Ready</p>`
+  const site = createServer((req, res) => {
+    res.setHeader('content-type', 'text/html')
+    res.end(req.url === '/readable' ? html.replace('sandbox=""', 'sandbox="allow-same-origin"') : html)
+  })
+  const base = `http://127.0.0.1:${await listen(site)}`
+  const h = await harness()
+  const mcp = spawn(process.execPath, ['mcp/server.mjs'], { env: h.env, stdio: ['pipe', 'pipe', 'ignore'] })
+  const rpc = rpcClient(mcp)
+  try {
+    const opened = await rpc.call('browser_open', { url: base })
+    assert.equal(opened.isError, false, JSON.stringify(opened))
+    const result = await rpc.call('browser_screenshot', {})
+    assert.equal(result.isError, false, JSON.stringify(result))
+    const { capture } = result.structuredContent
+    const manifest = JSON.parse(await readFile('vendor/snapdom/manifest.json', 'utf8'))
+    assert.equal(capture.renderer, 'snapdom')
+    assert.deepEqual(capture.engine, { version: manifest.version, commit: manifest.commit, sha256: manifest.artifacts['dist/snapdom.mjs'] })
+    assert.equal(capture.coverage.status, 'partial')
+    assert.equal(capture.coverage.regionsTotal, 1)
+    assert.equal(capture.coverage.regions[0].reason, 'sandbox-opaque-origin')
+    assert.match(result.content.find(entry => entry.type === 'text').text, /Partial capture/)
+    assert.ok(result.content.some(entry => entry.type === 'image' && entry.mimeType === 'image/png'))
+    assert.equal(result.structuredContent.epoch, opened.structuredContent.epoch)
+    const unchanged = await rpc.call('browser_verify', {})
+    assert.equal(unchanged.structuredContent.changed, false, 'capture must preserve the semantic baseline and source state')
+    const id = await h.find('Check sandbox')
+    assert.equal((await rpc.call('browser_act', { action: 'click', target: id })).isError, false)
+    await rpc.call('browser_verify', {})
+    assert.equal((await rpc.call('browser_assert', { exists: 'Sandbox intact' })).structuredContent.pass, true)
+    await rpc.call('browser_open', { url: `${base}/readable` })
+    const readable = await rpc.call('browser_screenshot', {})
+    assert.equal(readable.structuredContent.capture.coverage.status, 'no-known-omissions')
+    assert.equal(readable.structuredContent.capture.coverage.regionsTotal, 0)
+    const native = await h.post('shot', [join(h.runtime, 'native.jpg')])
+    assert.equal(native.meta.capture.renderer, 'native-browser', 'native screenshots must remain explicitly distinct')
+  } finally {
+    rpc.close()
+    mcp.stdin.end()
+    await new Promise(resolve => mcp.once('exit', resolve))
+    await h.stop()
+    await close(site)
+  }
+})

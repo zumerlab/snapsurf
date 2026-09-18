@@ -83,6 +83,7 @@ test('find preserves native select labels instead of substituting option text', 
     <span id="billing-label">Billing cadence</span><select id="billing" aria-labelledby="billing-label"><option>Monthly payment</option><option>Annual payment</option></select>
     <label>Visible wrapper<select aria-label="Wrapped plan"><option>Starter package</option><option>Enterprise package</option></select></label>
     <select aria-label="${longLabel}"><option>Exclusive option text</option><option>Another exclusive option</option></select>
+    <label>Native case<select>${Array.from({ length: 31 }, (_, i) => `<option value="case-${i}">Case ${i}</option>`).join('')}</select></label>
     <a href="#article">${headline}</a>`
 
   try {
@@ -103,8 +104,8 @@ test('find preserves native select labels instead of substituting option text', 
 
     await t.test('role lookup keeps control labels and never substitutes the available choices', async () => {
       const matches = (await find('combobox')).filter((entry) => entry.role === 'combobox')
-      assert.equal(matches.length, 5, JSON.stringify(matches))
-      assert.deepEqual(new Set(matches.map((entry) => entry.name)), new Set(['Plan', 'Deployment region', 'Billing cadence', 'Wrapped plan', longLabel]))
+      assert.equal(matches.length, 6, JSON.stringify(matches))
+      assert.deepEqual(new Set(matches.map((entry) => entry.name)), new Set(['Plan', 'Deployment region', 'Billing cadence', 'Wrapped plan', longLabel, 'Native case']))
       assert.equal(matches.some((entry) => /Professional plan|Exclusive option text/.test(entry.name)), false)
     })
 
@@ -127,6 +128,19 @@ test('find preserves native select labels instead of substituting option text', 
       assert.notEqual(link.truncated, true)
       const unchanged = ok(await call('browser_verify'))
       assert.equal(unchanged.changed, false, 'reading names must not mutate the page')
+    })
+
+    await t.test('selection diff identifies the individual options under a wrapping label', async () => {
+      const select = (await find('Native case')).find((entry) => entry.role === 'combobox')
+      assert.equal(select.name, 'Native case')
+      const action = ok(await call('browser_act', { action: 'select', target: select.id, value: 'case-20' }))
+      const changed = ok(await call('browser_verify'))
+      assert.equal(action.selectionChanged, true)
+      assert.equal(changed.changed, true)
+      const optionChanges = changed.changes.filter((entry) => entry.role === 'option')
+      assert.deepEqual(new Set(optionChanges.map((entry) => entry.name)), new Set(['Case 0', 'Case 20']))
+      assert.equal(optionChanges.find((entry) => entry.name === 'Case 20').to.checked, true)
+      assert.equal(changed.changes.some((entry) => /Case 0Case 1/.test(entry.name)), false)
     })
   } finally {
     client.close()

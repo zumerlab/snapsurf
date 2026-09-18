@@ -96,3 +96,20 @@ MCP checks the running daemon's version, code fingerprint and required capabilit
 before executing tools. `SNAPSURF_DAEMON_INCOMPATIBLE` requires an explicit restart
 after preserving any sessions still needed. Updating files does not update an
 already-running process; MCP leaves those sessions running.
+
+## Reading safeguards
+
+- Record `runtime.version` and `runtime.build` from open/session creation with feedback.
+  A skill version alone does not identify the running instrument.
+- Embedded data URLs have a bounded `resource` descriptor instead of a full href.
+  Pass its `recovery` arguments to `browser_text` for explicit `source: "href"`
+  slices, then follow continuations. Recovery is unavailable under active privacy rules.
+- Read `failure` and `navigationCompleted`: a failed navigation has `ok:false`,
+  and `finalUrl:null` when no HTTP response was received. `retainedUrl` is the
+  page left behind, never proof that the requested page was reached.
+- `digest.visualContent` reports images whose pixels have not been read as text.
+  A negative text search cannot establish that an image lacks the sought content;
+  inspect it visually when relevant.
+- `browser_page` map results contain structured entries and pagination. Search
+  context may omit an overlapping ancestor and identify it with
+  `contextOmittedReason`/`contextCoveredBy`; read the specific section or continue it.

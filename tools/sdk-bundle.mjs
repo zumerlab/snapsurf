@@ -11,6 +11,7 @@
  * MIT License. Copyright (c) 2026 Juan Martin Muda / zumerlab.
  */
 import { join } from 'node:path'
+import { readFile } from 'node:fs/promises'
 
 /**
  * @param {string} AGENT absolute path to this package's root
@@ -19,9 +20,12 @@ import { join } from 'node:path'
 export async function buildSdk(AGENT) {
   const esbuild = await import('esbuild')
   const snapdomRuntime = join(AGENT, 'vendor', 'snapdom', 'dist', 'snapdom.mjs')
+  const manifest = JSON.parse(await readFile(join(AGENT, 'vendor/snapdom/manifest.json'), 'utf8'))
+  const engineBuild = { version: manifest.version, commit: manifest.commit, sha256: manifest.artifacts['dist/snapdom.mjs'] }
   const contents = `import { observe, observeChunked, buildUi, agentOracle, redactString } from '${join(AGENT, 'src/plugin.js')}'
-import { carriedIndex, carriedDiff } from '${join(AGENT, 'src/carried.js')}'
+import { carriedIndex, carriedDiff, copyCarriedContent } from '${join(AGENT, 'src/carried.js')}'
 import { bindEngineOwnership } from '${join(AGENT, 'src/engine-ownership.js')}'
+import { captureCoverage } from '${join(AGENT, 'src/capture-coverage.js')}'
 import { snapdom, __snapdomIsInternalNode } from '${snapdomRuntime}'
 import { videoExport } from '${join(AGENT, 'vendor/snapdom/plugins/video-export.js')}'
 import { gifExport } from '${join(AGENT, 'vendor/snapdom/plugins/gif-export.js')}'
@@ -30,6 +34,7 @@ window.__agentObserve = observe
 window.__agentObserveChunked = observeChunked
 window.__agentBuildUi = buildUi
 window.__agentCarriedIndex = carriedIndex
+window.__agentCopyCarriedContent = copyCarriedContent
 window.__agentCarriedDiff = (base) => {
   const ui = window.__lastUi
   if (!ui || !base) return null
@@ -51,6 +56,8 @@ window.__agentRedactUrl = (s) => {
   return redactString(raw, window.__SD_PRIVACY || null)
 }
 window.__snapdom = snapdom
+window.__snapdomBuild = Object.freeze(${JSON.stringify(engineBuild)})
+window.__agentCaptureCoverage = captureCoverage
 window.__snapdomVideo = videoExport
 window.__snapdomGif = gifExport
 `
@@ -64,7 +71,7 @@ window.__snapdomGif = gifExport
   })).outputFiles[0].text
   // A bundle missing one of these globals is a silent breakage: the daemon starts,
   // `open` may even work, and the verb that needs it throws in the page instead.
-  for (const g of ['__agentObserveChunked', '__agentBuildUi', '__agentCarriedIndex', '__agentRedact', '__agentRedactUrl', '__snapdom']) {
+  for (const g of ['__agentObserveChunked', '__agentBuildUi', '__agentCarriedIndex', '__agentRedact', '__agentRedactUrl', '__snapdom', '__snapdomBuild', '__agentCaptureCoverage']) {
     if (!out.includes(g)) throw new Error(`[sdk-bundle] built bundle does not define window.${g}`)
   }
   return out

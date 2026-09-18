@@ -1,5 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { carriedIndex, carriedDiff } from '../src/carried.js'
+import { observe, buildUi } from '../src/plugin.js'
+
+afterEach(() => { document.body.innerHTML = '' })
+
+function page(html, options = {}) {
+  const root = document.createElement('section')
+  root.innerHTML = html
+  document.body.replaceChildren(root)
+  const ui = buildUi(observe(root, options))
+  return { root, ui, index: carriedIndex(ui.__view || ui.__snapshot) }
+}
 
 const view = (nodes) => ({ nodes: new Map(nodes.map((n, i) => [n.id || `n_${i}`, n])) })
 
@@ -114,5 +125,76 @@ describe('carried identity across navigations', () => {
     expect(diff.matches).toBe(0)
     expect(diff.changed).toEqual([])
     expect(diff.onlyAfter).toBe(1)
+  })
+
+  it('treats equivalent relative/absolute destinations as unchanged only across pages', () => {
+    const first = page('<a data-testid="destination" href="/carried-target?edition=1#details">Read report</a>')
+    const previous = first.ui.checkpoint()
+    const resolved = first.root.querySelector('a').href
+    first.root.querySelector('a').setAttribute('href', resolved)
+    const samePage = buildUi(observe(first.root, { previous }))
+    expect(samePage.changes.some(change => change.kind === 'content')).toBe(true)
+    const second = page(`<a data-testid="destination" href="${resolved}">Read report</a>`)
+    const crossPage = carriedDiff(first.index, second.index)
+    expect(crossPage.matches).toBe(1)
+    expect(crossPage.unchanged).toBe(1)
+    expect(crossPage.changed).toEqual([])
+  })
+
+  it('explains real destination changes even when the readable label and text are identical', () => {
+    const first = page('<a data-testid="destination" href="/carried-target?edition=1#details">Read report</a>')
+    const second = page('<a data-testid="destination" href="/carried-target?edition=2#details">Read report</a>')
+    const diff = carriedDiff(first.index, second.index)
+    expect(diff.changed[0]).toMatchObject({ kinds: ['content'], contentChanges: ['href'] })
+    expect(diff.changed[0].from.text).toBe(diff.changed[0].to.text)
+    expect(JSON.stringify(diff)).not.toContain('edition=')
+  })
+
+  it('detects the same relative spelling resolving to a different destination', () => {
+    const first = page('<base href="https://example.test/a/"><a data-testid="destination" href="report">Read report</a>')
+    const second = page('<base href="https://example.test/b/"><a data-testid="destination" href="report">Read report</a>')
+    expect(carriedDiff(first.index, second.index).changed[0].contentChanges).toEqual(['href'])
+  })
+
+  it('explains authored names and image sources, and preserves an unknown fallback', () => {
+    const first = page('<button data-testid="save" aria-label="Save draft"></button><img data-testid="image" alt="Cover" src="data:image/svg+xml,first">')
+    const second = page('<button data-testid="save" aria-label="Publish draft"></button><img data-testid="image" alt="Cover" src="data:image/svg+xml,second">')
+    const diff = carriedDiff(first.index, second.index)
+    expect(diff.changed.find(change => change.key === 't:save')).toMatchObject({
+      contentChanges: ['accessible-name'], from: { name: 'Save draft' }, to: { name: 'Publish draft' },
+    })
+    expect(diff.changed.find(change => change.key === 't:image').contentChanges).toContain('src')
+    expect(carriedDiff(carriedIndex(view([badge('1')])), carriedIndex(view([badge('2')]))).changed[0].contentChanges).toEqual(['unknown'])
+  })
+
+  it('explains same-length value changes without disclosing either value', () => {
+    const first = page('<input data-testid="field" value="alpha">')
+    const second = page('<input data-testid="field" value="omega">')
+    const diff = carriedDiff(first.index, second.index)
+    expect(diff.changed[0]).toMatchObject({ kinds: ['state'], stateChanges: ['value-fingerprint'] })
+    expect(JSON.stringify(diff)).not.toMatch(/alpha|omega/)
+  })
+
+  it('rebuilds component evidence after privacy and never exposes URL or input secrets', () => {
+    const privacy = { redact: ['alice', 'betty', 'alpha', 'omega'] }
+    const first = page('<a data-testid="destination" href="/users/alice">Account</a><input data-testid="field" value="alpha">', { privacy })
+    const second = page('<a data-testid="destination" href="/users/betty">Account</a><input data-testid="field" value="omega">', { privacy })
+    const diff = carriedDiff(first.index, second.index)
+    expect(diff.changed).toEqual([])
+    expect(JSON.stringify({ before: first.index, after: second.index, diff })).not.toMatch(/alice|betty|alpha|omega/)
+    const firstContent = first.index.entries.find(entry => entry.key === 't:destination').contentComparison
+    const secondContent = second.index.entries.find(entry => entry.key === 't:destination').contentComparison
+    expect(firstContent.components).toEqual(secondContent.components)
+    expect(JSON.stringify(first.ui.checkpoint())).not.toContain('contentComparison')
+  })
+
+  it('redacts resolved/encoded href evidence before comparing it', () => {
+    const privacy = { redact: ['alice', 'betty'] }
+    const first = page('<base href="https://example.test/users/alice/"><a data-testid="destination" href="report">Account</a>', { privacy })
+    const second = page('<base href="https://example.test/users/betty/"><a data-testid="destination" href="report">Account</a>', { privacy })
+    expect(carriedDiff(first.index, second.index).changed).toEqual([])
+    const encodedBefore = page('<a data-testid="destination" href="/users/%61lice">Account</a>', { privacy })
+    const encodedAfter = page('<a data-testid="destination" href="/users/%62etty">Account</a>', { privacy })
+    expect(carriedDiff(encodedBefore.index, encodedAfter.index).changed).toEqual([])
   })
 })

@@ -49,6 +49,29 @@ node tools/browse.mjs serve --allow example.com,cdn.example.com
 node tools/browse.mjs serve --redact "Jane Doe,account@example.com"
 ```
 
+## Screenshot provenance and iframe limits
+
+`browser_screenshot` / `snap` returns an image rendered by SnapDOM. The `capture`
+field identifies that renderer and the pinned engine version, source commit and
+artifact SHA-256. Installing or publishing another SnapDOM version does not replace
+this bundled runtime automatically.
+
+`capture.coverage` checks iframe boxes intersecting the viewport in the top
+document and its open shadow roots. `status: "partial"` reports known unreadable
+regions with their bounding boxes and reasons (`sandbox-opaque-origin` or
+`document-inaccessible`). `regionsTotal` counts all of them; `regionsOmitted`
+declares any entries beyond the 40-region detail limit. A blank box or placeholder
+is not evidence that the frame has no content.
+
+This check does not inspect inaccessible documents, enter nested frame documents,
+relax sandbox attributes or replace missing regions with native screenshots.
+`status: "no-known-omissions"` applies only to the stated iframe check; it does not
+certify complete visual fidelity, occlusion, other opaque surfaces or every CSS
+effect. A capture does not consume the semantic verification baseline.
+
+The CLI `shot` command remains a separate native-browser diagnostic. Its
+`capture.renderer` is `"native-browser"`; it is not evidence of SnapDOM fidelity.
+
 ## Native selects and browser environment
 
 Use `browser_act({ action: "select", target, value: "yearly" })`, or provide an
@@ -102,13 +125,22 @@ also use UTF-16 code units.
 
 `browser_find` accepts `contextChars` (1–12000) to include longer text immediately.
 The budget is shared across its ranked matches; `contextCharsReturned` and
-`contextMatchesOmitted` declare how much was included. Each included `context`
+`contextMatchesOmitted` declare how much was included. Whole-word and phrase matches
+precede incidental substrings. Context prefers a specific section around a heading;
+overlapping ancestors carry `contextOmittedReason: "overlap"` and `contextCoveredBy`
+instead of spending the budget on repeated text. Each included `context`
 contains the same text metadata and continuation as `browser_text`. CLI:
 `find --context-chars 3000 -- license conditions`.
 
-Digest and search `href` fields retain complete URLs, including origin, query and
-fragment, subject to active privacy rules. Only the displayed digest abbreviates
-long URLs. Use the structured `href` for navigation.
+Digest, search and map `href` fields retain complete navigation URLs, including
+origin, query and fragment, subject to active privacy rules. Embedded `data:` URLs
+instead carry `resource` with scheme, MIME type, encoded length, `payloadOmitted`
+and `recovery`. Pass the recovery arguments to `browser_text` to explicitly read
+bounded slices of the destination (`source: "href"`); CLI:
+`text <id> --source href --max-chars 600`. Continuations retain the href source,
+observation and session. Embedded payload recovery is refused while privacy rules
+are active, because URL redaction cannot establish the safety of encoded bytes.
+Only the displayed digest abbreviates ordinary long URLs.
 
 `browser_open` returns `requestedUrl` and `finalUrl`, with
 `navigationUrlsSanitized: true`: navigation metadata hides query values under the
@@ -117,6 +149,24 @@ observed HTTP request URLs and status codes, with `redirectChainScope: "http"`,
 `redirectChainTotal` and `redirectChainTruncated`. It does not claim to trace
 JavaScript redirects. `redirectChainAvailable: false` means no response chain was
 available.
+
+A DNS/TLS/transport navigation failure returns `ok: false` (`isError: true` in MCP),
+`failure` and `navigationCompleted: false`. If no HTTP response was received,
+`finalUrl` is null; `retainedUrl` identifies the page left in the browser separately.
+An HTTP 200 can still be a declared `blocked` interstitial. Neither condition is
+evidence that the requested page has no content.
+
+Open and session creation include `runtime.version` and `runtime.build`. Record
+these with feedback; a skill/plugin version alone does not identify the daemon.
+New session replies use that session's own id, epoch 0 and `about:blank` URL.
+Map pages return `map`, `offset`, `returned`, `total`, `nextOffset` and
+`observationId`, including empty pages at the end of the map.
+
+When images are observed, `digest.visualContent` declares `textExtracted: false`,
+their count and at most three example ids/names, with `examplesOmitted` for the rest.
+Accessible image names do not read the depicted calendar, chart or document.
+A negative text search cannot establish absence inside those images; escalate to
+`browser_screenshot` when that visual content matters.
 
 Links that look like PDFs carry a `document` hint. A successful PDF response to
 `browser_open` returns a `document` handoff for an external PDF reader, preserving
@@ -236,6 +286,12 @@ Cross-origin navigations do not carry identity. Ambiguous identities and redacte
 labels do not qualify. Unmatched content contributes only to the before/after counts;
 it is not reported as added or removed. The carried-identity baseline lives in the daemon process so
 it can survive document replacement.
+
+Changed entries include `contentChanges` (for example `href`, `accessible-name` or
+`text`) and `stateChanges`, plus the before/after names. No raw resource or form
+values are exposed. Equivalent HTTP(S) destinations are normalized for cross-page
+comparison only; same-page authored mutations remain detectable. Unknown components
+are declared instead of silently dropping a hash change.
 
 ## Sensor plugin
 

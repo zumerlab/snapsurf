@@ -90,6 +90,8 @@ export const NAME_FROM_CONTENT_ROLES = new Set([
 
 /** Tags whose text is code or metadata, never something a user reads. */
 const NON_TEXTUAL = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'])
+const LABELABLE = new Set(['button', 'input', 'meter', 'output', 'progress', 'select', 'textarea'])
+const LABEL_CONTROLS = new Set(['button', 'input', 'meter', 'output', 'progress', 'select', 'textarea', 'option'])
 
 /**
  * `textContent` includes the source of every inline `<script>` and `<style>` in the
@@ -98,7 +100,7 @@ const NON_TEXTUAL = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'])
  * as "(function() { if (false) { var firstViewUrl = …". Walk text nodes and skip those.
  * @param {Element} el
  */
-export function visibleText(el, maxRaw = Infinity, policy) {
+export function visibleText(el, maxRaw = Infinity, policy, options = {}) {
   // maxRaw: names are capped at 80 normalized chars, yet this walked ENTIRE subtrees
   // — 72% of the whole walk went here (perf round profile, 13k-node article). A raw
   // cap of ~1000 yields identical first-80 normalized chars except in pathological
@@ -107,6 +109,12 @@ export function visibleText(el, maxRaw = Infinity, policy) {
   const walk = (node) => {
     if (node.localName === 'textarea') return false
     if (policy && (policy.isBlocked(node) || policy.isField(node))) return false
+    if (options.excludeControls && LABEL_CONTROLS.has(node.localName)) return false
+    if (!options.includeHidden) {
+      if (node.hidden || node.getAttribute?.('aria-hidden') === 'true') return false
+      const style = options.styleFor ? options.styleFor(node) : node.ownerDocument?.defaultView?.getComputedStyle(node)
+      if (style && (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse' || style.contentVisibility === 'hidden')) return false
+    }
     for (let c = node.firstChild; c; c = c.nextSibling) {
       if (out.length >= maxRaw) return true
       if (c.nodeType === 3) {
@@ -128,8 +136,12 @@ export function visibleText(el, maxRaw = Infinity, policy) {
  *   authored source (aria-label/labelledby, <label>, alt, title, value), not from
  *   subtree text.
  */
-export function computeName(el, labelFor, boundaryRoot, policy) {
+export function computeName(el, labelFor, boundaryRoot, policy, styleFor) {
   if (policy?.isBlocked(el)) return { name: '', explicit: false }
+  const contentOptions = { styleFor }
+  // Referenced hidden labels are legitimate accessible names. Unreferenced hidden
+  // helpers must not become a landmark's summary or another control's identity.
+  const labelOptions = { styleFor, includeHidden: true, excludeControls: true }
   const ariaLabel = attribute(el, 'aria-label', policy)
   if (ariaLabel) return { name: norm(ariaLabel), explicit: true }
 
@@ -144,32 +156,40 @@ export function computeName(el, labelFor, boundaryRoot, policy) {
         return node && (!policy || attribute(node, 'id', policy) === id) ? node : null
       })
       .filter((node) => node && !policy?.isBlocked(node) && (!boundaryRoot || composedContains(boundaryRoot, node)))
-      .map((n) => norm(visibleText(n, Infinity, policy)))
+      .map((n) => norm(visibleText(n, Infinity, policy, { styleFor, includeHidden: true })))
       .filter(Boolean)
     if (parts.length) return { name: parts.join(' '), explicit: true }
   }
 
-  const id = policy ? attribute(el, 'id', policy) : el.id
+  // option is not labelable: an ancestor select's label belongs to the select,
+  // while each option is named by its own label/text.
+  if (el.localName === 'option') {
+    const label = attribute(el, 'label', policy)
+    return label ? { name: norm(label), explicit: true }
+      : { name: norm(visibleText(el, 1000, policy, { styleFor, includeHidden: true })), explicit: false }
+  }
+
+  const id = LABELABLE.has(el.localName) ? (policy ? attribute(el, 'id', policy) : el.id) : null
   if (id) {
     // labelFor: one document scan per walk instead of one full-document
     // querySelector per id'd element (thousands on a large article)
     if (boundaryRoot && el.labels) {
       const label = [...el.labels].find((candidate) => composedContains(boundaryRoot, candidate) && !policy?.isBlocked(candidate) && (!policy || attribute(candidate, 'for', policy) === id))
-      if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, 1000, policy)), explicit: true }
+      if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, 1000, policy, labelOptions)), explicit: true }
     } else if (labelFor) {
       const label = labelFor.get(id)
-      if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, 1000, policy)), explicit: true }
+      if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, 1000, policy, labelOptions)), explicit: true }
     } else {
       try {
         const label = el.ownerDocument.querySelector(`label[for="${CSS.escape(id)}"]`)
-        if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, Infinity, policy)), explicit: true }
+        if (label && !policy?.isBlocked(label)) return { name: norm(visibleText(label, Infinity, policy, labelOptions)), explicit: true }
       } catch { }
     }
   }
-  const wrappingLabel = el.closest && el.closest('label')
+  const wrappingLabel = LABELABLE.has(el.localName) && el.closest && el.closest('label')
   if (wrappingLabel && wrappingLabel !== el && !policy?.isBlocked(wrappingLabel) &&
       (!boundaryRoot || composedContains(boundaryRoot, wrappingLabel))) {
-    const t = norm(visibleText(wrappingLabel, 1000, policy))
+    const t = norm(visibleText(wrappingLabel, 1000, policy, labelOptions))
     if (t) return { name: t, explicit: true }
   }
 
@@ -186,7 +206,9 @@ export function computeName(el, labelFor, boundaryRoot, policy) {
   const title = attribute(el, 'title', policy)
   if (title) return { name: norm(title), explicit: true }
 
+  if (el.localName === 'select') return { name: '', explicit: false }
+
   // Content-derived name, capped: identity wants a fingerprint, not a transcript.
-  const text = norm(visibleText(el, 1000, policy))
+  const text = norm(visibleText(el, 1000, policy, contentOptions))
   return { name: text.length > 80 ? text.slice(0, 80) : text, explicit: false }
 }

@@ -30,6 +30,13 @@ test('complete navigation links, observed redirects and PDF handoff through the 
     <a href="/private/alice%40corp.test?edition=public#chapter">Restricted research report</a>
     <a href="mailto:research@example.org?subject=Publication">Contact the research office</a></main>`
   const site = createServer((req, res) => {
+    if (req.url.startsWith('/carried-')) {
+      const href = req.url === '/carried-relative' ? '/report?edition=1#details'
+        : `http://${req.headers.host}/report?edition=${req.url === '/carried-changed' ? '2' : '1'}#details`
+      res.writeHead(200, { 'content-type': 'text/html' })
+      res.end(`<!doctype html><main><a data-testid="carried-destination" href="${href}">Read carried report</a></main>`)
+      return
+    }
     if (req.url.startsWith('/start')) { res.writeHead(302, { location: '/middle' }); res.end(); return }
     if (req.url === '/middle') { res.writeHead(307, { location: '/source' }); res.end(); return }
     if (req.url === '/popup-source') {
@@ -150,6 +157,18 @@ test('complete navigation links, observed redirects and PDF handoff through the 
       const found = await post('find', ['Restricted research report'])
       assert.equal(found.meta.matches.find((entry) => entry.role === 'link').href, '[redacted]')
       assert.equal(JSON.stringify([opened, found]).includes('alice%40corp.test'), false)
+    })
+    await t.test('carried href equivalence and component explanations survive daemon observation id cloning', async () => {
+      await post('open', [base + '/carried-relative'])
+      const equivalent = await post('open', [base + '/carried-absolute'])
+      assert.equal(equivalent.meta.carried.matches, 1)
+      assert.equal(equivalent.meta.carried.unchanged, 1)
+      assert.deepEqual(equivalent.meta.carried.changed, [])
+      const different = await post('open', [base + '/carried-changed'])
+      const change = different.meta.carried.changed.find(entry => entry.key === 't:carried-destination')
+      assert.deepEqual(change.contentChanges, ['href'])
+      assert.equal(change.from.text, change.to.text)
+      assert.equal(JSON.stringify(change).includes('edition='), false)
     })
   } finally {
     try { await post('stop') } catch { /* already stopped */ }

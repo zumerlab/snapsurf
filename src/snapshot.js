@@ -10,6 +10,7 @@ import { attribute } from './capture-redaction.js'
 import { computeRole, computeName, visibleText, NAME_FROM_CONTENT_ROLES } from './aria.js'
 import { normalizeText, isIgnored, collectAnimatedProps } from './noise.js'
 import { isEngineInternalNode } from './engine-ownership.js'
+import { recordCarriedContent } from './carried.js'
 
 // Raw inputs used to build the node signatures. A WeakMap lets buildUi(observe(...),
 // {privacy}) rebuild safe signatures even when privacy was selected after the walk,
@@ -263,6 +264,21 @@ function authoredContentParts(el, name, nameExplicit, policy) {
   return parts
 }
 
+function crossPageContentParts(el, parts) {
+  return parts.map(([kind, value]) => {
+    if (kind === 'href') {
+      // A relative and absolute HTTP(S) spelling may name the same destination.
+      // Normalize ONLY cross-page comparison; same-document hashes must still
+      // report authored-attribute mutations. Query/fragment remain significant.
+      try {
+        const url = new URL(value, el.baseURI)
+        if (url.protocol === 'http:' || url.protocol === 'https:') return [kind, url.href]
+      } catch { /* malformed destinations retain their authored evidence */ }
+    }
+    return [kind, value]
+  })
+}
+
 /** There is no platform API that distinguishes a closed shadow root from no shadow root.
  *  A defined custom element with no open root is therefore an honest uncertainty: it may
  *  render an opaque closed tree. Mark it instead of claiming the walk saw everything. */
@@ -316,6 +332,11 @@ function makeWalker(root, noise, { strictScope = false, engineFrame, capturePoli
   if (includedElements) includedElements.add(root)
   const styleFor = (element) => styleCache?.get?.(element) ||
     element.ownerDocument.defaultView.getComputedStyle(element)
+  const nameStyles = new WeakMap()
+  const nameStyleFor = (element) => {
+    if (!nameStyles.has(element)) nameStyles.set(element, styleFor(element))
+    return nameStyles.get(element)
+  }
   const geo = makeGeometry(root, styleCache)
   const animated = noise.ignoreAnimations ? collectAnimatedProps(root) : new Map()
   // one label[for] scan per walk — computeName used to run a full-document
@@ -364,6 +385,7 @@ function makeWalker(root, noise, { strictScope = false, engineFrame, capturePoli
     }
     let _t = pnow()
     const cs = styleFor(el)
+    nameStyles.set(el, cs)
     pacc('getComputedStyle', _t)
     if (cs.display === 'none') return null
 
@@ -373,7 +395,7 @@ function makeWalker(root, noise, { strictScope = false, engineFrame, capturePoli
     const role = computeRole(el, policy)
     pacc('computeRole', _t)
     _t = pnow()
-    const { name, explicit: nameExplicit } = computeName(el, labelFor, strictScope ? root : undefined, policy)
+    const { name, explicit: nameExplicit } = computeName(el, labelFor, strictScope ? root : undefined, policy, nameStyleFor)
     pacc('computeName', _t)
     // Identity may only trust the name when it's authored, or when the role takes its
     // name from content per ARIA. A content-derived name on a generic container is
@@ -419,6 +441,7 @@ function makeWalker(root, noise, { strictScope = false, engineFrame, capturePoli
     const ownText = tag === 'textarea' || policy?.isField(el) ? '' : composedOwnText(el, policy)
     const normText = normalizeText(ownText, el, noise)
     const authoredParts = authoredContentParts(el, name, nameExplicit, policy)
+    const carriedParts = crossPageContentParts(el, authoredParts)
     const authoredHash = authoredParts.length
       ? hash('authored', ...authoredParts.flat())
       : ''
@@ -482,12 +505,14 @@ function makeWalker(root, noise, { strictScope = false, engineFrame, capturePoli
       ownText,
       normText,
       authoredParts,
+      carriedParts,
       nameForIdentity,
       rawValue,
       sensitive,
       valueSignal,
       styleParts: style.parts,
     })
+    recordCarriedContent(node, normText, carriedParts)
     if (valueChangeUncertainty) node.valueChangeUncertainty = valueChangeUncertainty
     if (isCanvas) {
       node.sourceType = 'canvas'

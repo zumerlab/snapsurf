@@ -23,8 +23,40 @@
  * @module agent/carried
  */
 
+import { hash } from './hash.js'
+
 const DEFAULT_CAP = 200
 const REDACTED = '[redacted]'
+// Realm-local metadata never adds URLs, values or extra fingerprints to public
+// snapshots/checkpoints. Privacy views rebuild this from their sanitized inputs.
+const CONTENT = new WeakMap()
+
+export function copyCarriedContent(source, target) {
+  if (CONTENT.has(source)) CONTENT.set(target, CONTENT.get(source))
+  return target
+}
+
+export function recordCarriedContent(node, text, authoredParts) {
+  CONTENT.set(node, {
+    sourceTextHash: node.textHash,
+    components: Object.fromEntries([
+      ['text', hash('carried-text', text)],
+      ...authoredParts.map(([kind, value]) => [kind, hash('carried-part', kind, value)]),
+    ]),
+  })
+}
+
+function contentChanges(prior, entry) {
+  const before = prior.contentComparison
+  const after = entry.contentComparison
+  if (before?.sourceTextHash === prior.textHash && after?.sourceTextHash === entry.textHash) {
+    return [...new Set([...Object.keys(before.components), ...Object.keys(after.components)])]
+      .filter((key) => before.components[key] !== after.components[key])
+  }
+  // Old checkpoints/foreign snapshots lack component evidence. Their hashes still
+  // count: never silently suppress an unexplained content change.
+  return prior.textHash !== entry.textHash ? ['unknown'] : []
+}
 
 /**
  * Compact identity slice of one observation. Only nodes with cross-page-strong identity
@@ -65,6 +97,7 @@ export function carriedIndex(view, options = {}) {
         textHash: node.textHash,
         stateHash: node.stateHash,
         styleHash: node.styleHash,
+        ...(CONTENT.has(node) ? { contentComparison: CONTENT.get(node) } : {}),
       })
     }
   }
@@ -94,7 +127,8 @@ export function carriedDiff(before, after) {
     beforeByKey.delete(entry.key)
     matches++
     const kinds = []
-    if (prior.textHash !== entry.textHash) kinds.push('content')
+    const content = contentChanges(prior, entry)
+    if (content.length) kinds.push('content')
     if (prior.stateHash !== entry.stateHash) kinds.push('state')
     if (prior.styleHash !== entry.styleHash) kinds.push('style')
     if (!kinds.length) { unchanged++; continue }
@@ -104,8 +138,16 @@ export function carriedDiff(before, after) {
       role: entry.role,
       name: entry.name,
       kinds,
-      from: { text: prior.text, state: prior.state },
-      to: { text: entry.text, state: entry.state },
+      ...(content.length ? { contentChanges: content } : {}),
+      ...(kinds.includes('state') ? {
+        stateChanges: (() => {
+          const keys = [...new Set([...Object.keys(prior.state || {}), ...Object.keys(entry.state || {})])]
+            .filter((key) => prior.state?.[key] !== entry.state?.[key])
+          return keys.length ? keys : ['value-fingerprint']
+        })(),
+      } : {}),
+      from: { name: prior.name, text: prior.text, state: prior.state },
+      to: { name: entry.name, text: entry.text, state: entry.state },
     })
   }
   return {
