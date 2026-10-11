@@ -98,3 +98,7 @@ Thumbs.db
 /browser-sdk/
 /packages/
 /demo-sensor/
+
+# Retired lab resolver and unused vendor build artifact stay local.
+/tools/host-repo.mjs
+/vendor/snapdom/dist/plugins.mjs

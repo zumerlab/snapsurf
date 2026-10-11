@@ -20,8 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { resolveHost, AGENT_ROOT: AGENT } = await import('../tools/host-repo.mjs')
-const REPO = resolveHost()
+const REPO = join(HERE, '..')
 const APP = pathToFileURL(join(HERE, 'app.html')).href
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
