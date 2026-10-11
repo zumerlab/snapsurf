@@ -28,3 +28,25 @@ docs/landscape-data
 .vscode
 .idea
 .DS_Store
+
+# Local feedback and plugin evaluation artifacts are not runtime inputs.
+docs/field-feedback-*.md
+companion/gate.mjs
+companion/gate-client
+
+# Internal plans, research drafts and integration working prompts.
+EXPERIMENT.md
+FIELD.md
+PAPER.md
+PLAN.md
+REGION.md
+TESTPLAN.md
+docs/CLIENT-SIDE-RECEIPTS.md
+docs/LANDSCAPE.md
+docs/VALUE-COMPARISON.md
+docs/fixes-pendientes.md
+docs/paridad-prompt.md
+docs/ronda5-*.md
+mcp/GATE.md
+mcp/PROMPT-*.md
+companion/PROMPT-panel-assert.md

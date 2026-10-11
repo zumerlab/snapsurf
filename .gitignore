@@ -73,3 +73,28 @@ Thumbs.db
 /experiment/formal/TASKS.md
 /experiment/results/codex-*.md
 /experiment/formal/results/codex-*.md
+
+# Private development labs stay local. Keep only reproducible public test gates.
+/experiment/*
+!/experiment/arms.mjs
+!/experiment/abis-verbs.mjs
+!/experiment/adversarial-round.mjs
+!/experiment/bench-qa.mjs
+!/experiment/contract-gates.mjs
+!/experiment/doc-contract.mjs
+!/experiment/parity.mjs
+!/experiment/signal.test.js
+!/experiment/multisite/
+/experiment/multisite/*
+!/experiment/multisite/cases.mjs
+!/experiment/multisite/protocol.mjs
+/docs/field-feedback-*.md
+/plugins/snapsurf/evals/
+/demo-qa/compliance-demo.mjs
+/demo-qa/compliance-evidence.html
+/demo-qa/silent-failures.html
+
+# Separate private SnapDOM products are outside this repository's scope.
+/browser-sdk/
+/packages/
+/demo-sensor/

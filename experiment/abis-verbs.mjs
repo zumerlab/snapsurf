@@ -10,7 +10,7 @@
  */
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { writeFile, stat, readFile, mkdtemp, rm } from 'node:fs/promises'
+import { writeFile, stat, readFile, mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
@@ -195,6 +195,7 @@ await cmd('redact', ['off'])
 const failed = results.filter((r) => !r.pass)
 console.log(`\n${results.length - failed.length}/${results.length} checks OK`)
 if (failed.length) console.log('FAILING: ' + failed.map((f) => `[${f.verb}] ${f.name}`).join(' · '))
+await mkdir(join(AGENT, 'experiment/results'), { recursive: true })
 await writeFile(join(AGENT, `experiment/results/abis-verbs${TAG === 'repo' ? '' : '-' + TAG}.json`), JSON.stringify(results, null, 2) + '\n')
 exitCode = failed.length ? 1 : 0
 } finally {

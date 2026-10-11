@@ -18,7 +18,7 @@ once. To pin a version, run `npm install @zumer/snapsurf` in a directory and use
 `node_modules/@zumer/snapsurf/mcp/server.mjs`. In the commands below, `npx snapsurf`
 replaces `node tools/browse.mjs`.
 This reference covers the CLI, report fields, assertions and embedded interfaces.
-Commands below assume a source checkout; the sensor and companion have their own
+Commands below assume a source checkout; the companion has its own
 build steps.
 
 ## CLI and startup policies
@@ -129,7 +129,11 @@ The budget is shared across its ranked matches; `contextCharsReturned` and
 precede incidental substrings. Context prefers a specific section around a heading;
 overlapping ancestors carry `contextOmittedReason: "overlap"` and `contextCoveredBy`
 instead of spending the budget on repeated text. Each included `context`
-contains the same text metadata and continuation as `browser_text`. CLI:
+contains the same frozen text metadata and continuation as `browser_text`. For a
+long section, the window starts near the first query occurrence. `offset` and
+`prefixOmittedChars` declare the leading text skipped; `truncated` describes text
+remaining after the window, so it can be false even when the prefix was omitted.
+Read `browser_text` with the match id and offset 0 to recover the beginning. CLI:
 `find --context-chars 3000 -- license conditions`.
 
 Digest, search and map `href` fields retain complete navigation URLs, including
@@ -293,66 +297,25 @@ values are exposed. Equivalent HTTP(S) destinations are normalized for cross-pag
 comparison only; same-page authored mutations remain detectable. Unknown components
 are declared instead of silently dropping a hash change.
 
-## Sensor plugin
-
-The sensor observes a scope inside a page that uses
-[snapDOM](https://github.com/zumerlab/snapdom). It runs as a snapDOM plugin, with
-snapDOM v3 as its peer dependency. See the
-[sensor package reference](https://github.com/zumerlab/snapsurf/tree/main/packages/sensor)
-for its build and package details.
-
-`@zumer/snapdom-sensor` remains a private development package. This example requires
-building and linking it from source; installing `@zumer/snapsurf` does not install it.
-
-```js
-import { snapdom } from '@zumer/snapdom'
-import { sensor } from '@zumer/snapdom-sensor'
-
-const watch = sensor({ needs: 'clone' })         // prepare the clone; skip image rendering
-const card = document.querySelector('#checkout-card')
-
-await snapdom(card, { plugins: [watch] })         // private baseline, in RAM
-// Interact with the page before the next capture.
-const report = await (await snapdom(card, { plugins: [watch] })).toSensor()
-
-report.observation.semanticDelta                  // typed, bounded, noise-suppressed
-report.observation.renderedActionabilityDelta     // what stopped/started being clickable
-report.coverage.knownSemanticBlindSpots           // canvas/iframes, declared with bbox
-report.uncertainty.reasons                        // declared uncertainty
-```
-
-With the pinned snapDOM v3 runtime, `needs: 'clone'` prepares the clone and skips image
-rendering; the default stays `'render'`. The report declares `coverage.source:
-'SNAPDOM_AFTER_CLONE_FRAME'` and the resolved stage. A clone-only capture reports
-`visual.svg: 'NOT_RENDERED_STAGE_CLONE'`; pixels on demand require a **new** capture
-of the desired region via `clip`. The earlier experimental `dom`/`live` stages were
-removed and are rejected. Their historical no-clone benchmarks do not describe the
-current pipeline; measure the clone/render tradeoff on your own page.
-
-The sensor reports `taskAssessment: "NOT_ASSESSED"` and does not attribute causality.
-`toSensor()` rejects any `expected` or `postcondition` option. Baselines keyed to a
-live element declare
-`HISTORY_NOT_CARRIED` when the host remounts the scope. The first capture after a
-remount starts a new observation history. DOM drift between capture start and the
-walk is watched (net of the engine's own prep) and declared, including inside open
-shadow roots.
-
-### Opt-in capture redaction
+## Opt-in capture redaction
 
 `privacy.redact` filters matching literal strings in semantic reports. It does not
 change images. To select content to remove from **both** captures and semantic data,
-use `captureRedaction` on `sensor()`, `agentOracle()` or `agent.inspect()`:
+use `captureRedaction` on `agentOracle()` or `agent.inspect()`:
 
 ```js
-const watch = sensor({
+import { agentOracle } from '@zumer/snapsurf'
+import { snapdom } from '@zumer/snapdom'
+
+const oracle = agentOracle({
   captureRedaction: {
     all: true,
     blocks: ['.private-panel'],
     attributes: [{ selector: '[data-token]', names: ['data-token', 'title'] }],
   },
 })
-const result = await snapdom(card, { plugins: [watch] })
-const report = await result.toSensor()
+const result = await snapdom(card, { plugins: [oracle] })
+const report = await result.toChanges()
 const image = await result.toPng()
 ```
 
@@ -371,12 +334,12 @@ capture; block/attribute rules require the SVG renderer.
 These rules do not scan arbitrary text, CSS-generated content or pixels for secrets.
 Removing an attribute does not erase visible copies of its value; block that content
 when needed. This integration uses the redactor bundled here: adding a separate
-`redactInputs` plugin does not automatically share its private policy with the sensor.
+`redactInputs` plugin does not automatically share its private policy with the oracle.
 The CLI/MCP's existing literal-redaction setting still covers semantics only; its
 native screenshots and recording commands do not enable `captureRedaction`.
 
 Capture redaction permits one composed configuration per capture. A protected capture
-rejects additional `agentOracle`/`sensor` readers, including unconfigured ones; use
+rejects additional `agentOracle` readers, including unconfigured ones; use
 separate captures for separate readers. In `agentOracle` or
 `agent.inspect`, checkpoints created with `captureRedaction` are bound to that local
 policy. Enabling, removing or changing the selection rules, or reloading the page,
@@ -447,13 +410,12 @@ at a personal profile without the browser owner's explicit authorization.
 
 ## Examples and evaluation
 
-Experimental runners and recorded results are in the
+Reproducible regression runners are in the
 [repository](https://github.com/zumerlab/snapsurf/tree/main/experiment).
+Internal research, feedback notes and generated results are kept locally and ignored.
 
-From a source checkout, serve the repository with `python3 -m http.server 8763` and
-open `http://localhost:8763/demo-sensor/` to compare captures while interacting with a
-card. The [consumer report](https://github.com/zumerlab/snapsurf/blob/main/demo-sensor/informe.html)
-contains the earlier agent trials and their review notes.
+Run `node demo-qa/run-demo.mjs` for a local add-item and no-op verification example.
+The demo uses isolated fixtures and checks the typed evidence with assertions.
 
 ## Configuration and global machine copy
 
@@ -502,14 +464,13 @@ npm run test:cold         # clean-copy install + full checks from git-tracked fi
 
 ```text
 src/          observation, matching, diff, carried identity, privacy, queries, checkpoints
-packages/     the sensor plugin (@zumer/snapdom-sensor)
 vendor/       pinned snapDOM v3 (staged) browser runtime + export plugins
 tools/        CLI/daemon, SDK bundle definition, installer, cold-install proof
 mcp/          MCP stdio adapter
 companion/    MV3 extension, authenticated worker, adversarial gate
-demo-sensor/  live bench + consumer dogfood report
+demo-qa/      local action and no-op verification examples
 test/         browser and daemon/MCP regression tests (incl. carried fixtures)
 corpus/       hand-written mutation fixtures
-experiment/   research and regression runners, with published results
+experiment/   public regression runners; generated results stay local
 docs/         privacy notes, value comparison, architecture records
 ```

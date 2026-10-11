@@ -274,6 +274,7 @@ Honesty notes:
   ready for a model or an assertion). For pixels it is the TWO screenshots a person or a
   model would have to look at. For the accessibility tree it is the two trees to diff.
 `
+await mkdir(join(HERE, 'results'), { recursive: true })
 await writeFile(join(HERE, 'results', 'bench-qa.md'), md)
 await writeFile(join(HERE, 'results', 'bench-qa.json'), JSON.stringify(rows, null, 2))
 console.error('report → experiment/results/bench-qa.md')

@@ -4,12 +4,8 @@ import { gifExport } from '../vendor/snapdom/plugins/gif-export.js'
 import { videoExport } from '../vendor/snapdom/plugins/video-export.js'
 import { agentOracle } from '../src/plugin.js'
 import { inspect } from '../src/index.js'
-import { sensor } from '../packages/sensor/src/sensor.js'
-import { sensor as bundledSensor } from '../packages/sensor/dist/snapdom-sensor.js'
 
-const sensors = []
 afterEach(() => {
-  for (const plugin of sensors.splice(0)) plugin.dispose()
   document.body.innerHTML = ''
 })
 function fixture() {
@@ -123,23 +119,6 @@ describe('captureRedaction opt-in', () => {
     expect(selectEntry.s.value).toBeUndefined()
   })
 
-  it('shares policy across sensor clone/render captures and preserves old reports', async () => {
-    const el = fixture()
-    const plugin = sensor({ needs: 'clone', captureRedaction: rules })
-    sensors.push(plugin)
-    const first = await capture(el, [plugin])
-    const before = await first.toSensor()
-    el.querySelector('button').textContent = 'Updated public action'
-    const next = await capture(el, [plugin])
-    const report = await next.toSensor()
-    assertSafe(JSON.stringify(report))
-    expect(report.observation.status).toBe('DELTA_DETECTED')
-    expect(report.privacy.captureRedaction).toBe('SELECTED_FIELDS_BLOCKS_ATTRIBUTES')
-    expect(await first.toSensor()).toEqual(before)
-    const render = await capture(el, [plugin, { name: 'raise-to-render' }])
-    assertSafe(decodeURIComponent(render.url))
-  })
-
   it('keeps scoped rasterization redacted when inspect() captures a new region', async () => {
     const el = fixture()
     const ui = await inspect(el, { captureRedaction: rules, capture: { embedFonts: false } })
@@ -181,31 +160,15 @@ describe('captureRedaction opt-in', () => {
 
   it('rejects conflicting composed redactors instead of overwriting the capture policy', async () => {
     const el = fixture()
-    const watcher = sensor({ captureRedaction: { all: true } })
-    sensors.push(watcher)
-    await expect(capture(el, [agentOracle({ captureRedaction: rules }), watcher])).rejects.toThrow(/Only one captureRedaction/)
+    await expect(capture(el, [agentOracle({ captureRedaction: rules }), { ...agentOracle({ captureRedaction: { all: true } }), name: 'second-reader' }])).rejects.toThrow(/Only one captureRedaction/)
     expect(el.querySelector('.private').textContent).toBe('Hidden account')
   })
 
-  it.each(['oracle-first', 'sensor-first'])('rejects source/bundle redactor conflicts in %s order', async (order) => {
+  it.each(['protected-first', 'protected-last'])('rejects an unconfigured semantic reader in %s order', async (order) => {
     const el = fixture()
-    const watcher = bundledSensor({ captureRedaction: { all: false } })
-    sensors.push(watcher)
-    const oracle = agentOracle({ captureRedaction: rules })
-    const plugins = order === 'oracle-first' ? [oracle, watcher] : [watcher, oracle]
-    await expect(capture(el, plugins)).rejects.toThrow(/Only one captureRedaction/)
-    expect(el.querySelector('input').value).toBe('private@example.test')
-  })
-
-  it.each([
-    ['oracle', 'oracle-first'], ['oracle', 'sensor-first'],
-    ['sensor', 'oracle-first'], ['sensor', 'sensor-first'],
-  ])('rejects a protected %s with an unconfigured reader in %s order', async (protectedReader, order) => {
-    const el = fixture()
-    const watcher = bundledSensor(protectedReader === 'sensor' ? { captureRedaction: rules } : {})
-    sensors.push(watcher)
-    const oracle = agentOracle(protectedReader === 'oracle' ? { captureRedaction: rules } : {})
-    const plugins = order === 'oracle-first' ? [oracle, watcher] : [watcher, oracle]
+    const protectedReader = agentOracle({ captureRedaction: rules })
+    const unconfigured = { ...agentOracle(), name: 'second-reader' }
+    const plugins = order === 'protected-first' ? [protectedReader, unconfigured] : [unconfigured, protectedReader]
     await expect(capture(el, plugins)).rejects.toThrow(/unconfigured semantic reader/)
     expect(el.querySelector('input').value).toBe('private@example.test')
   })

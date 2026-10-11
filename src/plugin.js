@@ -482,10 +482,6 @@ export async function observeChunked(root, options = {}) {
     engineFrame: options.engineFrame,
     capturePolicy: options.capturePolicy,
   })
-  // Internal lifecycle hook for resident sensors: it fixes the semantic window boundary
-  // at the instant the DOM snapshot is complete, before privacy/diff stages may yield.
-  // The snapshot is not exposed by the hook and the callback must remain synchronous.
-  if (typeof options.onSnapshotCaptured === 'function') options.onSnapshotCaptured()
   // The post-walk stages yield between one another: with a baseline present,
   // inflate + diff + relabel used to run as ONE task and blocked ~1s on 3.5k-node
   // pages (panel probe round) — the walk sliced, its bookends didn't.

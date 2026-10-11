@@ -9,7 +9,7 @@ const globals = require('globals')
 module.exports = [
   {
     ignores: [
-      'node_modules/**', 'companion/content.bundle.js', 'packages/**/dist/**',
+      'node_modules/**', 'companion/content.bundle.js',
       'logs/**', 'experiment/results/**',
     ],
   },
@@ -17,8 +17,7 @@ module.exports = [
   {
     files: [
       'src/**/*.js', 'test/**/*.js', 'tools/**/*.{js,mjs}', 'mcp/**/*.mjs',
-      'companion/**/*.{js,mjs}', 'packages/**/*.{js,mjs}', 'experiment/multisite-pilot.mjs',
-      'experiment/multisite-review-score.mjs', 'experiment/multisite/**/*.{js,mjs}',
+      'companion/**/*.{js,mjs}', 'experiment/multisite/**/*.{js,mjs}',
     ],
     languageOptions: {
       ecmaVersion: 'latest',

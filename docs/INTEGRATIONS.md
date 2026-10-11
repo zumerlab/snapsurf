@@ -244,6 +244,5 @@ Glama and similar directories build to verify that the server starts and answers
 
 ## The embedded surfaces (no LLM client at all)
 
-The sensor plugin (`packages/sensor`) and the library (`agent.inspect`) run inside a
-page next to snapDOM — they serve whatever host embeds them, regardless of which model
-(if any) reads the reports. See the README sections for both.
+The library (`agent.inspect`) runs inside a page next to SnapDOM. Hosts can use its
+semantic reports without an LLM client. See the library section in [Usage](USAGE.md#library).

@@ -14,7 +14,7 @@ It runs locally as an MCP server or CLI with its own Chromium session. The obser
 code also works as an in-page library built on
 [SnapDOM](https://github.com/zumerlab/snapdom).
 
-Version 0.1.2 is experimental.
+Version 0.1.3 is experimental.
 
 ## Add it to your MCP client
 
@@ -154,6 +154,12 @@ does the same without downloading anything. The `SNAPSURF_*` environment variabl
 
 ## Development
 
+This repository contains the SnapSurf observation library, CLI/MCP server, Chrome
+companion, and their fixtures and evaluation tools. Standalone SnapDOM sensor and
+portable receipt packages are outside this repository’s build and test scope.
+Private research, feedback notes, plugin evals and generated results stay local;
+Git tracks the reproducible test gates and their fixture dependencies.
+
 To modify SnapSurf itself, clone the source and install the development dependencies:
 
 ```bash
@@ -175,7 +181,7 @@ npm run test:pack
 ```
 
 [Usage and API reference](docs/USAGE.md) covers CLI commands, report fields,
-checkpoints, the library, sensor plugin and Chrome companion.
+checkpoints, the library and Chrome companion.
 [Release guide](docs/RELEASING.md) covers validation, publication and the MCP Registry.
 
 MIT licensed. Copyright © Juan Martin Muda / [zumerlab](https://github.com/zumerlab).

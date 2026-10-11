@@ -1,8 +1,8 @@
 # QA without visual assertions — demo
 
-A minimal, complete example of the pattern the benchmark measured
-(`experiment/results/bench-qa.md`: oracle 19/19 · 0 false positives, vs pixel-diff
-13/19 · 5/8 false positives on noise): **assert the semantic diff, not the pixels**.
+A local example of verifying an action with a semantic diff and detecting a no-op
+while a clock and spinner continue changing. Generate corpus measurements with
+`node experiment/bench-qa.mjs`; its reports are local ignored outputs.
 
 ## The app
 

@@ -184,10 +184,11 @@ if (longId) {
   requireContract(contextResult.ok === true && contextResult.meta.contextChars === 1000 && contextResult.meta.contextCharsReturned === 1000 &&
     contexts.reduce((sum, entry) => sum + entry.context.returnedChars, 0) === 1000 &&
     contextResult.meta.contextMatchesOmitted === contextMatches.length - contexts.length &&
-    context?.text === LONG_TEXT.slice(0, 1000) && context.totalChars === LONG_TEXT.length && context.truncated === true &&
+    context?.text === LONG_TEXT.slice(-1000) && context.totalChars === LONG_TEXT.length && context.truncated === false &&
+    context.offset === LONG_TEXT.length - 1000 && context.prefixOmittedChars === context.offset && context.text.includes('tail-token-here') &&
     context.maxChars === 1000 && context.capturedAt === start?.capturedAt &&
-    context.continuation?.offset === 1000 && context.continuation?.observationId === start?.observationId,
-  'find context must respect one total character budget and expose continuation for its truncated text', contextResult.meta)
+    context.continuation === null && context.observationId === start?.observationId,
+  'find context must respect its budget, include the late query and declare omitted leading text', contextResult.meta)
 } else requireContract(false, 'long-text fixture must be findable before exercising its documented read contract', deep)
 const idr = await run('find-id', 'find', ['Contact'])
 const nid = idr.meta?.matches?.[0]?.id

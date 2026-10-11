@@ -1464,7 +1464,7 @@ const inFind = (query) => {
 // slices from live innerText would silently splice two versions of an updating article.
 // The cache dies with that observation/document; the shared resolver still rejects
 // detached/hidden ids and invalidates every old-policy view before this helper runs.
-const inReadText = ({ id, maxChars, offset, observationId, source = 'text' }) => {
+const inReadText = ({ id, maxChars, offset, observationId, source = 'text', contextQuery }) => {
   const resolved = window.__agentResolveUi(id)
   if (!resolved) return { error: 'unknown or detached id — re-observe and retry' }
   if (!window.__agentTextEligibility(resolved.el)) return { error: 'node has no readable rendered content — choose a visible descendant or re-observe after visibility changes' }
@@ -1515,6 +1515,13 @@ const inReadText = ({ id, maxChars, offset, observationId, source = 'text' }) =>
     cache.chars += saved.text.length
     cache.entries.set(cacheKey, saved)
   }
+  // Choose the window from the frozen, redacted text, not a live DOM name.
+  // Keep a little leading prose and spend most of the budget after the match.
+  if (contextQuery && source === 'text') {
+    const escaped = contextQuery.trim().split(/\s+/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+')
+    const match = escaped ? new RegExp(escaped, 'iu').exec(saved.text) : null
+    if (match) offset = Math.min(Math.max(0, match.index - Math.floor(maxChars / 4)), Math.max(0, saved.text.length - maxChars))
+  }
   if (offset > saved.text.length) return { error: `offset exceeds totalChars (${saved.text.length})` }
   const text = saved.text.slice(offset, offset + maxChars)
   const nextOffset = offset + text.length
@@ -1522,6 +1529,7 @@ const inReadText = ({ id, maxChars, offset, observationId, source = 'text' }) =>
   return {
     text, textSource: saved.source, capturedAt: saved.capturedAt, observationId: currentObservationId,
     offset, maxChars, returnedChars: text.length, totalChars: saved.text.length,
+    ...(contextQuery ? { prefixOmittedChars: offset } : {}),
     truncated, nextOffset: truncated ? nextOffset : null,
     continuation: truncated ? { id, maxChars, offset: nextOffset, observationId: currentObservationId, ...(source === 'href' ? { source } : {}) } : null,
   }
@@ -2446,7 +2454,7 @@ const HANDLERS = {
           continue
         }
         if (!remaining) { match.contextOmittedReason = 'budget'; continue }
-        const context = await inPage(S, inReadText, { id: match.id, maxChars: remaining, offset: 0 })
+        const context = await inPage(S, inReadText, { id: match.id, maxChars: remaining, offset: 0, contextQuery: query })
         if (context.error) {
           match.contextError = context.error
           match.contextOmittedReason = 'unreadable'

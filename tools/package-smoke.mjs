@@ -44,9 +44,6 @@ try {
       'tools/runtime-identity.mjs',
       'companion/build.mjs',
       'companion/content.src.js',
-      'companion/gate.mjs',
-      'companion/gate-client/manifest.json',
-      'companion/gate-client/worker.js',
       'companion/manifest.json',
       'companion/worker.js',
       'companion/content.bundle.js',
@@ -56,7 +53,7 @@ try {
     ].filter(Boolean)
     for (const relative of required) readFileSync(join(unpackedRoot, relative))
     for (const file of info.files) {
-      if (/^(logs|scratchpad|test|experiment|packages|browser-sdk)\//.test(file.path) || /(?:^|\/)\.env(?:\.|$)|\.(?:token|pem|key)$/.test(file.path)) {
+      if (/^(logs|scratchpad|test|experiment|packages|browser-sdk|plugins\/snapsurf\/evals)\//.test(file.path) || /^companion\/(?:gate\.mjs|gate-client\/)/.test(file.path) || /(?:^|\/)\.env(?:\.|$)|\.(?:token|pem|key)$/.test(file.path)) {
         throw new Error(`unexpected development/private artifact in npm archive: ${file.path}`)
       }
     }

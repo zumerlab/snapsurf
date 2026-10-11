@@ -2,7 +2,7 @@
 import { redactInputs } from '../vendor/snapdom/plugins/redact-inputs.js'
 import { getPrivacyPolicy } from '../vendor/snapdom/plugins/privacy-policy.js'
 
-// Source imports and generated sensor bundles must reject conflicting owners alike.
+// Source imports and bundled readers must reject conflicting owners alike.
 const OWNER = Symbol.for('snapdom-agent.capture-redactor.v1')
 const policyIds = new Map()
 const SELECTION_KEYS = ['types', 'autocomplete', 'selector', 'all', 'blocks', 'attributes']

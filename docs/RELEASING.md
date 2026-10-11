@@ -3,8 +3,6 @@
 SnapSurf is published as `@zumer/snapsurf` under the MIT license. The version lives in
 `package.json` and is mirrored in `server.json`, the manifest for the official MCP
 Registry; `npm run test:pack` fails when the two disagree or when `mcpName` is missing.
-`packages/sensor` and `browser-sdk` remain private development packages and are not
-included in this npm release.
 
 ## Version and build workflow
 
@@ -14,7 +12,7 @@ SnapSurf uses the same script names and versioning tools as SnapDOM:
 | --- | --- |
 | `npm run bump:dry` | Preview the version bump with `@zumerbox/bump`. |
 | `npm run bump` | Run `@zumerbox/bump`, then `@zumerbox/changelog`. |
-| `npm run compile` | Rebuild the companion, sensor and browser SDK bundles. |
+| `npm run compile` | Rebuild the Chrome companion bundle. |
 | `npm run build` | Compile and create `zumer-snapsurf-<version>.tgz` with `npm pack`. |
 | `npm run release:push` | Stage the changelog, commit it as `Bumped version`, then push with tags. |
 

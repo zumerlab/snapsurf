@@ -104,7 +104,7 @@ screenshots taken by a consumer remain outside that attestation.
 
 ## Library capture redaction
 
-The library APIs `agent.inspect`, `agentOracle` and `sensor` accept the opt-in
+The library APIs `agent.inspect` and `agentOracle` accept the opt-in
 `captureRedaction` option, with the same settings as SnapDOM's `redactInputs` plugin.
 Unlike literal `privacy.redact`, this explicitly selects fields, blocks and named
 attributes for both clone and semantic removal. Fields selected by these rules retain
@@ -123,7 +123,7 @@ existing pixel warnings above remain accurate. Separately installed redactor plu
 do not share a policy automatically with these semantic readers.
 
 Capture redaction permits one composed configuration per capture. A protected capture
-rejects additional `agentOracle`/`sensor` readers, including unconfigured ones; use
+rejects additional `agentOracle` readers, including unconfigured ones; use
 separate captures for separate readers. In `agentOracle` or
 `agent.inspect`, checkpoints created with `captureRedaction` are bound to that local
 policy. Enabling, removing or changing the selection rules, or reloading the page,

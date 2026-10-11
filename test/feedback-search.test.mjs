@@ -125,6 +125,29 @@ test('field feedback: useful search context and bounded embedded destinations', 
       }
     })
 
+    await t.test('late article matches receive nearby frozen context and honest offsets', async () => {
+      const article = 'Unrelated introduction. '.repeat(180) + 'cancel() Cancels the animation and restores the original styles. ' + 'Further notes. '.repeat(80)
+      await open('<main><article><p>' + article + '</p></article></main>')
+      const found = await find('cancel()', { contextChars: 230 })
+      const match = found.matches.find((m) => m.context)
+      assert.ok(match, JSON.stringify(found))
+      const context = match.context
+      assert.match(context.text, /cancel\(\) Cancels the animation and restores the original styles/)
+      assert.ok(context.offset > 0)
+      assert.equal(context.prefixOmittedChars, context.offset)
+      assert.equal(context.text, article.trim().slice(context.offset, context.offset + context.returnedChars))
+      assert.ok(found.contextCharsReturned <= 230)
+      assert.equal(context.truncated, true)
+      const next = ok(await tool('browser_text', context.continuation))
+      assert.equal(next.offset, context.offset + context.returnedChars)
+      assert.equal(next.capturedAt, context.capturedAt)
+      assert.equal(next.text, article.trim().slice(next.offset, next.offset + next.returnedChars))
+      const beginning = ok(await tool('browser_text', { id: match.id, maxChars: 60 }))
+      assert.equal(beginning.offset, 0)
+      assert.equal(beginning.text, article.slice(0, 60))
+      assert.equal(beginning.capturedAt, context.capturedAt)
+    })
+
     await t.test('data href payloads stay out of observations and have frozen bounded recovery', async () => {
       const href = 'data:image/png;base64,' + 'Q'.repeat(10000)
       const opened = await open(`<main><a id="embedded" href="${href}">Calendar image resource</a><a href="https://example.com/path?full=value#target">Ordinary destination</a><button onclick="embedded.href='data:image/png;base64,changed'">Replace resource</button></main>`)
