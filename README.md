@@ -1,5 +1,8 @@
 <p align="center"><img src="https://raw.githubusercontent.com/zumerlab/snapsurf/main/logo.png" width="128" alt="SnapSurf logo"></p>
 
+[![Snapsurf MCP server](https://mcprush.com/badge/snapsurf-mcp/card.svg)](https://mcprush.com/to/snapsurf-mcp?ref=badge)
+
+
 # SnapSurf
 
 Web navigation and verification for AI agents.
